@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { StickyNote } from "@/components/StickyNote";
 import { ParticipantList } from "@/components/ParticipantList";
 import { ControlPanel } from "@/components/ControlPanel";
+import { AIAnalysisDialog } from "@/components/AIAnalysisDialog";
 import { ArrowLeft, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -82,6 +83,7 @@ const FacilitatorControl = () => {
   const [timeRemaining, setTimeRemaining] = useState(boards[0].timeLimit * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+  const [showAIDialog, setShowAIDialog] = useState(false);
 
   const currentBoard = boards[currentBoardIndex];
   const boardColor = `hsl(var(--board-${(currentBoard.colorIndex % 5) + 1}))`;
@@ -146,11 +148,7 @@ const FacilitatorControl = () => {
   };
 
   const handleAIAnalysis = () => {
-    toast({
-      title: "AI-Analys startar...",
-      description: "Analyserar alla notes från detta board",
-    });
-    // AI analysis logic will be added with Lovable Cloud
+    setShowAIDialog(true);
   };
 
   const handleExportPDF = () => {
@@ -163,6 +161,17 @@ const FacilitatorControl = () => {
 
   const getNotesForQuestion = (questionId: string) => {
     return notes.filter((n) => n.questionId === questionId);
+  };
+
+  // Get all notes from current board with question titles
+  const getCurrentBoardNotes = () => {
+    return notes.map((note) => {
+      const question = currentBoard.questions.find((q) => q.id === note.questionId);
+      return {
+        ...note,
+        question: question?.title || "Unknown question",
+      };
+    });
   };
 
   return (
@@ -303,6 +312,14 @@ const FacilitatorControl = () => {
             <ParticipantList participants={participants} />
           </div>
         </div>
+
+        {/* AI Analysis Dialog */}
+        <AIAnalysisDialog
+          open={showAIDialog}
+          onOpenChange={setShowAIDialog}
+          notes={getCurrentBoardNotes()}
+          boardTitle={currentBoard.title}
+        />
       </div>
     </div>
   );
