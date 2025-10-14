@@ -138,9 +138,11 @@ const WorkshopDashboard = () => {
                       <span>{workshop.participants} deltagare</span>
                     </div>
                     
-                    <Button className="w-full mt-4" variant="default">
-                      Öppna Workshop
-                    </Button>
+                    <Link to={`/board/${workshop.id}`} className="w-full">
+                      <Button className="w-full mt-4" variant="default">
+                        Öppna Workshop
+                      </Button>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>
