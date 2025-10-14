@@ -14,7 +14,205 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_analyses: {
+        Row: {
+          analysis: string
+          board_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          analysis: string
+          board_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          analysis?: string
+          board_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_analyses_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      boards: {
+        Row: {
+          color_index: number
+          created_at: string
+          id: string
+          order_index: number
+          time_limit: number
+          title: string
+          workshop_id: string
+        }
+        Insert: {
+          color_index: number
+          created_at?: string
+          id?: string
+          order_index: number
+          time_limit: number
+          title: string
+          workshop_id: string
+        }
+        Update: {
+          color_index?: number
+          created_at?: string
+          id?: string
+          order_index?: number
+          time_limit?: number
+          title?: string
+          workshop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boards_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notes: {
+        Row: {
+          author_id: string
+          author_name: string
+          color_index: number
+          content: string
+          created_at: string
+          id: string
+          question_id: string
+          timestamp: string
+        }
+        Insert: {
+          author_id: string
+          author_name: string
+          color_index: number
+          content: string
+          created_at?: string
+          id?: string
+          question_id: string
+          timestamp?: string
+        }
+        Update: {
+          author_id?: string
+          author_name?: string
+          color_index?: number
+          content?: string
+          created_at?: string
+          id?: string
+          question_id?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      participants: {
+        Row: {
+          color_index: number
+          id: string
+          joined_at: string
+          name: string
+          workshop_id: string
+        }
+        Insert: {
+          color_index: number
+          id?: string
+          joined_at?: string
+          name: string
+          workshop_id: string
+        }
+        Update: {
+          color_index?: number
+          id?: string
+          joined_at?: string
+          name?: string
+          workshop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participants_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      questions: {
+        Row: {
+          board_id: string
+          created_at: string
+          id: string
+          order_index: number
+          title: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          id?: string
+          order_index: number
+          title: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          id?: string
+          order_index?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workshops: {
+        Row: {
+          code: string
+          created_at: string
+          date: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          date?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          date?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
