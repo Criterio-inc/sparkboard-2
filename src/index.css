@@ -45,6 +45,13 @@ All colors MUST be HSL.
     --shadow-glow: 0 8px 32px hsl(260 70% 50% / 0.15);
     --shadow-accent: 0 8px 32px hsl(20 90% 60% / 0.2);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Board colors */
+    --board-1: 260 70% 60%;
+    --board-2: 200 80% 55%;
+    --board-3: 160 70% 50%;
+    --board-4: 30 90% 60%;
+    --board-5: 330 75% 60%;
   }
 
   .dark {

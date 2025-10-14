@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,16 @@ import { useToast } from "@/hooks/use-toast";
 
 const JoinWorkshop = () => {
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [workshopCode, setWorkshopCode] = useState("");
   const [participantName, setParticipantName] = useState("");
+
+  useEffect(() => {
+    const codeFromUrl = searchParams.get("code");
+    if (codeFromUrl) {
+      setWorkshopCode(codeFromUrl.toUpperCase());
+    }
+  }, [searchParams]);
 
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
