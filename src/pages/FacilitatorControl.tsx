@@ -9,6 +9,7 @@ import { AIAnalysisDialog } from "@/components/AIAnalysisDialog";
 import { ArrowLeft, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { generateWorkshopPDF } from "@/utils/pdfExport";
 
 interface Question {
   id: string;
@@ -84,6 +85,7 @@ const FacilitatorControl = () => {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isSoundEnabled, setIsSoundEnabled] = useState(true);
   const [showAIDialog, setShowAIDialog] = useState(false);
+  const [aiAnalyses, setAIAnalyses] = useState<Record<string, string>>({});
 
   const currentBoard = boards[currentBoardIndex];
   const boardColor = `hsl(var(--board-${(currentBoard.colorIndex % 5) + 1}))`;
@@ -152,11 +154,42 @@ const FacilitatorControl = () => {
   };
 
   const handleExportPDF = () => {
-    toast({
-      title: "Exporterar PDF...",
-      description: "Din PDF kommer att laddas ner snart",
-    });
-    // PDF export logic
+    try {
+      // Prepare notes grouped by board
+      const notesByBoard: Record<string, Note[]> = {};
+      boards.forEach((board) => {
+        notesByBoard[board.id] = notes.filter((note) =>
+          board.questions.some((q) => q.id === note.questionId)
+        );
+      });
+
+      const exportData = {
+        workshopTitle: "Demo Workshop Session",
+        date: new Date().toLocaleDateString("sv-SE", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }),
+        boards,
+        notesByBoard,
+        aiAnalyses,
+        participantCount: participants.length,
+      };
+
+      generateWorkshopPDF(exportData);
+
+      toast({
+        title: "PDF genererad!",
+        description: "Din workshop-rapport har laddats ner",
+      });
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      toast({
+        title: "Fel vid PDF-generering",
+        description: "Kunde inte skapa PDF. Försök igen.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getNotesForQuestion = (questionId: string) => {
@@ -319,6 +352,12 @@ const FacilitatorControl = () => {
           onOpenChange={setShowAIDialog}
           notes={getCurrentBoardNotes()}
           boardTitle={currentBoard.title}
+          onAnalysisComplete={(analysis) => {
+            setAIAnalyses({
+              ...aiAnalyses,
+              [currentBoard.id]: analysis,
+            });
+          }}
         />
       </div>
     </div>

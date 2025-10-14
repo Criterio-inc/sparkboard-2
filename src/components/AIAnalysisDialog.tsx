@@ -32,6 +32,7 @@ interface AIAnalysisDialogProps {
   onOpenChange: (open: boolean) => void;
   notes: Note[];
   boardTitle: string;
+  onAnalysisComplete?: (analysis: string) => void;
 }
 
 const DEFAULT_PROMPT =
@@ -42,6 +43,7 @@ export const AIAnalysisDialog = ({
   onOpenChange,
   notes,
   boardTitle,
+  onAnalysisComplete,
 }: AIAnalysisDialogProps) => {
   const { toast } = useToast();
   const [customPrompt, setCustomPrompt] = useState(DEFAULT_PROMPT);
@@ -77,6 +79,12 @@ export const AIAnalysisDialog = ({
       }
 
       setAnalysis(data.analysis);
+      
+      // Notify parent component about the analysis
+      if (onAnalysisComplete) {
+        onAnalysisComplete(data.analysis);
+      }
+      
       toast({
         title: "Analys klar!",
         description: "AI-analysen är nu tillgänglig",
