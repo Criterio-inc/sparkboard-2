@@ -1,0 +1,311 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { StickyNote } from "@/components/StickyNote";
+import { ParticipantList } from "@/components/ParticipantList";
+import { ControlPanel } from "@/components/ControlPanel";
+import { ArrowLeft, Clock, AlertCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+interface Question {
+  id: string;
+  title: string;
+}
+
+interface Board {
+  id: string;
+  title: string;
+  timeLimit: number;
+  questions: Question[];
+  colorIndex: number;
+}
+
+interface Note {
+  id: string;
+  questionId: string;
+  content: string;
+  authorName: string;
+  authorId: string;
+  timestamp: string;
+  colorIndex: number;
+}
+
+interface Participant {
+  id: string;
+  name: string;
+  joinedAt: string;
+  colorIndex: number;
+}
+
+// Mock data
+const mockBoards: Board[] = [
+  {
+    id: "board-1",
+    title: "Brev från framtiden",
+    timeLimit: 15,
+    colorIndex: 0,
+    questions: [
+      { id: "q1", title: "Hur ser vår organisation ut om 5 år?" },
+      { id: "q2", title: "Vilka förändringar har vi genomfört?" },
+      { id: "q3", title: "Vad är vi mest stolta över?" },
+    ],
+  },
+  {
+    id: "board-2",
+    title: "Nulägesanalys",
+    timeLimit: 10,
+    colorIndex: 1,
+    questions: [
+      { id: "q4", title: "Vad fungerar bra idag?" },
+      { id: "q5", title: "Vilka utmaningar ser vi?" },
+    ],
+  },
+];
+
+const mockParticipants: Participant[] = [
+  { id: "p1", name: "Anna Andersson", joinedAt: "10:30", colorIndex: 0 },
+  { id: "p2", name: "Erik Eriksson", joinedAt: "10:31", colorIndex: 1 },
+  { id: "p3", name: "Maria Svensson", joinedAt: "10:32", colorIndex: 2 },
+];
+
+const FacilitatorControl = () => {
+  const { workshopId } = useParams();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const [currentBoardIndex, setCurrentBoardIndex] = useState(0);
+  const [boards] = useState<Board[]>(mockBoards);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [participants] = useState<Participant[]>(mockParticipants);
+  const [timeRemaining, setTimeRemaining] = useState(boards[0].timeLimit * 60);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+
+  const currentBoard = boards[currentBoardIndex];
+  const boardColor = `hsl(var(--board-${(currentBoard.colorIndex % 5) + 1}))`;
+  const isLowTime = timeRemaining <= 120 && timeRemaining > 0;
+  const isTimeUp = timeRemaining === 0;
+
+  // Timer logic
+  useEffect(() => {
+    if (!isTimerRunning) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 0) {
+          setIsTimerRunning(false);
+          if (isSoundEnabled) {
+            // Play sound alert
+            const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUQ0PVqzn77BdGAg+ltryxnMpBSuBzvLZiTYIG2m98OGenVEMD1as6O+wXRgIPpba8sZzKQUrgc7y2Yk2CBlpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+Lw==");
+            audio.play().catch(console.error);
+          }
+          
+          toast({
+            title: "Tiden är ute!",
+            description: "Boardens tidsgräns har nåtts",
+            variant: "destructive",
+          });
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isTimerRunning, isSoundEnabled, toast]);
+
+  // Warning at 2 minutes
+  useEffect(() => {
+    if (timeRemaining === 120 && isTimerRunning) {
+      toast({
+        title: "2 minuter kvar!",
+        description: "Boardens tid håller på att ta slut",
+      });
+    }
+  }, [timeRemaining, isTimerRunning, toast]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const handleNextBoard = () => {
+    if (currentBoardIndex < boards.length - 1) {
+      setCurrentBoardIndex(currentBoardIndex + 1);
+      setTimeRemaining(boards[currentBoardIndex + 1].timeLimit * 60);
+      setIsTimerRunning(false);
+      
+      toast({
+        title: "Nästa board!",
+        description: `Nu på: ${boards[currentBoardIndex + 1].title}`,
+      });
+    }
+  };
+
+  const handleAIAnalysis = () => {
+    toast({
+      title: "AI-Analys startar...",
+      description: "Analyserar alla notes från detta board",
+    });
+    // AI analysis logic will be added with Lovable Cloud
+  };
+
+  const handleExportPDF = () => {
+    toast({
+      title: "Exporterar PDF...",
+      description: "Din PDF kommer att laddas ner snart",
+    });
+    // PDF export logic
+  };
+
+  const getNotesForQuestion = (questionId: string) => {
+    return notes.filter((n) => n.questionId === questionId);
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div
+        className="sticky top-0 z-10 border-b shadow-sm bg-background"
+        style={{
+          borderTopColor: boardColor,
+          borderTopWidth: "4px",
+        }}
+      >
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+
+              <div>
+                <h1 className="text-2xl font-bold">Facilitator Control</h1>
+                <p className="text-sm text-muted-foreground">Workshop: Demo Session</p>
+              </div>
+            </div>
+
+            {/* Timer Display */}
+            <div
+              className={`flex items-center gap-3 px-6 py-3 rounded-lg font-mono text-2xl font-bold transition-all ${
+                isTimeUp
+                  ? "bg-destructive/20 text-destructive animate-pulse"
+                  : isLowTime
+                  ? "bg-orange-500/20 text-orange-600 animate-pulse"
+                  : ""
+              }`}
+              style={{
+                backgroundColor: !isTimeUp && !isLowTime ? `${boardColor}20` : undefined,
+                color: !isTimeUp && !isLowTime ? boardColor : undefined,
+              }}
+            >
+              <Clock className="w-6 h-6" />
+              {formatTime(timeRemaining)}
+              {isLowTime && !isTimeUp && <AlertCircle className="w-6 h-6 animate-bounce" />}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid lg:grid-cols-4 gap-6">
+          {/* Main Content - 3 columns */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Control Panel */}
+            <ControlPanel
+              isTimerRunning={isTimerRunning}
+              onToggleTimer={() => setIsTimerRunning(!isTimerRunning)}
+              onNextBoard={handleNextBoard}
+              onAIAnalysis={handleAIAnalysis}
+              onExportPDF={handleExportPDF}
+              isSoundEnabled={isSoundEnabled}
+              onToggleSound={() => setIsSoundEnabled(!isSoundEnabled)}
+              canGoNext={currentBoardIndex < boards.length - 1}
+            />
+
+            {/* Board Navigation Tabs */}
+            <Tabs
+              value={currentBoard.id}
+              onValueChange={(value) => {
+                const index = boards.findIndex((b) => b.id === value);
+                if (index !== -1) {
+                  setCurrentBoardIndex(index);
+                  setTimeRemaining(boards[index].timeLimit * 60);
+                  setIsTimerRunning(false);
+                }
+              }}
+            >
+              <TabsList className="w-full justify-start overflow-x-auto">
+                {boards.map((board, index) => {
+                  const color = `hsl(var(--board-${(board.colorIndex % 5) + 1}))`;
+                  return (
+                    <TabsTrigger
+                      key={board.id}
+                      value={board.id}
+                      className="flex items-center gap-2"
+                      style={{
+                        borderTop: currentBoard.id === board.id ? `3px solid ${color}` : undefined,
+                      }}
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                      Board {index + 1}: {board.title}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              {boards.map((board) => (
+                <TabsContent key={board.id} value={board.id} className="mt-6">
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {board.questions.map((question) => {
+                      const questionNotes = getNotesForQuestion(question.id);
+                      const qBoardColor = `hsl(var(--board-${(board.colorIndex % 5) + 1}))`;
+
+                      return (
+                        <Card key={question.id} className="p-6 space-y-4">
+                          <div>
+                            <h2 className="text-lg font-semibold mb-1" style={{ color: qBoardColor }}>
+                              {question.title}
+                            </h2>
+                            <p className="text-xs text-muted-foreground">
+                              {questionNotes.length} {questionNotes.length === 1 ? "note" : "notes"}
+                            </p>
+                          </div>
+
+                          <div className="space-y-3 min-h-[200px]">
+                            {questionNotes.length === 0 ? (
+                              <div className="flex items-center justify-center h-40 border-2 border-dashed border-muted rounded-lg">
+                                <p className="text-sm text-muted-foreground">Inga notes än</p>
+                              </div>
+                            ) : (
+                              questionNotes.map((note) => (
+                                <StickyNote key={note.id} {...note} isOwn={false} />
+                              ))
+                            )}
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </div>
+
+          {/* Sidebar - 1 column */}
+          <div className="lg:col-span-1">
+            <ParticipantList participants={participants} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default FacilitatorControl;

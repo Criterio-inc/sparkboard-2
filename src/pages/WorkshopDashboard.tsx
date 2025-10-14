@@ -138,7 +138,7 @@ const WorkshopDashboard = () => {
                       <span>{workshop.participants} deltagare</span>
                     </div>
                     
-                    <Link to={`/board/${workshop.id}`} className="w-full">
+                    <Link to={`/facilitator/${workshop.id}`} className="w-full">
                       <Button className="w-full mt-4" variant="default">
                         Öppna Workshop
                       </Button>

@@ -10,6 +10,7 @@ import WorkshopDashboard from "./pages/WorkshopDashboard";
 import CreateWorkshop from "./pages/CreateWorkshop";
 import JoinWorkshop from "./pages/JoinWorkshop";
 import BoardView from "./pages/BoardView";
+import FacilitatorControl from "./pages/FacilitatorControl";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/create-workshop" element={<CreateWorkshop />} />
           <Route path="/join" element={<JoinWorkshop />} />
           <Route path="/board/:boardId" element={<BoardView />} />
+          <Route path="/facilitator/:workshopId" element={<FacilitatorControl />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
