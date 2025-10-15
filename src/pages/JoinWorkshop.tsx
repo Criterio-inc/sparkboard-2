@@ -132,7 +132,10 @@ const JoinWorkshop = () => {
     setIsLoading(true);
 
     // Find workshop by code
+    console.log("Searching for workshop with code:", workshopCode);
     const workshop = getWorkshopByCode(workshopCode);
+    console.log("Found workshop:", workshop);
+    console.log("All workshops:", localStorage.getItem('workshops'));
 
     if (!workshop) {
       setIsLoading(false);
