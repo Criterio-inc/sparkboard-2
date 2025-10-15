@@ -274,7 +274,7 @@ const CreateWorkshop = () => {
 
       console.log("✅ Workshop sparad i Supabase:", savedWorkshop.id);
 
-      // Om detta är en uppdatering, radera gamla boards och questions först
+      // Om detta är en uppdatering, radera gamla notes -> questions -> boards
       if (workshopId) {
         console.log("🗑️ Raderar gamla data för workshop:", savedWorkshop.id);
         
@@ -287,7 +287,29 @@ const CreateWorkshop = () => {
         if (oldBoards && oldBoards.length > 0) {
           const boardIds = oldBoards.map(b => b.id);
           
-          // Radera questions först (foreign key till boards)
+          // Hämta alla questions för dessa boards
+          const { data: oldQuestions } = await supabase
+            .from('questions')
+            .select('id')
+            .in('board_id', boardIds);
+          
+          if (oldQuestions && oldQuestions.length > 0) {
+            const questionIds = oldQuestions.map(q => q.id);
+            
+            // 1. Radera notes först (foreign key till questions)
+            const { error: deleteNotesError } = await supabase
+              .from('notes')
+              .delete()
+              .in('question_id', questionIds);
+            
+            if (deleteNotesError) {
+              console.error("Kunde inte radera gamla notes:", deleteNotesError);
+            } else {
+              console.log("✅ Gamla notes raderade");
+            }
+          }
+          
+          // 2. Radera questions (foreign key till boards)
           const { error: deleteQuestionsError } = await supabase
             .from('questions')
             .delete()
@@ -300,7 +322,7 @@ const CreateWorkshop = () => {
           }
         }
         
-        // Radera boards efter questions
+        // 3. Radera boards sist
         const { error: deleteBoardsError } = await supabase
           .from('boards')
           .delete()

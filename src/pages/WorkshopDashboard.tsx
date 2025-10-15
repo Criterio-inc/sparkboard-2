@@ -34,20 +34,60 @@ const WorkshopDashboard = () => {
 
   const loadWorkshops = async () => {
     try {
-      const { data, error } = await supabase
+      // Hämta workshops utan nested select
+      const { data: workshopsData, error } = await supabase
         .from("workshops")
-        .select("*, boards(id)")
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (error) {
         console.error("Fel vid hämtning av workshops:", error);
+        toast({
+          title: "Fel",
+          description: "Kunde inte hämta workshops",
+          variant: "destructive",
+        });
         return;
       }
 
-      setWorkshops(data || []);
-      console.log("📦 Workshops hämtade:", data?.length || 0);
+      // Hämta boards separat för alla workshops
+      if (workshopsData && workshopsData.length > 0) {
+        const workshopIds = workshopsData.map(w => w.id);
+        const { data: boardsData, error: boardsError } = await supabase
+          .from('boards')
+          .select('id, workshop_id')
+          .in('workshop_id', workshopIds);
+
+        if (boardsError) {
+          console.error("Fel vid hämtning av boards:", boardsError);
+        }
+
+        // Bygg countMap
+        const countMap = new Map<string, number>();
+        (boardsData || []).forEach(board => {
+          const current = countMap.get(board.workshop_id) || 0;
+          countMap.set(board.workshop_id, current + 1);
+        });
+
+        // Sätt workshops med boards_count
+        const workshopsWithCounts = workshopsData.map(workshop => ({
+          ...workshop,
+          boards_count: countMap.get(workshop.id) || 0,
+        }));
+
+        setWorkshops(workshopsWithCounts);
+        console.log("📦 Workshops hämtade:", workshopsWithCounts.length);
+      } else {
+        setWorkshops([]);
+        console.log("📦 Inga workshops att visa");
+      }
     } catch (error) {
       console.error("Fel vid laddning av workshops:", error);
+      toast({
+        title: "Fel",
+        description: "Oväntat fel vid laddning",
+        variant: "destructive",
+      });
     }
   };
 
@@ -172,12 +212,19 @@ const WorkshopDashboard = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">Inga workshops än</h3>
               <p className="text-muted-foreground mb-6">Kom igång genom att skapa din första workshop</p>
-              <Link to="/create-workshop">
-                <Button variant="hero">
+              {facilitator ? (
+                <Link to="/create-workshop">
+                  <Button variant="hero">
+                    <Plus className="w-5 h-5 mr-2" />
+                    Skapa Workshop
+                  </Button>
+                </Link>
+              ) : (
+                <Button variant="hero" onClick={() => setShowAuth(true)}>
                   <Plus className="w-5 h-5 mr-2" />
                   Skapa Workshop
                 </Button>
-              </Link>
+              )}
             </div>
           </Card>
         ) : (
@@ -234,7 +281,7 @@ const WorkshopDashboard = () => {
 
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Users className="w-4 h-4" />
-                      <span>{workshop.boards?.length || 0} boards</span>
+                      <span>{workshop.boards_count || 0} boards</span>
                     </div>
 
                     <Link to={`/facilitator/${workshop.id}`} className="w-full">
