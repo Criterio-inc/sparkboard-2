@@ -26,8 +26,8 @@ const WorkshopDashboard = () => {
   useEffect(() => {
     loadWorkshops(); // Ladda alltid workshops
     const currentFacilitator = getCurrentFacilitator();
+    setFacilitator(currentFacilitator);
     if (currentFacilitator) {
-      setFacilitator(currentFacilitator);
       updateSessionTimestamp();
     }
   }, []);
@@ -102,13 +102,6 @@ const WorkshopDashboard = () => {
     navigate(`/create-workshop/${id}`);
   };
 
-  if (showAuth) {
-    return <FacilitatorAuth open={showAuth} onAuthenticated={handleAuthenticated} />;
-  }
-
-  if (!facilitator) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -145,12 +138,19 @@ const WorkshopDashboard = () => {
               </p>
             </div>
 
-            <Link to="/create-workshop">
-              <Button variant="hero" size="lg">
+            {facilitator ? (
+              <Link to="/create-workshop">
+                <Button variant="hero" size="lg">
+                  <Plus className="w-5 h-5 mr-2" />
+                  Skapa Ny Workshop
+                </Button>
+              </Link>
+            ) : (
+              <Button variant="hero" size="lg" onClick={() => setShowAuth(true)}>
                 <Plus className="w-5 h-5 mr-2" />
                 Skapa Ny Workshop
               </Button>
-            </Link>
+            )}
           </div>
         </div>
 
@@ -240,6 +240,8 @@ const WorkshopDashboard = () => {
           </div>
         )}
       </div>
+      
+      {showAuth && <FacilitatorAuth open={showAuth} onAuthenticated={handleAuthenticated} />}
     </div>
   );
 };

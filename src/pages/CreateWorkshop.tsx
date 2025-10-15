@@ -274,9 +274,33 @@ const CreateWorkshop = () => {
 
       console.log("✅ Workshop sparad i Supabase:", savedWorkshop.id);
 
-      // Om detta är en uppdatering, radera gamla boards först
+      // Om detta är en uppdatering, radera gamla boards och questions först
       if (workshopId) {
-        console.log("🗑️ Raderar gamla boards för workshop:", savedWorkshop.id);
+        console.log("🗑️ Raderar gamla data för workshop:", savedWorkshop.id);
+        
+        // Hämta alla boards för workshopen
+        const { data: oldBoards } = await supabase
+          .from('boards')
+          .select('id')
+          .eq('workshop_id', savedWorkshop.id);
+        
+        if (oldBoards && oldBoards.length > 0) {
+          const boardIds = oldBoards.map(b => b.id);
+          
+          // Radera questions först (foreign key till boards)
+          const { error: deleteQuestionsError } = await supabase
+            .from('questions')
+            .delete()
+            .in('board_id', boardIds);
+          
+          if (deleteQuestionsError) {
+            console.error("Kunde inte radera gamla questions:", deleteQuestionsError);
+          } else {
+            console.log("✅ Gamla questions raderade");
+          }
+        }
+        
+        // Radera boards efter questions
         const { error: deleteBoardsError } = await supabase
           .from('boards')
           .delete()
@@ -638,7 +662,7 @@ const CreateWorkshop = () => {
             <Button
               onClick={() => {
                 setShowQRDialog(false);
-                navigate("/dashboard");
+                navigate("/dashboard", { replace: true });
               }}
               className="w-full"
               variant="default"
