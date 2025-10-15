@@ -117,14 +117,23 @@ const WorkshopDashboard = () => {
             </Link>
 
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg">
-                <User className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">{facilitator.name}</span>
-              </div>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Logga ut
-              </Button>
+              {facilitator ? (
+                <>
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">{facilitator.name}</span>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleLogout}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logga ut
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setShowAuth(true)}>
+                  <User className="w-4 h-4 mr-2" />
+                  Logga in
+                </Button>
+              )}
             </div>
           </div>
 
