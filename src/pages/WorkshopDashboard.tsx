@@ -1,38 +1,49 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Calendar, Users, ArrowLeft, MoreVertical, Edit, Trash2 } from "lucide-react";
+import { Plus, Calendar, Users, ArrowLeft, MoreVertical, Edit, Trash2, Copy } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-
-interface Workshop {
-  id: string;
-  name: string;
-  code: string;
-  date: string;
-  participants: number;
-}
+import { Badge } from "@/components/ui/badge";
+import { getAllWorkshops, deleteWorkshop, duplicateWorkshop, SavedWorkshop } from "@/utils/workshopStorage";
+import { useToast } from "@/hooks/use-toast";
 
 const WorkshopDashboard = () => {
-  const [workshops, setWorkshops] = useState<Workshop[]>([
-    {
-      id: "1",
-      name: "Strategi Workshop 2024",
-      code: "ABC123",
-      date: "2024-03-15",
-      participants: 12
-    },
-    {
-      id: "2",
-      name: "Team Building Session",
-      code: "XYZ789",
-      date: "2024-03-10",
-      participants: 8
-    }
-  ]);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [workshops, setWorkshops] = useState<SavedWorkshop[]>([]);
+
+  useEffect(() => {
+    loadWorkshops();
+  }, []);
+
+  const loadWorkshops = () => {
+    const allWorkshops = getAllWorkshops();
+    setWorkshops(allWorkshops);
+  };
 
   const handleDelete = (id: string) => {
-    setWorkshops(workshops.filter(w => w.id !== id));
+    deleteWorkshop(id);
+    loadWorkshops();
+    toast({
+      title: "Workshop borttagen",
+      description: "Workshopen har tagits bort",
+    });
+  };
+
+  const handleDuplicate = (id: string) => {
+    const duplicated = duplicateWorkshop(id);
+    if (duplicated) {
+      loadWorkshops();
+      toast({
+        title: "Workshop duplicerad",
+        description: "En kopia av workshopen har skapats",
+      });
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    navigate(`/create-workshop/${id}`);
   };
 
   return (
@@ -95,11 +106,18 @@ const WorkshopDashboard = () => {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <CardTitle className="text-xl mb-2">{workshop.name}</CardTitle>
+                      <div className="flex items-center gap-2 mb-2">
+                        <CardTitle className="text-xl">{workshop.title}</CardTitle>
+                        <Badge variant={workshop.status === "active" ? "default" : "secondary"}>
+                          {workshop.status === "active" ? "Aktiv" : "Draft"}
+                        </Badge>
+                      </div>
                       <CardDescription className="flex items-center gap-2">
-                        <span className="font-mono text-lg font-semibold text-primary">
-                          {workshop.code}
-                        </span>
+                        {workshop.code && (
+                          <span className="font-mono text-lg font-semibold text-primary">
+                            {workshop.code}
+                          </span>
+                        )}
                       </CardDescription>
                     </div>
                     
@@ -110,9 +128,13 @@ const WorkshopDashboard = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(workshop.id)}>
                           <Edit className="w-4 h-4 mr-2" />
                           Redigera
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicate(workshop.id)}>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Duplicera
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-destructive"
@@ -130,19 +152,29 @@ const WorkshopDashboard = () => {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="w-4 h-4" />
-                      <span>{new Date(workshop.date).toLocaleDateString('sv-SE')}</span>
+                      <span>{new Date(workshop.createdAt).toLocaleDateString('sv-SE')}</span>
                     </div>
                     
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Users className="w-4 h-4" />
-                      <span>{workshop.participants} deltagare</span>
+                      <span>{workshop.boards.length} boards</span>
                     </div>
                     
-                    <Link to={`/facilitator/${workshop.id}`} className="w-full">
-                      <Button className="w-full mt-4" variant="default">
-                        Öppna Workshop
+                    {workshop.status === "active" ? (
+                      <Link to={`/facilitator/${workshop.id}`} className="w-full">
+                        <Button className="w-full mt-4" variant="default">
+                          Öppna Workshop
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Button 
+                        className="w-full mt-4" 
+                        variant="outline"
+                        onClick={() => handleEdit(workshop.id)}
+                      >
+                        Fortsätt redigera
                       </Button>
-                    </Link>
+                    )}
                   </div>
                 </CardContent>
               </Card>

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BoardCard } from "@/components/BoardCard";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
+import { saveWorkshop, getWorkshopById } from "@/utils/workshopStorage";
 
 interface Question {
   id: string;
@@ -35,8 +36,10 @@ interface Workshop {
 const CreateWorkshop = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { id } = useParams();
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
+  const [workshopId, setWorkshopId] = useState<string | undefined>(id);
 
   const [workshop, setWorkshop] = useState<Workshop>({
     title: "",
@@ -44,6 +47,24 @@ const CreateWorkshop = () => {
     boards: [],
     status: "draft",
   });
+
+  useEffect(() => {
+    if (workshopId) {
+      const existingWorkshop = getWorkshopById(workshopId);
+      if (existingWorkshop) {
+        setWorkshop({
+          title: existingWorkshop.title,
+          description: existingWorkshop.description,
+          boards: existingWorkshop.boards,
+          code: existingWorkshop.code,
+          status: existingWorkshop.status,
+        });
+        if (existingWorkshop.code) {
+          setGeneratedCode(existingWorkshop.code);
+        }
+      }
+    }
+  }, [workshopId]);
 
   const generateCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -134,6 +155,17 @@ const CreateWorkshop = () => {
   const handleSaveDraft = () => {
     if (!validateWorkshop()) return;
 
+    const saved = saveWorkshop({
+      id: workshopId,
+      title: workshop.title,
+      description: workshop.description,
+      boards: workshop.boards,
+      code: workshop.code,
+      status: "draft",
+    });
+
+    setWorkshopId(saved.id);
+
     toast({
       title: "Draft sparad!",
       description: "Din workshop har sparats som draft",
@@ -147,8 +179,19 @@ const CreateWorkshop = () => {
   const handleActivate = () => {
     if (!validateWorkshop()) return;
 
-    const code = generateCode();
+    const code = generatedCode || generateCode();
     setGeneratedCode(code);
+
+    const saved = saveWorkshop({
+      id: workshopId,
+      title: workshop.title,
+      description: workshop.description,
+      boards: workshop.boards,
+      code: code,
+      status: "active",
+    });
+
+    setWorkshopId(saved.id);
     setShowQRDialog(true);
 
     toast({
