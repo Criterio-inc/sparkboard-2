@@ -198,10 +198,10 @@ const JoinWorkshop = () => {
 
     sessionStorage.setItem('participantSession', JSON.stringify(participantSession));
 
-    // Uppdatera deltagarlistan i sessionStorage
+    // Uppdatera deltagarlistan i localStorage (ÄNDRAT från sessionStorage)
     try {
       const participantsKey = `workshop_${workshopCode.toUpperCase()}_participants`;
-      const existing = JSON.parse(sessionStorage.getItem(participantsKey) || '[]');
+      const existing = JSON.parse(localStorage.getItem(participantsKey) || '[]');
       const newParticipant = {
         id: participantSession.participantId,
         name: participantSession.participantName,
@@ -209,7 +209,9 @@ const JoinWorkshop = () => {
         colorIndex: Array.isArray(existing) ? existing.length % 6 : 0,
       };
       const updated = Array.isArray(existing) ? [...existing, newParticipant] : [newParticipant];
-      sessionStorage.setItem(participantsKey, JSON.stringify(updated));
+      localStorage.setItem(participantsKey, JSON.stringify(updated));
+      console.log("👥 Deltagare sparad i localStorage:", newParticipant.name);
+      console.log("📊 Totalt antal deltagare:", updated.length);
       window.dispatchEvent(new Event('participants-updated'));
     } catch (e) {
       console.warn('Kunde inte uppdatera deltagarlistan:', e);

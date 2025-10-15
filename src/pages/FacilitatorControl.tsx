@@ -79,7 +79,7 @@ const FacilitatorControl = () => {
     setTimeRemaining(((w.boards?.[0]?.timeLimit) || 0) * 60);
   }, [workshopId, navigate, toast]);
 
-  // Synka deltagare från sessionStorage
+  // Synka deltagare från localStorage (ÄNDRAT från sessionStorage)
   useEffect(() => {
     if (!workshop?.code) {
       setParticipants([]);
@@ -88,18 +88,47 @@ const FacilitatorControl = () => {
     const key = `workshop_${workshop.code.toUpperCase()}_participants`;
     const read = () => {
       try {
-        const data = JSON.parse(sessionStorage.getItem(key) || "[]");
+        const data = JSON.parse(localStorage.getItem(key) || "[]");
         setParticipants(Array.isArray(data) ? data : []);
+        console.log("🔄 [Facilitator] Synkar deltagare:", data.length);
       } catch {
         setParticipants([]);
       }
     };
-    read();
+    // Initial delay för att ge deltagare tid att registrera sig
+    setTimeout(read, 500);
     const onUpdate = () => read();
     window.addEventListener("participants-updated", onUpdate);
     const interval = setInterval(read, 2000);
     return () => {
       window.removeEventListener("participants-updated", onUpdate);
+      clearInterval(interval);
+    };
+  }, [workshop?.code]);
+
+  // Synka notes från localStorage
+  useEffect(() => {
+    if (!workshop?.code) {
+      setNotes([]);
+      return;
+    }
+    const key = `workshop_${workshop.code.toUpperCase()}_notes`;
+    const read = () => {
+      try {
+        const data = JSON.parse(localStorage.getItem(key) || "[]");
+        setNotes(Array.isArray(data) ? data : []);
+        console.log("🔄 [Facilitator] Synkar notes:", data.length);
+      } catch {
+        setNotes([]);
+      }
+    };
+    // Initial delay för att ge deltagare tid att skapa notes
+    setTimeout(read, 500);
+    const onUpdate = () => read();
+    window.addEventListener("notes-updated", onUpdate);
+    const interval = setInterval(read, 2000);
+    return () => {
+      window.removeEventListener("notes-updated", onUpdate);
       clearInterval(interval);
     };
   }, [workshop?.code]);
@@ -211,6 +240,26 @@ const FacilitatorControl = () => {
 
   const getNotesForQuestion = (questionId: string) => {
     return notes.filter((n) => n.questionId === questionId);
+  };
+
+  const handleDeleteNote = (noteId: string) => {
+    if (!workshop?.code) return;
+    
+    const key = `workshop_${workshop.code.toUpperCase()}_notes`;
+    try {
+      const currentNotes = JSON.parse(localStorage.getItem(key) || "[]");
+      const updated = currentNotes.filter((n: Note) => n.id !== noteId);
+      localStorage.setItem(key, JSON.stringify(updated));
+      setNotes(updated);
+      window.dispatchEvent(new Event('notes-updated'));
+      
+      toast({
+        title: "Note borttagen",
+        description: "Sticky note har tagits bort",
+      });
+    } catch (e) {
+      console.error("Kunde inte ta bort note:", e);
+    }
   };
 
   // Get all notes from current board with question titles
@@ -344,7 +393,12 @@ const FacilitatorControl = () => {
                               </div>
                             ) : (
                               questionNotes.map((note) => (
-                                <StickyNote key={note.id} {...note} isOwn={false} />
+                                <StickyNote 
+                                  key={note.id} 
+                                  {...note} 
+                                  isOwn={false}
+                                  onDelete={() => handleDeleteNote(note.id)}
+                                />
                               ))
                             )}
                           </div>

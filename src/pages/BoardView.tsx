@@ -39,11 +39,13 @@ const BoardView = () => {
   
   const [board, setBoard] = useState<Board | null>(null);
   const [workshopTitle, setWorkshopTitle] = useState("");
+  const [workshopCode, setWorkshopCode] = useState("");
   const [notes, setNotes] = useState<Note[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [participantName, setParticipantName] = useState("");
   const [participantId, setParticipantId] = useState("");
+  const [participantCount, setParticipantCount] = useState(1);
 
   // Load workshop and participant session
   useEffect(() => {
@@ -62,6 +64,7 @@ const BoardView = () => {
     const session = JSON.parse(sessionData);
     setParticipantName(session.participantName);
     setParticipantId(session.participantId);
+    setWorkshopCode(session.workshopCode || '');
 
     // Load workshop
     if (!workshopId) {
@@ -107,6 +110,57 @@ const BoardView = () => {
     }
   }, [participantId, participantColors]);
 
+  // Synka notes från localStorage
+  useEffect(() => {
+    if (!workshopCode) return;
+    
+    const key = `workshop_${workshopCode.toUpperCase()}_notes`;
+    const read = () => {
+      try {
+        const data = JSON.parse(localStorage.getItem(key) || "[]");
+        setNotes(Array.isArray(data) ? data : []);
+        console.log("🔄 [Participant] Synkar notes:", data.length);
+      } catch {
+        setNotes([]);
+      }
+    };
+    
+    read();
+    const onUpdate = () => read();
+    window.addEventListener("notes-updated", onUpdate);
+    const interval = setInterval(read, 2000);
+    
+    return () => {
+      window.removeEventListener("notes-updated", onUpdate);
+      clearInterval(interval);
+    };
+  }, [workshopCode]);
+
+  // Synka deltagarantal från localStorage
+  useEffect(() => {
+    if (!workshopCode) return;
+    
+    const key = `workshop_${workshopCode.toUpperCase()}_participants`;
+    const updateCount = () => {
+      try {
+        const data = JSON.parse(localStorage.getItem(key) || '[]');
+        setParticipantCount(Array.isArray(data) ? data.length : 1);
+        console.log("🔄 [Participant] Deltagarantal:", data.length);
+      } catch {
+        setParticipantCount(1);
+      }
+    };
+    
+    updateCount();
+    window.addEventListener('participants-updated', updateCount);
+    const interval = setInterval(updateCount, 2000);
+    
+    return () => {
+      window.removeEventListener('participants-updated', updateCount);
+      clearInterval(interval);
+    };
+  }, [workshopCode]);
+
   // Timer countdown
   useEffect(() => {
     if (!board || timeRemaining <= 0) return;
@@ -135,8 +189,10 @@ const BoardView = () => {
   };
 
   const handleAddNote = (questionId: string, content: string) => {
+    if (!workshopCode) return;
+    
     const newNote: Note = {
-      id: `note-${Date.now()}`,
+      id: `note-${Date.now()}-${participantId}`,
       questionId,
       content,
       authorName: participantName,
@@ -148,21 +204,49 @@ const BoardView = () => {
       colorIndex: participantColors[participantId] || 0,
     };
 
-    setNotes([...notes, newNote]);
-    
-    toast({
-      title: "Note skapad!",
-      description: "Din idé har lagts till",
-    });
+    // Spara till localStorage istället för bara lokalt state
+    const key = `workshop_${workshopCode.toUpperCase()}_notes`;
+    try {
+      const currentNotes = JSON.parse(localStorage.getItem(key) || "[]");
+      const updated = [...currentNotes, newNote];
+      localStorage.setItem(key, JSON.stringify(updated));
+      setNotes(updated);
+      console.log("📝 Note sparad i localStorage:", newNote.content.substring(0, 30));
+      window.dispatchEvent(new Event('notes-updated'));
+      
+      toast({
+        title: "Note skapad!",
+        description: "Din idé har lagts till",
+      });
+    } catch (e) {
+      console.error("Kunde inte spara note:", e);
+      toast({
+        title: "Fel",
+        description: "Kunde inte spara note. Försök igen.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteNote = (noteId: string) => {
-    setNotes(notes.filter((n) => n.id !== noteId));
+    if (!workshopCode) return;
     
-    toast({
-      title: "Note borttagen",
-      description: "Din note har tagits bort",
-    });
+    // Ta bort från localStorage istället för bara lokalt state
+    const key = `workshop_${workshopCode.toUpperCase()}_notes`;
+    try {
+      const currentNotes = JSON.parse(localStorage.getItem(key) || "[]");
+      const updated = currentNotes.filter((n: Note) => n.id !== noteId);
+      localStorage.setItem(key, JSON.stringify(updated));
+      setNotes(updated);
+      window.dispatchEvent(new Event('notes-updated'));
+      
+      toast({
+        title: "Note borttagen",
+        description: "Din note har tagits bort",
+      });
+    } catch (e) {
+      console.error("Kunde inte ta bort note:", e);
+    }
   };
 
   const getNotesForQuestion = (questionId: string) => {
@@ -219,7 +303,7 @@ const BoardView = () => {
               </Badge>
               <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-lg">
                 <Users className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">3 deltagare</span>
+                <span className="text-sm font-medium">{participantCount} {participantCount === 1 ? 'deltagare' : 'deltagare'}</span>
               </div>
 
               <div 
