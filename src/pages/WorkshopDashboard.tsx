@@ -11,10 +11,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { getCurrentFacilitator, clearSession, updateSessionTimestamp } from "@/utils/facilitatorStorage";
+import { getCurrentFacilitator, clearSession, updateSessionTimestamp, getAllFacilitators, deleteFacilitator } from "@/utils/facilitatorStorage";
 import FacilitatorAuth from "@/components/FacilitatorAuth";
 import { LogOut, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const WorkshopDashboard = () => {
   const navigate = useNavigate();
@@ -22,6 +32,9 @@ const WorkshopDashboard = () => {
   const [workshops, setWorkshops] = useState<any[]>([]);
   const [showAuth, setShowAuth] = useState(false);
   const [facilitator, setFacilitator] = useState(getCurrentFacilitator());
+  const [allFacilitators, setAllFacilitators] = useState(getAllFacilitators());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [facilitatorToDelete, setFacilitatorToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     loadWorkshops(); // Ladda alltid workshops
@@ -95,6 +108,7 @@ const WorkshopDashboard = () => {
     const currentFacilitator = getCurrentFacilitator();
     if (currentFacilitator) {
       setFacilitator(currentFacilitator);
+      setAllFacilitators(getAllFacilitators());
       loadWorkshops();
       setShowAuth(false);
     }
@@ -140,6 +154,27 @@ const WorkshopDashboard = () => {
 
   const handleEdit = (id: string) => {
     navigate(`/create-workshop/${id}`);
+  };
+
+  const handleDeleteFacilitator = (facilitatorId: string) => {
+    setFacilitatorToDelete(facilitatorId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (facilitatorToDelete) {
+      const success = deleteFacilitator(facilitatorToDelete);
+      if (success) {
+        setAllFacilitators(getAllFacilitators());
+        setFacilitator(getCurrentFacilitator());
+        toast({
+          title: "Facilitator borttagen",
+          description: "Kontot har raderats",
+        });
+      }
+    }
+    setDeleteDialogOpen(false);
+    setFacilitatorToDelete(null);
   };
 
 
@@ -298,6 +333,50 @@ const WorkshopDashboard = () => {
       </div>
       
       {showAuth && <FacilitatorAuth open={showAuth} onAuthenticated={handleAuthenticated} />}
+
+      {/* Facilitator Management Section */}
+      {facilitator && allFacilitators.length > 0 && (
+        <div className="container mx-auto px-4 mt-8 border-t pt-8">
+          <h2 className="text-2xl font-semibold mb-4">Facilitatorkonton</h2>
+          <div className="grid gap-3 max-w-2xl">
+            {allFacilitators.map((f) => (
+              <Card key={f.id}>
+                <CardContent className="flex items-center justify-between p-4">
+                  <div>
+                    <p className="font-medium text-lg">{f.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Skapad: {new Date(f.createdAt).toLocaleDateString('sv-SE')}
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDeleteFacilitator(f.id)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Radera
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Är du säker?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Detta kommer permanent radera facilitatorkontot. Denna åtgärd kan inte ångras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Radera</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

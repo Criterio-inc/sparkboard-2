@@ -192,3 +192,22 @@ export const resetPinWithSecurityAnswer = async (
   
   return { success: true };
 };
+
+export const deleteFacilitator = (facilitatorId: string): boolean => {
+  const facilitators = getAllFacilitators();
+  const filtered = facilitators.filter(f => f.id !== facilitatorId);
+  
+  if (filtered.length === facilitators.length) {
+    return false; // Facilitator not found
+  }
+  
+  localStorage.setItem(FACILITATORS_KEY, JSON.stringify(filtered));
+  
+  // Clear session if deleting current facilitator
+  const session = getCurrentSession();
+  if (session?.facilitatorId === facilitatorId) {
+    clearSession();
+  }
+  
+  return true;
+};
