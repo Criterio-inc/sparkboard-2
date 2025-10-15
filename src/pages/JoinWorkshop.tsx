@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,14 +8,17 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ArrowLeft, QrCode, UserPlus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
+import { getWorkshopByCode } from "@/utils/workshopStorage";
 
 const JoinWorkshop = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [workshopCode, setWorkshopCode] = useState("");
   const [participantName, setParticipantName] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
@@ -117,21 +120,69 @@ const JoinWorkshop = () => {
       return;
     }
 
-    if (!participantName.trim()) {
+    if (!participantName.trim() || participantName.trim().length < 2) {
       toast({
         title: "Namn saknas",
-        description: "Vänligen ange ditt namn",
+        description: "Vänligen ange ett namn (minst 2 tecken)",
         variant: "destructive",
       });
       return;
     }
 
+    setIsLoading(true);
+
+    // Find workshop by code
+    const workshop = getWorkshopByCode(workshopCode);
+
+    if (!workshop) {
+      setIsLoading(false);
+      toast({
+        title: "Workshop-koden hittades inte",
+        description: "Kontrollera att koden är korrekt och försök igen",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if workshop is active
+    if (workshop.status === "draft") {
+      setIsLoading(false);
+      toast({
+        title: "Workshop inte aktiverad",
+        description: "Denna workshop är inte aktiverad än. Kontakta facilitatorn.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Save participant session
+    const participantSession = {
+      workshopId: workshop.id,
+      workshopCode: workshopCode.toUpperCase(),
+      participantName: participantName.trim(),
+      participantId: `participant-${Date.now()}`,
+      joinedAt: new Date().toISOString(),
+    };
+
+    sessionStorage.setItem('participantSession', JSON.stringify(participantSession));
+
     toast({
-      title: "Ansluter till workshop...",
-      description: `Välkommen ${participantName}!`,
+      title: "Välkommen!",
+      description: `Du har anslutit till "${workshop.title}"`,
     });
 
-    // In a real app, this would validate the code and join the workshop
+    // Navigate to first board
+    if (workshop.boards.length > 0) {
+      const firstBoard = workshop.boards[0];
+      navigate(`/board/${workshop.id}/${firstBoard.id}`);
+    } else {
+      setIsLoading(false);
+      toast({
+        title: "Ingen aktiv övning",
+        description: "Workshopen har inga boards än",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -201,10 +252,10 @@ const JoinWorkshop = () => {
                     variant="accent" 
                     size="xl" 
                     className="w-full"
-                    disabled={workshopCode.length !== 6 || !participantName.trim()}
+                    disabled={workshopCode.length !== 6 || !participantName.trim() || isLoading}
                   >
                     <UserPlus className="w-5 h-5 mr-2" />
-                    Gå med i Workshop
+                    {isLoading ? "Ansluter..." : "Gå med i Workshop"}
                   </Button>
                   
                   <Link to="/" className="block">

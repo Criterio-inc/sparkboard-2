@@ -66,6 +66,11 @@ export const getWorkshopById = (id: string): SavedWorkshop | null => {
   return workshops.find(w => w.id === id) || null;
 };
 
+export const getWorkshopByCode = (code: string): SavedWorkshop | null => {
+  const workshops = getAllWorkshops();
+  return workshops.find(w => w.code?.toLowerCase() === code.toLowerCase()) || null;
+};
+
 export const deleteWorkshop = (id: string): void => {
   const workshops = getAllWorkshops();
   const filtered = workshops.filter(w => w.id !== id);

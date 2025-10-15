@@ -26,7 +26,7 @@ const App = () => (
           <Route path="/create-workshop" element={<CreateWorkshop />} />
           <Route path="/create-workshop/:id" element={<CreateWorkshop />} />
           <Route path="/join" element={<JoinWorkshop />} />
-          <Route path="/board/:boardId" element={<BoardView />} />
+          <Route path="/board/:workshopId/:boardId" element={<BoardView />} />
           <Route path="/facilitator/:workshopId" element={<FacilitatorControl />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
