@@ -147,14 +147,7 @@ const BoardView = () => {
     loadWorkshopData();
   }, [workshopId, boardId, navigate, toast]);
 
-  // Participant color mapping
-  const [participantColors] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    if (participantId && !participantColors[participantId]) {
-      participantColors[participantId] = Object.keys(participantColors).length % 8;
-    }
-  }, [participantId, participantColors]);
+  // Participant color mapping - borttaget för unika färger per note istället
 
   // Synka notes från Supabase Realtime
   useEffect(() => {
@@ -218,6 +211,46 @@ const BoardView = () => {
       supabase.removeChannel(channel);
     };
   }, [board]);
+
+  // Lyssna på ändringar i active_board_id för automatisk synkning
+  useEffect(() => {
+    if (!workshopId) return;
+
+    console.log("🔄 [Participant] Lyssnar på board-ändringar för workshop:", workshopId);
+
+    const channel = supabase
+      .channel(`workshop-active-board-${workshopId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'workshops',
+          filter: `id=eq.${workshopId}`
+        },
+        async (payload) => {
+          const newActiveBoardId = payload.new.active_board_id;
+          
+          if (newActiveBoardId && newActiveBoardId !== boardId) {
+            console.log("🔔 [Participant] Board ändrad till:", newActiveBoardId);
+            
+            toast({
+              title: "Nytt board!",
+              description: "Facilitator har bytt övning",
+            });
+            
+            // Navigera till nytt board
+            navigate(`/board/${workshopId}/${newActiveBoardId}`);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log("🔌 [Participant] Kopplar från board-synkning");
+      supabase.removeChannel(channel);
+    };
+  }, [workshopId, boardId, navigate, toast]);
 
   // Synka deltagarantal från Supabase Realtime
   useEffect(() => {
@@ -296,6 +329,9 @@ const BoardView = () => {
     try {
       console.log("📝 [Participant] Skapar note för fråga:", questionId);
 
+      // Slumpa färgindex för denna note (0-5) - ger unika färger per note
+      const randomColorIndex = Math.floor(Math.random() * 6);
+
       const { data, error } = await supabase
         .from('notes')
         .insert({
@@ -303,7 +339,7 @@ const BoardView = () => {
           content: content,
           author_id: participantId,
           author_name: participantName,
-          color_index: participantColors[participantId] || 0,
+          color_index: randomColorIndex,
           timestamp: new Date().toISOString(),
         })
         .select()
