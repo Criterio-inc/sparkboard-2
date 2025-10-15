@@ -10,6 +10,7 @@ import { ArrowLeft, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateWorkshopPDF } from "@/utils/pdfExport";
+import { getWorkshopById, SavedWorkshop } from "@/utils/workshopStorage";
 
 interface Question {
   id: string;
@@ -41,36 +42,7 @@ interface Participant {
   colorIndex: number;
 }
 
-// Mock data
-const mockBoards: Board[] = [
-  {
-    id: "board-1",
-    title: "Brev från framtiden",
-    timeLimit: 15,
-    colorIndex: 0,
-    questions: [
-      { id: "q1", title: "Hur ser vår organisation ut om 5 år?" },
-      { id: "q2", title: "Vilka förändringar har vi genomfört?" },
-      { id: "q3", title: "Vad är vi mest stolta över?" },
-    ],
-  },
-  {
-    id: "board-2",
-    title: "Nulägesanalys",
-    timeLimit: 10,
-    colorIndex: 1,
-    questions: [
-      { id: "q4", title: "Vad fungerar bra idag?" },
-      { id: "q5", title: "Vilka utmaningar ser vi?" },
-    ],
-  },
-];
-
-const mockParticipants: Participant[] = [
-  { id: "p1", name: "Anna Andersson", joinedAt: "10:30", colorIndex: 0 },
-  { id: "p2", name: "Erik Eriksson", joinedAt: "10:31", colorIndex: 1 },
-  { id: "p3", name: "Maria Svensson", joinedAt: "10:32", colorIndex: 2 },
-];
+// Demo-data borttagen. Riktiga data laddas från localStorage och sessionStorage.
 
 const FacilitatorControl = () => {
   const { workshopId } = useParams();
@@ -78,16 +50,61 @@ const FacilitatorControl = () => {
   const { toast } = useToast();
 
   const [currentBoardIndex, setCurrentBoardIndex] = useState(0);
-  const [boards] = useState<Board[]>(mockBoards);
+  const [workshop, setWorkshop] = useState<SavedWorkshop | null>(null);
+  const [boards, setBoards] = useState<Board[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
-  const [participants] = useState<Participant[]>(mockParticipants);
-  const [timeRemaining, setTimeRemaining] = useState(boards[0].timeLimit * 60);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [timeRemaining, setTimeRemaining] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isSoundEnabled, setIsSoundEnabled] = useState(true);
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [aiAnalyses, setAIAnalyses] = useState<Record<string, string>>({});
 
-  const currentBoard = boards[currentBoardIndex];
+  // Ladda workshop och boards
+  useEffect(() => {
+    if (!workshopId) return;
+    const w = getWorkshopById(workshopId);
+    if (!w) {
+      toast({
+        title: "Workshop saknas",
+        description: "Kunde inte hitta workshopen. Återgår till dashboard.",
+        variant: "destructive",
+      });
+      navigate("/dashboard");
+      return;
+    }
+    setWorkshop(w);
+    setBoards(w.boards || []);
+    setCurrentBoardIndex(0);
+    setTimeRemaining(((w.boards?.[0]?.timeLimit) || 0) * 60);
+  }, [workshopId, navigate, toast]);
+
+  // Synka deltagare från sessionStorage
+  useEffect(() => {
+    if (!workshop?.code) {
+      setParticipants([]);
+      return;
+    }
+    const key = `workshop_${workshop.code.toUpperCase()}_participants`;
+    const read = () => {
+      try {
+        const data = JSON.parse(sessionStorage.getItem(key) || "[]");
+        setParticipants(Array.isArray(data) ? data : []);
+      } catch {
+        setParticipants([]);
+      }
+    };
+    read();
+    const onUpdate = () => read();
+    window.addEventListener("participants-updated", onUpdate);
+    const interval = setInterval(read, 2000);
+    return () => {
+      window.removeEventListener("participants-updated", onUpdate);
+      clearInterval(interval);
+    };
+  }, [workshop?.code]);
+
+  const currentBoard = boards[currentBoardIndex] || { id: "empty", title: "Ingen övning", timeLimit: 0, questions: [], colorIndex: 0 };
   const boardColor = `hsl(var(--board-${(currentBoard.colorIndex % 5) + 1}))`;
   const isLowTime = timeRemaining <= 120 && timeRemaining > 0;
   const isTimeUp = timeRemaining === 0;
@@ -164,7 +181,7 @@ const FacilitatorControl = () => {
       });
 
       const exportData = {
-        workshopTitle: "Demo Workshop Session",
+        workshopTitle: workshop?.title || "Workshop",
         date: new Date().toLocaleDateString("sv-SE", {
           year: "numeric",
           month: "long",
@@ -226,7 +243,7 @@ const FacilitatorControl = () => {
 
               <div>
                 <h1 className="text-2xl font-bold">Facilitator Control</h1>
-                <p className="text-sm text-muted-foreground">Workshop: Demo Session</p>
+                <p className="text-sm text-muted-foreground">Workshop: {workshop?.title || "—"}</p>
               </div>
             </div>
 

@@ -26,9 +26,14 @@ const STORAGE_KEY = "workshops";
 
 export const saveWorkshop = (workshop: Omit<SavedWorkshop, "id" | "createdAt" | "updatedAt"> & { id?: string }): SavedWorkshop => {
   const workshops = getAllWorkshops();
+
+  const normalizedCode = workshop.code
+    ? workshop.code.toUpperCase().replace(/[^A-Z0-9]/g, "")
+    : undefined;
   
   const savedWorkshop: SavedWorkshop = {
     ...workshop,
+    code: normalizedCode,
     id: workshop.id || `workshop-${Date.now()}`,
     createdAt: workshop.id ? (workshops.find(w => w.id === workshop.id)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -48,6 +53,15 @@ export const saveWorkshop = (workshop: Omit<SavedWorkshop, "id" | "createdAt" | 
   }
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(workshops));
+
+  try {
+    const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    console.log("Workshop sparad med kod:", savedWorkshop.code, savedWorkshop);
+    console.log("Workshops i localStorage:", all);
+  } catch (e) {
+    console.warn("Kunde inte logga workshops från localStorage", e);
+  }
+
   return savedWorkshop;
 };
 
@@ -68,7 +82,16 @@ export const getWorkshopById = (id: string): SavedWorkshop | null => {
 
 export const getWorkshopByCode = (code: string): SavedWorkshop | null => {
   const workshops = getAllWorkshops();
-  return workshops.find(w => w.code?.toLowerCase() === code.toLowerCase()) || null;
+  const normalized = code.trim().toUpperCase();
+  console.log("Söker efter workshop med kod:", normalized);
+  console.log("Hittade workshops:", workshops.length);
+  const found = workshops.find(w => (w.code?.toUpperCase() || "") === normalized) || null;
+  if (!found) {
+    console.warn("Ingen workshop med angiven kod hittades.");
+  } else {
+    console.log("Workshop hittad:", { id: found.id, title: found.title, status: found.status, code: found.code });
+  }
+  return found;
 };
 
 export const deleteWorkshop = (id: string): void => {

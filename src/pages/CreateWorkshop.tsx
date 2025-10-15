@@ -164,6 +164,9 @@ const CreateWorkshop = () => {
       status: "draft",
     });
 
+    console.log("Workshop sparad med kod:", saved.code, saved);
+    console.log("Workshops i localStorage:", JSON.parse(localStorage.getItem('workshops') || '[]'));
+
     setWorkshopId(saved.id);
 
     toast({
@@ -190,6 +193,9 @@ const CreateWorkshop = () => {
       code: code,
       status: "active",
     });
+
+    console.log("Workshop sparad med kod:", saved.code, saved);
+    console.log("Workshops i localStorage:", JSON.parse(localStorage.getItem('workshops') || '[]'));
 
     setWorkshopId(saved.id);
     setShowQRDialog(true);

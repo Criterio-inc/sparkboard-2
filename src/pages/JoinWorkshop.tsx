@@ -132,10 +132,10 @@ const JoinWorkshop = () => {
     setIsLoading(true);
 
     // Find workshop by code
-    console.log("Searching for workshop with code:", workshopCode);
+    console.log("Söker efter workshop med kod:", workshopCode.toUpperCase());
+    const allWorkshops = JSON.parse(localStorage.getItem('workshops') || '[]');
+    console.log("Hittade workshops:", allWorkshops.length);
     const workshop = getWorkshopByCode(workshopCode);
-    console.log("Found workshop:", workshop);
-    console.log("All workshops:", localStorage.getItem('workshops'));
 
     if (!workshop) {
       setIsLoading(false);
@@ -168,6 +168,23 @@ const JoinWorkshop = () => {
     };
 
     sessionStorage.setItem('participantSession', JSON.stringify(participantSession));
+
+    // Uppdatera deltagarlistan i sessionStorage
+    try {
+      const participantsKey = `workshop_${workshopCode.toUpperCase()}_participants`;
+      const existing = JSON.parse(sessionStorage.getItem(participantsKey) || '[]');
+      const newParticipant = {
+        id: participantSession.participantId,
+        name: participantSession.participantName,
+        joinedAt: new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }),
+        colorIndex: Array.isArray(existing) ? existing.length % 6 : 0,
+      };
+      const updated = Array.isArray(existing) ? [...existing, newParticipant] : [newParticipant];
+      sessionStorage.setItem(participantsKey, JSON.stringify(updated));
+      window.dispatchEvent(new Event('participants-updated'));
+    } catch (e) {
+      console.warn('Kunde inte uppdatera deltagarlistan:', e);
+    }
 
     toast({
       title: "Välkommen!",
