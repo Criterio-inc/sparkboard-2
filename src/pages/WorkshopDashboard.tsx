@@ -3,12 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Calendar, Users, ArrowLeft, MoreVertical, Edit, Trash2, Copy } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getCurrentFacilitator, clearSession, updateSessionTimestamp } from "@/utils/facilitatorStorage";
@@ -24,10 +19,12 @@ const WorkshopDashboard = () => {
   const [facilitator, setFacilitator] = useState(getCurrentFacilitator());
 
   useEffect(() => {
-    loadWorkshops(); // Ladda alltid workshops
     const currentFacilitator = getCurrentFacilitator();
-    setFacilitator(currentFacilitator);
-    if (currentFacilitator) {
+    if (!currentFacilitator) {
+      setShowAuth(true);
+    } else {
+      setFacilitator(currentFacilitator);
+      loadWorkshops();
       updateSessionTimestamp();
     }
   }, []);
@@ -35,9 +32,9 @@ const WorkshopDashboard = () => {
   const loadWorkshops = async () => {
     try {
       const { data, error } = await supabase
-        .from("workshops")
-        .select("*, boards(id)")
-        .order("created_at", { ascending: false });
+        .from('workshops')
+        .select('*, boards(id)')
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error("Fel vid hämtning av workshops:", error);
@@ -73,9 +70,9 @@ const WorkshopDashboard = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase.from("workshops").delete().eq("id", id);
+      const { error } = await supabase.from('workshops').delete().eq('id', id);
       if (error) throw error;
-
+      
       loadWorkshops();
       toast({
         title: "Workshop borttagen",
@@ -102,6 +99,13 @@ const WorkshopDashboard = () => {
     navigate(`/create-workshop/${id}`);
   };
 
+  if (showAuth) {
+    return <FacilitatorAuth open={showAuth} onAuthenticated={handleAuthenticated} />;
+  }
+
+  if (!facilitator) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -115,51 +119,35 @@ const WorkshopDashboard = () => {
                 Tillbaka
               </Button>
             </Link>
-
+            
             <div className="flex items-center gap-4">
-              {facilitator ? (
-                <>
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">{facilitator.name}</span>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={handleLogout}>
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logga ut
-                  </Button>
-                </>
-              ) : (
-                <Button variant="outline" size="sm" onClick={() => setShowAuth(true)}>
-                  <User className="w-4 h-4 mr-2" />
-                  Logga in
-                </Button>
-              )}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg">
+                <User className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">{facilitator.name}</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Logga ut
+              </Button>
             </div>
           </div>
-
+          
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
                 Mina Workshops
               </h1>
               <p className="text-muted-foreground">
-                {workshops.length} {workshops.length === 1 ? "workshop" : "workshops"}
+                {workshops.length} {workshops.length === 1 ? 'workshop' : 'workshops'}
               </p>
             </div>
-
-            {facilitator ? (
-              <Link to="/create-workshop">
-                <Button variant="hero" size="lg">
-                  <Plus className="w-5 h-5 mr-2" />
-                  Skapa Ny Workshop
-                </Button>
-              </Link>
-            ) : (
-              <Button variant="hero" size="lg" onClick={() => setShowAuth(true)}>
+            
+            <Link to="/create-workshop">
+              <Button variant="hero" size="lg">
                 <Plus className="w-5 h-5 mr-2" />
                 Skapa Ny Workshop
               </Button>
-            )}
+            </Link>
           </div>
         </div>
 
@@ -171,7 +159,9 @@ const WorkshopDashboard = () => {
                 <Users className="w-8 h-8 text-muted-foreground" />
               </div>
               <h3 className="text-xl font-semibold mb-2">Inga workshops än</h3>
-              <p className="text-muted-foreground mb-6">Kom igång genom att skapa din första workshop</p>
+              <p className="text-muted-foreground mb-6">
+                Kom igång genom att skapa din första workshop
+              </p>
               <Link to="/create-workshop">
                 <Button variant="hero">
                   <Plus className="w-5 h-5 mr-2" />
@@ -183,7 +173,7 @@ const WorkshopDashboard = () => {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {workshops.map((workshop) => (
-              <Card
+              <Card 
                 key={workshop.id}
                 className="hover:shadow-[var(--shadow-glow)] transition-all duration-300 hover:scale-105 bg-gradient-to-br from-card to-muted/20"
               >
@@ -196,11 +186,13 @@ const WorkshopDashboard = () => {
                       </div>
                       <CardDescription className="flex items-center gap-2">
                         {workshop.code && (
-                          <span className="font-mono text-lg font-semibold text-primary">{workshop.code}</span>
+                          <span className="font-mono text-lg font-semibold text-primary">
+                            {workshop.code}
+                          </span>
                         )}
                       </CardDescription>
                     </div>
-
+                    
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -216,7 +208,10 @@ const WorkshopDashboard = () => {
                           <Copy className="w-4 h-4 mr-2" />
                           Duplicera
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(workshop.id)}>
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => handleDelete(workshop.id)}
+                        >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Ta bort
                         </DropdownMenuItem>
@@ -224,19 +219,19 @@ const WorkshopDashboard = () => {
                     </DropdownMenu>
                   </div>
                 </CardHeader>
-
+                
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="w-4 h-4" />
-                      <span>{new Date(workshop.created_at).toLocaleDateString("sv-SE")}</span>
+                      <span>{new Date(workshop.createdAt).toLocaleDateString('sv-SE')}</span>
                     </div>
-
+                    
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Users className="w-4 h-4" />
                       <span>{workshop.boards?.length || 0} boards</span>
                     </div>
-
+                    
                     <Link to={`/facilitator/${workshop.id}`} className="w-full">
                       <Button className="w-full mt-4" variant="default">
                         Öppna Workshop
@@ -249,8 +244,6 @@ const WorkshopDashboard = () => {
           </div>
         )}
       </div>
-      
-      {showAuth && <FacilitatorAuth open={showAuth} onAuthenticated={handleAuthenticated} />}
     </div>
   );
 };
