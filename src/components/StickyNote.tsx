@@ -1,4 +1,4 @@
-import { Trash2, User } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface StickyNoteProps {
@@ -53,12 +53,7 @@ export const StickyNote = ({
         </p>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-gray-600 pt-2 border-t border-gray-400/30">
-        <div className="flex items-center gap-1">
-          <User className="w-3 h-3" />
-          <span className="font-medium">{authorName}</span>
-        </div>
-
+      <div className="flex items-center justify-end text-xs text-gray-600 pt-2 border-t border-gray-400/30">
         <div className="flex items-center gap-2">
           <span className="opacity-75">{timestamp}</span>
           {isOwn && onDelete && (
