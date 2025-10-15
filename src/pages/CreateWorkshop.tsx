@@ -274,6 +274,21 @@ const CreateWorkshop = () => {
 
       console.log("✅ Workshop sparad i Supabase:", savedWorkshop.id);
 
+      // Om detta är en uppdatering, radera gamla boards först
+      if (workshopId) {
+        console.log("🗑️ Raderar gamla boards för workshop:", savedWorkshop.id);
+        const { error: deleteBoardsError } = await supabase
+          .from('boards')
+          .delete()
+          .eq('workshop_id', savedWorkshop.id);
+        
+        if (deleteBoardsError) {
+          console.error("Kunde inte radera gamla boards:", deleteBoardsError);
+        } else {
+          console.log("✅ Gamla boards raderade");
+        }
+      }
+
       // Spara boards och questions
       let firstBoardId = null;
       for (let boardIndex = 0; boardIndex < workshop.boards.length; boardIndex++) {

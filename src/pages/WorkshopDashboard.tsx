@@ -224,7 +224,7 @@ const WorkshopDashboard = () => {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="w-4 h-4" />
-                      <span>{new Date(workshop.createdAt).toLocaleDateString('sv-SE')}</span>
+                      <span>{new Date(workshop.created_at).toLocaleDateString('sv-SE')}</span>
                     </div>
                     
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
