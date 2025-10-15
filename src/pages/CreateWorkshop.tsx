@@ -204,6 +204,42 @@ const CreateWorkshop = () => {
     return `${window.location.origin}/join?code=${generatedCode}`;
   };
 
+  const downloadQRCode = () => {
+    const svg = document.querySelector('#qr-code-svg');
+    if (!svg) return;
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+
+    img.onload = () => {
+      canvas.width = 300;
+      canvas.height = 300;
+      ctx!.fillStyle = 'white';
+      ctx!.fillRect(0, 0, 300, 300);
+      ctx!.drawImage(img, 0, 0, 300, 300);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.download = `workshop-${generatedCode}-qr.png`;
+          link.href = url;
+          link.click();
+          URL.revokeObjectURL(url);
+          
+          toast({
+            title: "QR-kod nedladdad!",
+            description: "QR-koden har sparats som en bild",
+          });
+        }
+      });
+    };
+
+    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -363,8 +399,16 @@ const CreateWorkshop = () => {
           <div className="space-y-6">
             <div className="text-center">
               <div className="inline-block p-4 bg-white rounded-lg">
-                <QRCodeSVG value={getJoinUrl()} size={200} />
+                <QRCodeSVG id="qr-code-svg" value={getJoinUrl()} size={200} />
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadQRCode}
+                className="mt-2"
+              >
+                Ladda ner QR-kod
+              </Button>
             </div>
 
             <div className="text-center">

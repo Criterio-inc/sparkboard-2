@@ -1,17 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, QrCode, UserPlus } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, QrCode, UserPlus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Html5Qrcode } from "html5-qrcode";
 
 const JoinWorkshop = () => {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const [workshopCode, setWorkshopCode] = useState("");
   const [participantName, setParticipantName] = useState("");
+  const [showScanner, setShowScanner] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
     const codeFromUrl = searchParams.get("code");
@@ -26,6 +31,79 @@ const JoinWorkshop = () => {
       setWorkshopCode(value);
     }
   };
+
+  const startQRScanner = async () => {
+    setShowScanner(true);
+    setIsScanning(true);
+
+    try {
+      const html5QrCode = new Html5Qrcode("qr-reader");
+      scannerRef.current = html5QrCode;
+
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 }
+        },
+        (decodedText) => {
+          // Extract code from URL or use directly
+          let code = "";
+          try {
+            const url = new URL(decodedText);
+            code = url.searchParams.get("code") || "";
+          } catch {
+            // If not a URL, assume it's the code directly
+            code = decodedText;
+          }
+
+          if (code && code.length === 6) {
+            setWorkshopCode(code.toUpperCase());
+            stopQRScanner();
+            toast({
+              title: "QR-kod scannad!",
+              description: `Workshop-kod: ${code.toUpperCase()}`,
+            });
+          }
+        },
+        (errorMessage) => {
+          // Ignore scanning errors (happens frequently)
+          console.debug("QR scanning:", errorMessage);
+        }
+      );
+    } catch (err) {
+      console.error("Error starting QR scanner:", err);
+      toast({
+        title: "Kan inte starta kamera",
+        description: "Kontrollera att din webbläsare har tillgång till kameran",
+        variant: "destructive",
+      });
+      setShowScanner(false);
+      setIsScanning(false);
+    }
+  };
+
+  const stopQRScanner = async () => {
+    if (scannerRef.current && isScanning) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+      } catch (err) {
+        console.error("Error stopping QR scanner:", err);
+      }
+    }
+    setShowScanner(false);
+    setIsScanning(false);
+    scannerRef.current = null;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (scannerRef.current && isScanning) {
+        scannerRef.current.stop().catch(console.error);
+      }
+    };
+  }, [isScanning]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,10 +225,10 @@ const JoinWorkshop = () => {
                   variant="outline" 
                   className="w-full" 
                   size="lg"
-                  disabled
+                  onClick={startQRScanner}
                 >
                   <QrCode className="w-5 h-5 mr-2" />
-                  Scanna QR-kod (Kommer snart)
+                  Scanna QR-kod
                 </Button>
               </div>
             </CardContent>
@@ -166,6 +244,39 @@ const JoinWorkshop = () => {
           </div>
         </div>
       </div>
+
+      {/* QR Scanner Dialog */}
+      <Dialog open={showScanner} onOpenChange={(open) => {
+        if (!open) stopQRScanner();
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Scanna QR-kod</DialogTitle>
+            <DialogDescription>
+              Rikta kameran mot QR-koden för att automatiskt fylla i workshop-koden
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="relative">
+            <div id="qr-reader" className="w-full rounded-lg overflow-hidden"></div>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 bg-background/80 hover:bg-background"
+              onClick={stopQRScanner}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
+              Se till att QR-koden är inom den gröna ramen
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
