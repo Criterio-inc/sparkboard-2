@@ -67,8 +67,14 @@ const CreateWorkshop = () => {
     }
   }, [workshopId]);
 
-  const generateCode = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
+  const generateWorkshopCode = (): string => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    console.log("Genererad kod:", code);
+    return code;
   };
 
   const addBoard = () => {
@@ -166,18 +172,25 @@ const CreateWorkshop = () => {
       return;
     }
 
+    console.log("=== SKAPAR WORKSHOP ===");
+    console.log("Workshop-objekt:", JSON.stringify(workshop, null, 2));
+    console.log("Workshop-kod:", workshop.code);
+    const codeToUse = workshop.code || generateWorkshopCode();
+
     const saved = saveWorkshop({
       id: workshopId,
       title: workshop.title,
       description: workshop.description,
       boards: workshop.boards,
-      code: workshop.code,
+      code: codeToUse,
       status: "draft",
       facilitatorId: currentFacilitator.id,
     });
 
-    console.log("Workshop sparad med kod:", saved.code, saved);
-    console.log("Workshops i localStorage:", JSON.parse(localStorage.getItem('workshops') || '[]'));
+    console.log("=== EFTER SAVE ===");
+    const allWorkshops = JSON.parse(localStorage.getItem('workshops') || '[]');
+    console.log("Alla workshops i localStorage:", allWorkshops);
+    console.log("Antal workshops:", allWorkshops.length);
 
     setWorkshopId(saved.id);
 
@@ -204,8 +217,12 @@ const CreateWorkshop = () => {
       return;
     }
 
-    const code = generatedCode || generateCode();
+    const code = generatedCode || generateWorkshopCode();
     setGeneratedCode(code);
+
+    console.log("=== SKAPAR WORKSHOP ===");
+    console.log("Workshop-objekt:", JSON.stringify(workshop, null, 2));
+    console.log("Workshop-kod:", code);
 
     const saved = saveWorkshop({
       id: workshopId,
@@ -217,8 +234,10 @@ const CreateWorkshop = () => {
       facilitatorId: currentFacilitator.id,
     });
 
-    console.log("Workshop sparad med kod:", saved.code, saved);
-    console.log("Workshops i localStorage:", JSON.parse(localStorage.getItem('workshops') || '[]'));
+    console.log("=== EFTER SAVE ===");
+    const allWorkshops2 = JSON.parse(localStorage.getItem('workshops') || '[]');
+    console.log("Alla workshops i localStorage:", allWorkshops2);
+    console.log("Antal workshops:", allWorkshops2.length);
 
     setWorkshopId(saved.id);
     setShowQRDialog(true);

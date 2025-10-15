@@ -28,13 +28,19 @@ const STORAGE_KEY = "workshops";
 export const saveWorkshop = (workshop: Omit<SavedWorkshop, "id" | "createdAt" | "updatedAt"> & { id?: string; facilitatorId: string }): SavedWorkshop => {
   const workshops = getAllWorkshops();
 
-  const normalizedCode = workshop.code
-    ? workshop.code.toUpperCase().replace(/[^A-Z0-9]/g, "")
-    : undefined;
+  // Normalisera och säkerställ kod (A-Z, 0-9, 6 tecken)
+  let codeToUse = workshop.code ? workshop.code.toUpperCase().replace(/[^A-Z0-9]/g, "") : "";
+  if (!codeToUse || codeToUse.length !== 6) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let generated = '';
+    for (let i = 0; i < 6; i++) generated += chars.charAt(Math.floor(Math.random() * chars.length));
+    console.warn("VARNING: Workshop saknar kod eller ogiltig! Genererar ny kod:", generated);
+    codeToUse = generated;
+  }
   
   const savedWorkshop: SavedWorkshop = {
     ...workshop,
-    code: normalizedCode,
+    code: codeToUse,
     id: workshop.id || `workshop-${Date.now()}`,
     createdAt: workshop.id ? (workshops.find(w => w.id === workshop.id)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -59,6 +65,11 @@ export const saveWorkshop = (workshop: Omit<SavedWorkshop, "id" | "createdAt" | 
     const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
     console.log("Workshop sparad med kod:", savedWorkshop.code, savedWorkshop);
     console.log("Workshops i localStorage:", all);
+    // Extra verifiering
+    const verification = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    console.log("Verifiering - workshops efter save:", verification.length);
+    const saved = verification.find((w: any) => (w.code || '').toUpperCase() === codeToUse);
+    console.log("Verifiering - hittade sparad workshop:", saved ? "JA" : "NEJ");
   } catch (e) {
     console.warn("Kunde inte logga workshops från localStorage", e);
   }
@@ -87,17 +98,35 @@ export const getWorkshopById = (id: string): SavedWorkshop | null => {
 };
 
 export const getWorkshopByCode = (code: string): SavedWorkshop | null => {
+  console.log("=== getWorkshopByCode ANROPAD ===");
+  console.log("Söker efter kod:", code);
+
   const workshops = getAllWorkshops();
-  const normalized = code.trim().toUpperCase();
-  console.log("Söker efter workshop med kod:", normalized);
-  console.log("Hittade workshops:", workshops.length);
-  const found = workshops.find(w => (w.code?.toUpperCase() || "") === normalized) || null;
-  if (!found) {
-    console.warn("Ingen workshop med angiven kod hittades.");
-  } else {
-    console.log("Workshop hittad:", { id: found.id, title: found.title, status: found.status, code: found.code });
+  console.log("Totalt antal workshops:", workshops.length);
+
+  const normalizedSearchCode = code.trim().toUpperCase();
+  console.log("Normaliserad sökkod:", normalizedSearchCode);
+
+  let found: SavedWorkshop | null = null;
+  for (let i = 0; i < workshops.length; i++) {
+    const w = workshops[i];
+    const workshopCode = (w.code || '').trim().toUpperCase();
+    const match = workshopCode === normalizedSearchCode;
+    console.log(`Jämför: "${normalizedSearchCode}" === "${workshopCode}"`, match);
+    if (match) {
+      found = w;
+      break;
+    }
   }
-  return found;
+
+  if (found) {
+    console.log("✅ HITTADE WORKSHOP:", found.title);
+    return found;
+  } else {
+    console.log("❌ WORKSHOP HITTADES INTE");
+    console.log("Tillgängliga koder:", workshops.map(w => w.code));
+    return null;
+  }
 };
 
 export const deleteWorkshop = (id: string): void => {

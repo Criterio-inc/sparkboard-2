@@ -131,9 +131,26 @@ const JoinWorkshop = () => {
 
     setIsLoading(true);
 
+    // Debug: sökning
+    console.log("=== SÖKER WORKSHOP ===");
+    const enteredCode = workshopCode;
+    console.log("Angiven kod:", enteredCode);
+    console.log("Kod-längd:", enteredCode.length);
+    console.log("Kod typ:", typeof enteredCode);
+
+    const allWorkshops = JSON.parse(localStorage.getItem('workshops') || '[]');
+    console.log("Workshops att söka i:", allWorkshops);
+    allWorkshops.forEach((ws: any, index: number) => {
+      console.log(`Workshop ${index}:`, {
+        code: ws.code,
+        codeLength: ws.code?.length,
+        codeType: typeof ws.code,
+        title: ws.title,
+      });
+    });
+
     // Find workshop by code
     console.log("Söker efter workshop med kod:", workshopCode.toUpperCase());
-    const allWorkshops = JSON.parse(localStorage.getItem('workshops') || '[]');
     console.log("Hittade workshops:", allWorkshops.length);
     const workshop = getWorkshopByCode(workshopCode);
 
