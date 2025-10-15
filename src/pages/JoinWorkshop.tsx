@@ -111,7 +111,10 @@ const JoinWorkshop = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (workshopCode.length !== 6) {
+    // Normalisera och validera kod
+    const enteredCode = workshopCode.trim().toUpperCase();
+    
+    if (enteredCode.length !== 6) {
       toast({
         title: "Ogiltig kod",
         description: "Workshop-koden måste vara 6 tecken lång",
@@ -131,31 +134,34 @@ const JoinWorkshop = () => {
 
     setIsLoading(true);
 
-    // Debug: sökning
-    console.log("=== SÖKER WORKSHOP ===");
-    const enteredCode = workshopCode;
-    console.log("Angiven kod:", enteredCode);
-    console.log("Kod-längd:", enteredCode.length);
-    console.log("Kod typ:", typeof enteredCode);
+    // Omfattande debug-loggning
+    console.log("🔍 === SÖKER WORKSHOP ===");
+    console.log("🔑 Angiven kod (original):", workshopCode);
+    console.log("🔑 Angiven kod (normaliserad):", enteredCode);
+    console.log("📏 Kod-längd:", enteredCode.length);
+    console.log("📌 Kod typ:", typeof enteredCode);
 
     const allWorkshops = JSON.parse(localStorage.getItem('workshops') || '[]');
-    console.log("Workshops att söka i:", allWorkshops);
+    console.log("📦 Workshops att söka i:", allWorkshops);
+    console.log("📊 Antal workshops totalt:", allWorkshops.length);
+    
     allWorkshops.forEach((ws: any, index: number) => {
-      console.log(`Workshop ${index}:`, {
+      console.log(`📋 Workshop ${index}:`, {
         code: ws.code,
         codeLength: ws.code?.length,
         codeType: typeof ws.code,
         title: ws.title,
+        status: ws.status,
       });
     });
 
-    // Find workshop by code
-    console.log("Söker efter workshop med kod:", workshopCode.toUpperCase());
-    console.log("Hittade workshops:", allWorkshops.length);
-    const workshop = getWorkshopByCode(workshopCode);
+    // Sök efter workshop med normaliserad kod
+    console.log("🔍 Anropar getWorkshopByCode med:", enteredCode);
+    const workshop = getWorkshopByCode(enteredCode);
 
     if (!workshop) {
       setIsLoading(false);
+      console.log("❌ WORKSHOP HITTADES INTE");
       toast({
         title: "Workshop-koden hittades inte",
         description: "Kontrollera att koden är korrekt och försök igen",
@@ -164,9 +170,13 @@ const JoinWorkshop = () => {
       return;
     }
 
-    // Check if workshop is active
+    console.log("✅ WORKSHOP HITTAD:", workshop.title);
+    console.log("📌 Workshop status:", workshop.status);
+
+    // STEG 7: Kontrollera workshop-status (efter att den hittats)
     if (workshop.status === "draft") {
       setIsLoading(false);
+      console.log("⚠️ Workshop är draft - tillåter inte anslutning");
       toast({
         title: "Workshop inte aktiverad",
         description: "Denna workshop är inte aktiverad än. Kontakta facilitatorn.",
@@ -174,6 +184,8 @@ const JoinWorkshop = () => {
       });
       return;
     }
+
+    console.log("✅ Workshop är aktiv - fortsätter med anslutning");
 
     // Save participant session
     const participantSession = {

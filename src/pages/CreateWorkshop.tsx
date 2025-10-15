@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BoardCard } from "@/components/BoardCard";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
-import { saveWorkshop, getWorkshopById } from "@/utils/workshopStorage";
+import { saveWorkshop, getWorkshopById, generateUniqueWorkshopCode } from "@/utils/workshopStorage";
 import { getCurrentFacilitator } from "@/utils/facilitatorStorage";
 
 interface Question {
@@ -67,15 +67,6 @@ const CreateWorkshop = () => {
     }
   }, [workshopId]);
 
-  const generateWorkshopCode = (): string => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    console.log("Genererad kod:", code);
-    return code;
-  };
 
   const addBoard = () => {
     const newBoard: Board = {
@@ -172,10 +163,14 @@ const CreateWorkshop = () => {
       return;
     }
 
-    console.log("=== SKAPAR WORKSHOP ===");
-    console.log("Workshop-objekt:", JSON.stringify(workshop, null, 2));
-    console.log("Workshop-kod:", workshop.code);
-    const codeToUse = workshop.code || generateWorkshopCode();
+    console.log("=== SKAPAR WORKSHOP (DRAFT) ===");
+    console.log("📋 Workshop-objekt:", JSON.stringify(workshop, null, 2));
+    console.log("🔑 Workshop-kod (före normalisering):", workshop.code);
+    
+    // Normalisera eller generera kod
+    const normalized = (workshop.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const codeToUse = normalized.length === 6 ? normalized : generateUniqueWorkshopCode();
+    console.log("🔑 Kod att använda:", codeToUse);
 
     const saved = saveWorkshop({
       id: workshopId,
@@ -187,12 +182,31 @@ const CreateWorkshop = () => {
       facilitatorId: currentFacilitator.id,
     });
 
-    console.log("=== EFTER SAVE ===");
+    console.log("=== EFTER SAVE (DRAFT) ===");
     const allWorkshops = JSON.parse(localStorage.getItem('workshops') || '[]');
-    console.log("Alla workshops i localStorage:", allWorkshops);
-    console.log("Antal workshops:", allWorkshops.length);
+    console.log("📦 Alla workshops i localStorage:", allWorkshops);
+    console.log("📊 Antal workshops:", allWorkshops.length);
+    
+    // Verifiera att sparad kod matchar
+    const savedBack = allWorkshops.find((w: any) => w.id === saved.id);
+    if (savedBack) {
+      console.log("✅ Verifiering: Workshop hittad i localStorage");
+      console.log("🔑 Sparad kod:", savedBack.code);
+      if (savedBack.code === saved.code) {
+        console.log("✅ Kod-matchning: OK");
+      } else {
+        console.error("❌ VARNING: Kod matchar inte!", {
+          expected: saved.code,
+          actual: savedBack.code
+        });
+      }
+    } else {
+      console.error("❌ KRITISKT: Workshop hittades inte i localStorage efter sparning!");
+    }
 
+    // Uppdatera state med sparad workshop-data
     setWorkshopId(saved.id);
+    setWorkshop({ ...workshop, code: saved.code });
 
     toast({
       title: "Draft sparad!",
@@ -217,34 +231,61 @@ const CreateWorkshop = () => {
       return;
     }
 
-    const code = generatedCode || generateWorkshopCode();
-    setGeneratedCode(code);
-
-    console.log("=== SKAPAR WORKSHOP ===");
-    console.log("Workshop-objekt:", JSON.stringify(workshop, null, 2));
-    console.log("Workshop-kod:", code);
+    console.log("=== SKAPAR WORKSHOP (ACTIVE) ===");
+    console.log("📋 Workshop-objekt:", JSON.stringify(workshop, null, 2));
+    console.log("🔑 Workshop-kod (före normalisering):", workshop.code);
+    
+    // Normalisera eller generera kod (samma logik som draft)
+    const normalized = (workshop.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const codeToUse = normalized.length === 6 ? normalized : generateUniqueWorkshopCode();
+    console.log("🔑 Kod att använda:", codeToUse);
 
     const saved = saveWorkshop({
       id: workshopId,
       title: workshop.title,
       description: workshop.description,
       boards: workshop.boards,
-      code: code,
+      code: codeToUse,
       status: "active",
       facilitatorId: currentFacilitator.id,
     });
 
-    console.log("=== EFTER SAVE ===");
-    const allWorkshops2 = JSON.parse(localStorage.getItem('workshops') || '[]');
-    console.log("Alla workshops i localStorage:", allWorkshops2);
-    console.log("Antal workshops:", allWorkshops2.length);
+    console.log("=== EFTER SAVE (ACTIVE) ===");
+    const allWorkshops = JSON.parse(localStorage.getItem('workshops') || '[]');
+    console.log("📦 Alla workshops i localStorage:", allWorkshops);
+    console.log("📊 Antal workshops:", allWorkshops.length);
+    
+    // Verifiera att sparad kod matchar
+    const savedBack = allWorkshops.find((w: any) => w.id === saved.id);
+    if (savedBack) {
+      console.log("✅ Verifiering: Workshop hittad i localStorage");
+      console.log("🔑 Sparad kod:", savedBack.code);
+      if (savedBack.code === saved.code) {
+        console.log("✅ Kod-matchning: OK");
+      } else {
+        console.error("❌ VARNING: Kod matchar inte!", {
+          expected: saved.code,
+          actual: savedBack.code
+        });
+      }
+    } else {
+      console.error("❌ KRITISKT: Workshop hittades inte i localStorage efter sparning!");
+    }
 
+    // Uppdatera state med sparad workshop-data
     setWorkshopId(saved.id);
+    setWorkshop({ ...workshop, code: saved.code });
+    setGeneratedCode(saved.code); // Använd sparad kod, inte lokalt state
+
+    // STEG 8: Visa alert med bekräftelse och kod
+    alert(`✅ Workshop sparad!\n\nKod: ${saved.code}\n\nDenna kod behöver deltagarna för att ansluta.`);
+
+    // Öppna QR-dialog
     setShowQRDialog(true);
 
     toast({
       title: "Workshop aktiverad!",
-      description: `Din workshop-kod är: ${code}`,
+      description: `Din workshop-kod är: ${saved.code}`,
     });
   };
 
