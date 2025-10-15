@@ -5,16 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Plus, Calendar, Users, ArrowLeft, MoreVertical, Edit, Trash2, Copy } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { getWorkshopsByFacilitator, deleteWorkshop, duplicateWorkshop, SavedWorkshop } from "@/utils/workshopStorage";
 import { useToast } from "@/hooks/use-toast";
 import { getCurrentFacilitator, clearSession, updateSessionTimestamp } from "@/utils/facilitatorStorage";
 import FacilitatorAuth from "@/components/FacilitatorAuth";
 import { LogOut, User } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const WorkshopDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [workshops, setWorkshops] = useState<SavedWorkshop[]>([]);
+  const [workshops, setWorkshops] = useState<any[]>([]);
   const [showAuth, setShowAuth] = useState(false);
   const [facilitator, setFacilitator] = useState(getCurrentFacilitator());
 
@@ -24,21 +24,35 @@ const WorkshopDashboard = () => {
       setShowAuth(true);
     } else {
       setFacilitator(currentFacilitator);
-      loadWorkshops(currentFacilitator.id);
+      loadWorkshops();
       updateSessionTimestamp();
     }
   }, []);
 
-  const loadWorkshops = (facilitatorId: string) => {
-    const facilitatorWorkshops = getWorkshopsByFacilitator(facilitatorId);
-    setWorkshops(facilitatorWorkshops);
+  const loadWorkshops = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('workshops')
+        .select('*, boards(id)')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error("Fel vid hämtning av workshops:", error);
+        return;
+      }
+
+      setWorkshops(data || []);
+      console.log("📦 Workshops hämtade:", data?.length || 0);
+    } catch (error) {
+      console.error("Fel vid laddning av workshops:", error);
+    }
   };
 
   const handleAuthenticated = () => {
     const currentFacilitator = getCurrentFacilitator();
     if (currentFacilitator) {
       setFacilitator(currentFacilitator);
-      loadWorkshops(currentFacilitator.id);
+      loadWorkshops();
       setShowAuth(false);
     }
   };
@@ -54,28 +68,31 @@ const WorkshopDashboard = () => {
     navigate("/");
   };
 
-  const handleDelete = (id: string) => {
-    if (!facilitator) return;
-    
-    deleteWorkshop(id);
-    loadWorkshops(facilitator.id);
-    toast({
-      title: "Workshop borttagen",
-      description: "Workshopen har tagits bort",
-    });
-  };
-
-  const handleDuplicate = (id: string) => {
-    if (!facilitator) return;
-    
-    const duplicated = duplicateWorkshop(id, facilitator.id);
-    if (duplicated) {
-      loadWorkshops(facilitator.id);
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase.from('workshops').delete().eq('id', id);
+      if (error) throw error;
+      
+      loadWorkshops();
       toast({
-        title: "Workshop duplicerad",
-        description: "En kopia av workshopen har skapats",
+        title: "Workshop borttagen",
+        description: "Workshopen har tagits bort",
+      });
+    } catch (error) {
+      console.error("Fel vid borttagning:", error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte ta bort workshop",
+        variant: "destructive",
       });
     }
+  };
+
+  const handleDuplicate = async (id: string) => {
+    toast({
+      title: "Funktionen är inte tillgänglig än",
+      description: "Duplicering kommer snart",
+    });
   };
 
   const handleEdit = (id: string) => {
@@ -164,10 +181,8 @@ const WorkshopDashboard = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <CardTitle className="text-xl">{workshop.title}</CardTitle>
-                        <Badge variant={workshop.status === "active" ? "default" : "secondary"}>
-                          {workshop.status === "active" ? "Aktiv" : "Draft"}
-                        </Badge>
+                        <CardTitle className="text-xl">{workshop.name}</CardTitle>
+                        <Badge variant="default">Aktiv</Badge>
                       </div>
                       <CardDescription className="flex items-center gap-2">
                         {workshop.code && (
@@ -214,24 +229,14 @@ const WorkshopDashboard = () => {
                     
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Users className="w-4 h-4" />
-                      <span>{workshop.boards.length} boards</span>
+                      <span>{workshop.boards?.length || 0} boards</span>
                     </div>
                     
-                    {workshop.status === "active" ? (
-                      <Link to={`/facilitator/${workshop.id}`} className="w-full">
-                        <Button className="w-full mt-4" variant="default">
-                          Öppna Workshop
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button 
-                        className="w-full mt-4" 
-                        variant="outline"
-                        onClick={() => handleEdit(workshop.id)}
-                      >
-                        Fortsätt redigera
+                    <Link to={`/facilitator/${workshop.id}`} className="w-full">
+                      <Button className="w-full mt-4" variant="default">
+                        Öppna Workshop
                       </Button>
-                    )}
+                    </Link>
                   </div>
                 </CardContent>
               </Card>

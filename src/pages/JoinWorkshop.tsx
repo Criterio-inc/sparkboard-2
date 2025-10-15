@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ArrowLeft, QrCode, UserPlus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
-import { getWorkshopByCode } from "@/utils/workshopStorage";
+import { supabase } from "@/integrations/supabase/client";
 
 const JoinWorkshop = () => {
   const { toast } = useToast();
@@ -108,7 +108,7 @@ const JoinWorkshop = () => {
     };
   }, [isScanning]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Normalisera och validera kod
@@ -134,103 +134,97 @@ const JoinWorkshop = () => {
 
     setIsLoading(true);
 
-    // Omfattande debug-loggning
-    console.log("🔍 === SÖKER WORKSHOP ===");
-    console.log("🔑 Angiven kod (original):", workshopCode);
-    console.log("🔑 Angiven kod (normaliserad):", enteredCode);
-    console.log("📏 Kod-längd:", enteredCode.length);
-    console.log("📌 Kod typ:", typeof enteredCode);
+    console.log("🔍 === SÖKER WORKSHOP I SUPABASE ===");
+    console.log("🔑 Angiven kod:", enteredCode);
 
-    const allWorkshops = JSON.parse(localStorage.getItem('workshops') || '[]');
-    console.log("📦 Workshops att söka i:", allWorkshops);
-    console.log("📊 Antal workshops totalt:", allWorkshops.length);
-    
-    allWorkshops.forEach((ws: any, index: number) => {
-      console.log(`📋 Workshop ${index}:`, {
-        code: ws.code,
-        codeLength: ws.code?.length,
-        codeType: typeof ws.code,
-        title: ws.title,
-        status: ws.status,
-      });
-    });
-
-    // Sök efter workshop med normaliserad kod
-    console.log("🔍 Anropar getWorkshopByCode med:", enteredCode);
-    const workshop = getWorkshopByCode(enteredCode);
-
-    if (!workshop) {
-      setIsLoading(false);
-      console.log("❌ WORKSHOP HITTADES INTE");
-      toast({
-        title: "Workshop-koden hittades inte",
-        description: "Kontrollera att koden är korrekt och försök igen",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    console.log("✅ WORKSHOP HITTAD:", workshop.title);
-    console.log("📌 Workshop status:", workshop.status);
-
-    // STEG 7: Kontrollera workshop-status (efter att den hittats)
-    if (workshop.status === "draft") {
-      setIsLoading(false);
-      console.log("⚠️ Workshop är draft - tillåter inte anslutning");
-      toast({
-        title: "Workshop inte aktiverad",
-        description: "Denna workshop är inte aktiverad än. Kontakta facilitatorn.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    console.log("✅ Workshop är aktiv - fortsätter med anslutning");
-
-    // Save participant session
-    const participantSession = {
-      workshopId: workshop.id,
-      workshopCode: workshopCode.toUpperCase(),
-      participantName: participantName.trim(),
-      participantId: `participant-${Date.now()}`,
-      joinedAt: new Date().toISOString(),
-    };
-
-    sessionStorage.setItem('participantSession', JSON.stringify(participantSession));
-
-    // Uppdatera deltagarlistan i localStorage (ÄNDRAT från sessionStorage)
     try {
-      const participantsKey = `workshop_${workshopCode.toUpperCase()}_participants`;
-      const existing = JSON.parse(localStorage.getItem(participantsKey) || '[]');
-      const newParticipant = {
-        id: participantSession.participantId,
-        name: participantSession.participantName,
-        joinedAt: new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }),
-        colorIndex: Array.isArray(existing) ? existing.length % 6 : 0,
+      // Sök efter workshop i Supabase (istället för localStorage)
+      const { data: workshop, error } = await supabase
+        .from('workshops')
+        .select('*')
+        .eq('code', enteredCode)
+        .single();
+
+      if (error || !workshop) {
+        setIsLoading(false);
+        console.log("❌ WORKSHOP HITTADES INTE I SUPABASE");
+        toast({
+          title: "Workshop-koden hittades inte",
+          description: "Kontrollera att koden är korrekt och försök igen",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("✅ WORKSHOP HITTAD I SUPABASE:", workshop.name);
+
+      // Hämta boards för denna workshop
+      const { data: boards } = await supabase
+        .from('boards')
+        .select('*')
+        .eq('workshop_id', workshop.id)
+        .order('order_index');
+
+      if (!boards || boards.length === 0) {
+        setIsLoading(false);
+        toast({
+          title: "Ingen aktiv övning",
+          description: "Workshopen har inga boards än",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Spara deltagare till Supabase (istället för localStorage)
+      const colorIndex = Math.floor(Math.random() * 6);
+      const { data: participant, error: participantError } = await supabase
+        .from('participants')
+        .insert({
+          workshop_id: workshop.id,
+          name: participantName.trim(),
+          color_index: colorIndex,
+        })
+        .select()
+        .single();
+
+      if (participantError || !participant) {
+        setIsLoading(false);
+        console.error("❌ Kunde inte spara deltagare:", participantError);
+        toast({
+          title: "Fel",
+          description: "Kunde inte ansluta till workshop. Försök igen.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("✅ Deltagare sparad i Supabase:", participant.name);
+
+      // Spara session-data lokalt (endast för denna enhet)
+      const participantSession = {
+        workshopId: workshop.id,
+        workshopCode: workshop.code,
+        participantName: participant.name,
+        participantId: participant.id,
+        joinedAt: participant.joined_at,
       };
-      const updated = Array.isArray(existing) ? [...existing, newParticipant] : [newParticipant];
-      localStorage.setItem(participantsKey, JSON.stringify(updated));
-      console.log("👥 Deltagare sparad i localStorage:", newParticipant.name);
-      console.log("📊 Totalt antal deltagare:", updated.length);
-      window.dispatchEvent(new Event('participants-updated'));
-    } catch (e) {
-      console.warn('Kunde inte uppdatera deltagarlistan:', e);
-    }
 
-    toast({
-      title: "Välkommen!",
-      description: `Du har anslutit till "${workshop.title}"`,
-    });
+      sessionStorage.setItem('participantSession', JSON.stringify(participantSession));
 
-    // Navigate to first board
-    if (workshop.boards.length > 0) {
-      const firstBoard = workshop.boards[0];
-      navigate(`/board/${workshop.id}/${firstBoard.id}`);
-    } else {
-      setIsLoading(false);
       toast({
-        title: "Ingen aktiv övning",
-        description: "Workshopen har inga boards än",
+        title: "Välkommen!",
+        description: `Du har anslutit till "${workshop.name}"`,
+      });
+
+      // Navigate to first board
+      const firstBoard = boards[0];
+      navigate(`/board/${workshop.id}/${firstBoard.id}`);
+    } catch (error) {
+      setIsLoading(false);
+      console.error("❌ Fel vid anslutning:", error);
+      toast({
+        title: "Fel",
+        description: "Något gick fel. Försök igen.",
         variant: "destructive",
       });
     }

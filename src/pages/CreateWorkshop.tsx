@@ -10,8 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { BoardCard } from "@/components/BoardCard";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
-import { saveWorkshop, getWorkshopById, generateUniqueWorkshopCode } from "@/utils/workshopStorage";
+import { generateUniqueWorkshopCode } from "@/utils/workshopStorage";
 import { getCurrentFacilitator } from "@/utils/facilitatorStorage";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Question {
   id: string;
@@ -50,21 +51,65 @@ const CreateWorkshop = () => {
   });
 
   useEffect(() => {
-    if (workshopId) {
-      const existingWorkshop = getWorkshopById(workshopId);
-      if (existingWorkshop) {
+    const loadWorkshop = async () => {
+      if (!workshopId) return;
+
+      try {
+        // Hämta workshop från Supabase
+        const { data: workshopData, error: workshopError } = await supabase
+          .from('workshops')
+          .select('*')
+          .eq('id', workshopId)
+          .single();
+
+        if (workshopError || !workshopData) return;
+
+        // Hämta boards med frågor
+        const { data: boardsData } = await supabase
+          .from('boards')
+          .select('*')
+          .eq('workshop_id', workshopId)
+          .order('order_index');
+
+        const boardsWithQuestions = await Promise.all(
+          (boardsData || []).map(async (board) => {
+            const { data: questions } = await supabase
+              .from('questions')
+              .select('*')
+              .eq('board_id', board.id)
+              .order('order_index');
+
+            return {
+              id: board.id,
+              title: board.title,
+              timeLimit: board.time_limit,
+              colorIndex: board.color_index,
+              questions: (questions || []).map(q => ({
+                id: q.id,
+                title: q.title,
+              })),
+              orderIndex: board.order_index,
+            };
+          })
+        );
+
         setWorkshop({
-          title: existingWorkshop.title,
-          description: existingWorkshop.description,
-          boards: existingWorkshop.boards,
-          code: existingWorkshop.code,
-          status: existingWorkshop.status,
+          title: workshopData.name,
+          description: '', // Workshop table doesn't have description yet
+          boards: boardsWithQuestions,
+          code: workshopData.code,
+          status: 'active', // All workshops in Supabase are active
         });
-        if (existingWorkshop.code) {
-          setGeneratedCode(existingWorkshop.code);
+
+        if (workshopData.code) {
+          setGeneratedCode(workshopData.code);
         }
+      } catch (error) {
+        console.error("Fel vid laddning av workshop:", error);
       }
-    }
+    };
+
+    loadWorkshop();
   }, [workshopId]);
 
 
@@ -150,7 +195,7 @@ const CreateWorkshop = () => {
     return true;
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!validateWorkshop()) return;
 
     const currentFacilitator = getCurrentFacilitator();
@@ -163,62 +208,16 @@ const CreateWorkshop = () => {
       return;
     }
 
-    console.log("=== SKAPAR WORKSHOP (DRAFT) ===");
-    console.log("📋 Workshop-objekt:", JSON.stringify(workshop, null, 2));
-    console.log("🔑 Workshop-kod (före normalisering):", workshop.code);
+    console.log("=== SPARAR WORKSHOP SOM DRAFT (SUPABASE) ===");
     
-    // Normalisera eller generera kod
-    const normalized = (workshop.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const codeToUse = normalized.length === 6 ? normalized : generateUniqueWorkshopCode();
-    console.log("🔑 Kod att använda:", codeToUse);
-
-    const saved = saveWorkshop({
-      id: workshopId,
-      title: workshop.title,
-      description: workshop.description,
-      boards: workshop.boards,
-      code: codeToUse,
-      status: "draft",
-      facilitatorId: currentFacilitator.id,
-    });
-
-    console.log("=== EFTER SAVE (DRAFT) ===");
-    const allWorkshops = JSON.parse(localStorage.getItem('workshops') || '[]');
-    console.log("📦 Alla workshops i localStorage:", allWorkshops);
-    console.log("📊 Antal workshops:", allWorkshops.length);
-    
-    // Verifiera att sparad kod matchar
-    const savedBack = allWorkshops.find((w: any) => w.id === saved.id);
-    if (savedBack) {
-      console.log("✅ Verifiering: Workshop hittad i localStorage");
-      console.log("🔑 Sparad kod:", savedBack.code);
-      if (savedBack.code === saved.code) {
-        console.log("✅ Kod-matchning: OK");
-      } else {
-        console.error("❌ VARNING: Kod matchar inte!", {
-          expected: saved.code,
-          actual: savedBack.code
-        });
-      }
-    } else {
-      console.error("❌ KRITISKT: Workshop hittades inte i localStorage efter sparning!");
-    }
-
-    // Uppdatera state med sparad workshop-data
-    setWorkshopId(saved.id);
-    setWorkshop({ ...workshop, code: saved.code });
-
+    // Note: Draft functionality removed - all workshops go directly to Supabase as active
     toast({
-      title: "Draft sparad!",
-      description: "Din workshop har sparats som draft",
+      title: "Information",
+      description: "Använd 'Aktivera Workshop' för att spara",
     });
-
-    setTimeout(() => {
-      navigate("/dashboard");
-    }, 1500);
   };
 
-  const handleActivate = () => {
+  const handleActivate = async () => {
     if (!validateWorkshop()) return;
 
     const currentFacilitator = getCurrentFacilitator();
@@ -231,62 +230,136 @@ const CreateWorkshop = () => {
       return;
     }
 
-    console.log("=== SKAPAR WORKSHOP (ACTIVE) ===");
-    console.log("📋 Workshop-objekt:", JSON.stringify(workshop, null, 2));
-    console.log("🔑 Workshop-kod (före normalisering):", workshop.code);
+    console.log("=== SPARAR WORKSHOP TILL SUPABASE ===");
     
-    // Normalisera eller generera kod (samma logik som draft)
-    const normalized = (workshop.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const codeToUse = normalized.length === 6 ? normalized : generateUniqueWorkshopCode();
-    console.log("🔑 Kod att använda:", codeToUse);
+    try {
+      // Generera eller normalisera kod
+      const normalized = (workshop.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const codeToUse = normalized.length === 6 ? normalized : await generateUniqueWorkshopCodeFromSupabase();
+      console.log("🔑 Kod att använda:", codeToUse);
 
-    const saved = saveWorkshop({
-      id: workshopId,
-      title: workshop.title,
-      description: workshop.description,
-      boards: workshop.boards,
-      code: codeToUse,
-      status: "active",
-      facilitatorId: currentFacilitator.id,
-    });
+      // Spara eller uppdatera workshop
+      const workshopData = {
+        name: workshop.title,
+        code: codeToUse,
+        date: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
 
-    console.log("=== EFTER SAVE (ACTIVE) ===");
-    const allWorkshops = JSON.parse(localStorage.getItem('workshops') || '[]');
-    console.log("📦 Alla workshops i localStorage:", allWorkshops);
-    console.log("📊 Antal workshops:", allWorkshops.length);
-    
-    // Verifiera att sparad kod matchar
-    const savedBack = allWorkshops.find((w: any) => w.id === saved.id);
-    if (savedBack) {
-      console.log("✅ Verifiering: Workshop hittad i localStorage");
-      console.log("🔑 Sparad kod:", savedBack.code);
-      if (savedBack.code === saved.code) {
-        console.log("✅ Kod-matchning: OK");
+      let savedWorkshop;
+      if (workshopId) {
+        // Uppdatera befintlig workshop
+        const { data, error } = await supabase
+          .from('workshops')
+          .update(workshopData)
+          .eq('id', workshopId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        savedWorkshop = data;
       } else {
-        console.error("❌ VARNING: Kod matchar inte!", {
-          expected: saved.code,
-          actual: savedBack.code
-        });
+        // Skapa ny workshop
+        const { data, error } = await supabase
+          .from('workshops')
+          .insert(workshopData)
+          .select()
+          .single();
+
+        if (error) throw error;
+        savedWorkshop = data;
+        setWorkshopId(savedWorkshop.id);
       }
-    } else {
-      console.error("❌ KRITISKT: Workshop hittades inte i localStorage efter sparning!");
+
+      console.log("✅ Workshop sparad i Supabase:", savedWorkshop.id);
+
+      // Spara boards och questions
+      for (let boardIndex = 0; boardIndex < workshop.boards.length; boardIndex++) {
+        const board = workshop.boards[boardIndex];
+        
+        const boardData = {
+          workshop_id: savedWorkshop.id,
+          title: board.title,
+          time_limit: board.timeLimit,
+          color_index: board.colorIndex,
+          order_index: boardIndex,
+        };
+
+        const { data: savedBoard, error: boardError } = await supabase
+          .from('boards')
+          .insert(boardData)
+          .select()
+          .single();
+
+        if (boardError) {
+          console.error("Fel vid sparning av board:", boardError);
+          continue;
+        }
+
+        console.log("✅ Board sparad:", savedBoard.id);
+
+        // Spara questions för denna board
+        for (let questionIndex = 0; questionIndex < board.questions.length; questionIndex++) {
+          const question = board.questions[questionIndex];
+          
+          const { error: questionError } = await supabase
+            .from('questions')
+            .insert({
+              board_id: savedBoard.id,
+              title: question.title,
+              order_index: questionIndex,
+            });
+
+          if (questionError) {
+            console.error("Fel vid sparning av fråga:", questionError);
+          }
+        }
+      }
+
+      setGeneratedCode(savedWorkshop.code);
+
+      // STEG 8: Visa alert med bekräftelse och kod
+      alert(`✅ Workshop sparad!\n\nKod: ${savedWorkshop.code}\n\nDenna kod behöver deltagarna för att ansluta.`);
+
+      // Öppna QR-dialog
+      setShowQRDialog(true);
+
+      toast({
+        title: "Workshop aktiverad!",
+        description: `Din workshop-kod är: ${savedWorkshop.code}`,
+      });
+    } catch (error) {
+      console.error("Fel vid sparning av workshop:", error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte spara workshop. Försök igen.",
+        variant: "destructive",
+      });
     }
+  };
 
-    // Uppdatera state med sparad workshop-data
-    setWorkshopId(saved.id);
-    setWorkshop({ ...workshop, code: saved.code });
-    setGeneratedCode(saved.code); // Använd sparad kod, inte lokalt state
-
-    // STEG 8: Visa alert med bekräftelse och kod
-    alert(`✅ Workshop sparad!\n\nKod: ${saved.code}\n\nDenna kod behöver deltagarna för att ansluta.`);
-
-    // Öppna QR-dialog
-    setShowQRDialog(true);
-
-    toast({
-      title: "Workshop aktiverad!",
-      description: `Din workshop-kod är: ${saved.code}`,
-    });
+  // Hjälpfunktion för att generera unik kod från Supabase
+  const generateUniqueWorkshopCodeFromSupabase = async (): Promise<string> => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    
+    while (true) {
+      let code = '';
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      
+      // Kontrollera att koden inte redan finns i Supabase
+      const { data } = await supabase
+        .from('workshops')
+        .select('id')
+        .eq('code', code)
+        .single();
+      
+      if (!data) {
+        console.log("Genererad unik kod från Supabase:", code);
+        return code;
+      }
+    }
   };
 
   const getJoinUrl = () => {

@@ -10,7 +10,7 @@ import { ArrowLeft, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateWorkshopPDF } from "@/utils/pdfExport";
-import { getWorkshopById, SavedWorkshop } from "@/utils/workshopStorage";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Question {
   id: string;
@@ -50,7 +50,7 @@ const FacilitatorControl = () => {
   const { toast } = useToast();
 
   const [currentBoardIndex, setCurrentBoardIndex] = useState(0);
-  const [workshop, setWorkshop] = useState<SavedWorkshop | null>(null);
+  const [workshop, setWorkshop] = useState<any>(null);
   const [boards, setBoards] = useState<Board[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -60,78 +60,207 @@ const FacilitatorControl = () => {
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [aiAnalyses, setAIAnalyses] = useState<Record<string, string>>({});
 
-  // Ladda workshop och boards
+  // Ladda workshop och boards från Supabase
   useEffect(() => {
-    if (!workshopId) return;
-    const w = getWorkshopById(workshopId);
-    if (!w) {
-      toast({
-        title: "Workshop saknas",
-        description: "Kunde inte hitta workshopen. Återgår till dashboard.",
-        variant: "destructive",
-      });
-      navigate("/dashboard");
-      return;
-    }
-    setWorkshop(w);
-    setBoards(w.boards || []);
-    setCurrentBoardIndex(0);
-    setTimeRemaining(((w.boards?.[0]?.timeLimit) || 0) * 60);
+    const loadWorkshop = async () => {
+      if (!workshopId) return;
+
+      try {
+        console.log("🔄 [Facilitator] Laddar workshop:", workshopId);
+
+        // Hämta workshop
+        const { data: workshopData, error: workshopError } = await supabase
+          .from('workshops')
+          .select('*')
+          .eq('id', workshopId)
+          .single();
+
+        if (workshopError || !workshopData) {
+          toast({
+            title: "Workshop saknas",
+            description: "Kunde inte hitta workshopen. Återgår till dashboard.",
+            variant: "destructive",
+          });
+          navigate("/dashboard");
+          return;
+        }
+
+        setWorkshop(workshopData);
+
+        // Hämta boards
+        const { data: boardsData, error: boardsError } = await supabase
+          .from('boards')
+          .select('*')
+          .eq('workshop_id', workshopId)
+          .order('order_index');
+
+        if (boardsError) {
+          console.error("Fel vid hämtning av boards:", boardsError);
+          setBoards([]);
+          return;
+        }
+
+        // Hämta frågor för varje board
+        const boardsWithQuestions = await Promise.all(
+          (boardsData || []).map(async (board) => {
+            const { data: questions } = await supabase
+              .from('questions')
+              .select('*')
+              .eq('board_id', board.id)
+              .order('order_index');
+
+            return {
+              id: board.id,
+              title: board.title,
+              timeLimit: board.time_limit,
+              colorIndex: board.color_index,
+              questions: (questions || []).map(q => ({
+                id: q.id,
+                title: q.title,
+              })),
+            };
+          })
+        );
+
+        setBoards(boardsWithQuestions);
+        setCurrentBoardIndex(0);
+        setTimeRemaining((boardsWithQuestions[0]?.timeLimit || 0) * 60);
+
+        console.log("✅ [Facilitator] Workshop laddad:", workshopData.name);
+      } catch (error) {
+        console.error("Fel vid laddning av workshop:", error);
+        toast({
+          title: "Fel",
+          description: "Kunde inte ladda workshop-data",
+          variant: "destructive",
+        });
+        navigate("/dashboard");
+      }
+    };
+
+    loadWorkshop();
   }, [workshopId, navigate, toast]);
 
-  // Synka deltagare från localStorage (ÄNDRAT från sessionStorage)
+  // Synka deltagare från Supabase Realtime
   useEffect(() => {
-    if (!workshop?.code) {
+    if (!workshop?.id) {
       setParticipants([]);
       return;
     }
-    const key = `workshop_${workshop.code.toUpperCase()}_participants`;
-    const read = () => {
-      try {
-        const data = JSON.parse(localStorage.getItem(key) || "[]");
-        setParticipants(Array.isArray(data) ? data : []);
-        console.log("🔄 [Facilitator] Synkar deltagare:", data.length);
-      } catch {
-        setParticipants([]);
-      }
-    };
-    // Initial delay för att ge deltagare tid att registrera sig
-    setTimeout(read, 500);
-    const onUpdate = () => read();
-    window.addEventListener("participants-updated", onUpdate);
-    const interval = setInterval(read, 2000);
-    return () => {
-      window.removeEventListener("participants-updated", onUpdate);
-      clearInterval(interval);
-    };
-  }, [workshop?.code]);
 
-  // Synka notes från localStorage
+    const fetchParticipants = async () => {
+      const { data, error } = await supabase
+        .from('participants')
+        .select('*')
+        .eq('workshop_id', workshop.id)
+        .order('joined_at', { ascending: true });
+
+      if (error) {
+        console.error("Fel vid hämtning av deltagare:", error);
+        return;
+      }
+
+      const formattedParticipants: Participant[] = (data || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        joinedAt: new Date(p.joined_at).toLocaleTimeString('sv-SE', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        colorIndex: p.color_index,
+      }));
+
+      setParticipants(formattedParticipants);
+      console.log("👥 [Facilitator] Deltagare:", formattedParticipants.length);
+    };
+
+    fetchParticipants();
+
+    // Lyssna på realtime-uppdateringar
+    const channel = supabase
+      .channel(`participants-${workshop.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'participants',
+          filter: `workshop_id=eq.${workshop.id}`,
+        },
+        () => {
+          console.log("🔔 [Facilitator] Participant update");
+          fetchParticipants();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [workshop?.id]);
+
+  // Synka notes från Supabase Realtime
   useEffect(() => {
-    if (!workshop?.code) {
+    if (!workshop?.id || boards.length === 0) {
       setNotes([]);
       return;
     }
-    const key = `workshop_${workshop.code.toUpperCase()}_notes`;
-    const read = () => {
-      try {
-        const data = JSON.parse(localStorage.getItem(key) || "[]");
-        setNotes(Array.isArray(data) ? data : []);
-        console.log("🔄 [Facilitator] Synkar notes:", data.length);
-      } catch {
-        setNotes([]);
+
+    const fetchNotes = async () => {
+      // Hämta alla frågor från alla boards
+      const allQuestionIds = boards.flatMap(b => b.questions.map(q => q.id));
+      if (allQuestionIds.length === 0) return;
+
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .in('question_id', allQuestionIds);
+
+      if (error) {
+        console.error("Fel vid hämtning av notes:", error);
+        return;
       }
+
+      const formattedNotes: Note[] = (data || []).map(note => ({
+        id: note.id,
+        questionId: note.question_id,
+        content: note.content,
+        authorName: note.author_name,
+        authorId: note.author_id,
+        timestamp: new Date(note.timestamp).toLocaleTimeString("sv-SE", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        colorIndex: note.color_index,
+      }));
+
+      setNotes(formattedNotes);
+      console.log("📝 [Facilitator] Notes:", formattedNotes.length);
     };
-    // Initial delay för att ge deltagare tid att skapa notes
-    setTimeout(read, 500);
-    const onUpdate = () => read();
-    window.addEventListener("notes-updated", onUpdate);
-    const interval = setInterval(read, 2000);
+
+    fetchNotes();
+
+    // Lyssna på realtime-uppdateringar
+    const channel = supabase
+      .channel(`notes-workshop-${workshop.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notes',
+        },
+        () => {
+          console.log("🔔 [Facilitator] Note update");
+          fetchNotes();
+        }
+      )
+      .subscribe();
+
     return () => {
-      window.removeEventListener("notes-updated", onUpdate);
-      clearInterval(interval);
+      supabase.removeChannel(channel);
     };
-  }, [workshop?.code]);
+  }, [workshop?.id, boards]);
 
   const currentBoard = boards[currentBoardIndex] || { id: "empty", title: "Ingen övning", timeLimit: 0, questions: [], colorIndex: 0 };
   const boardColor = `hsl(var(--board-${(currentBoard.colorIndex % 5) + 1}))`;
@@ -210,7 +339,7 @@ const FacilitatorControl = () => {
       });
 
       const exportData = {
-        workshopTitle: workshop?.title || "Workshop",
+        workshopTitle: workshop?.name || "Workshop",
         date: new Date().toLocaleDateString("sv-SE", {
           year: "numeric",
           month: "long",
@@ -242,23 +371,35 @@ const FacilitatorControl = () => {
     return notes.filter((n) => n.questionId === questionId);
   };
 
-  const handleDeleteNote = (noteId: string) => {
-    if (!workshop?.code) return;
-    
-    const key = `workshop_${workshop.code.toUpperCase()}_notes`;
+  const handleDeleteNote = async (noteId: string) => {
     try {
-      const currentNotes = JSON.parse(localStorage.getItem(key) || "[]");
-      const updated = currentNotes.filter((n: Note) => n.id !== noteId);
-      localStorage.setItem(key, JSON.stringify(updated));
-      setNotes(updated);
-      window.dispatchEvent(new Event('notes-updated'));
+      console.log("🗑️ [Facilitator] Tar bort note:", noteId);
+
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', noteId);
+
+      if (error) {
+        console.error("Kunde inte ta bort note:", error);
+        toast({
+          title: "Fel",
+          description: "Kunde inte ta bort note",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("✅ [Facilitator] Note borttagen från Supabase");
       
       toast({
         title: "Note borttagen",
         description: "Sticky note har tagits bort",
       });
-    } catch (e) {
-      console.error("Kunde inte ta bort note:", e);
+      
+      // Realtime kommer automatiskt uppdatera notes-state
+    } catch (error) {
+      console.error("Fel vid borttagning av note:", error);
     }
   };
 
@@ -292,7 +433,7 @@ const FacilitatorControl = () => {
 
               <div>
                 <h1 className="text-2xl font-bold">Facilitator Control</h1>
-                <p className="text-sm text-muted-foreground">Workshop: {workshop?.title || "—"}</p>
+                <p className="text-sm text-muted-foreground">Workshop: {workshop?.name || "—"}</p>
               </div>
             </div>
 
