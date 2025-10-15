@@ -3,10 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Users, UserPlus, Sparkles } from "lucide-react";
 import heroImage from "@/assets/hero-braindrain.jpg";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
+      {/* Header with Theme Toggle */}
+      <header className="absolute top-0 right-0 p-4 z-10">
+        <ThemeToggle />
+      </header>
+
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div 
