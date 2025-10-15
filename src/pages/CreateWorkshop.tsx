@@ -218,7 +218,6 @@ const CreateWorkshop = () => {
   };
 
   const handleActivate = async () => {
-    console.log("🚀 [CreateWorkshop] Aktiverar workshop...");
     if (!validateWorkshop()) return;
 
     const currentFacilitator = getCurrentFacilitator();
@@ -275,7 +274,6 @@ const CreateWorkshop = () => {
       console.log("✅ Workshop sparad i Supabase:", savedWorkshop.id);
 
       // Spara boards och questions
-      let firstBoardId = null;
       for (let boardIndex = 0; boardIndex < workshop.boards.length; boardIndex++) {
         const board = workshop.boards[boardIndex];
         
@@ -298,11 +296,6 @@ const CreateWorkshop = () => {
           continue;
         }
 
-        // Spara första board-id för att sätta som active
-        if (boardIndex === 0) {
-          firstBoardId = savedBoard.id;
-        }
-
         console.log("✅ Board sparad:", savedBoard.id);
 
         // Spara questions för denna board
@@ -320,20 +313,6 @@ const CreateWorkshop = () => {
           if (questionError) {
             console.error("Fel vid sparning av fråga:", questionError);
           }
-        }
-      }
-
-      // Sätt första board som active_board_id
-      if (firstBoardId) {
-        const { error: updateError } = await supabase
-          .from('workshops')
-          .update({ active_board_id: firstBoardId })
-          .eq('id', savedWorkshop.id);
-
-        if (updateError) {
-          console.error("Kunde inte sätta active board:", updateError);
-        } else {
-          console.log("✅ Active board satt till:", firstBoardId);
         }
       }
 

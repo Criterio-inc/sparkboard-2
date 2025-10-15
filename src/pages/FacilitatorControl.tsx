@@ -6,7 +6,7 @@ import { StickyNote } from "@/components/StickyNote";
 import { ParticipantList } from "@/components/ParticipantList";
 import { ControlPanel } from "@/components/ControlPanel";
 import { AIAnalysisDialog } from "@/components/AIAnalysisDialog";
-import { ArrowLeft, Clock, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateWorkshopPDF } from "@/utils/pdfExport";
@@ -59,7 +59,6 @@ const FacilitatorControl = () => {
   const [isSoundEnabled, setIsSoundEnabled] = useState(true);
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [aiAnalyses, setAIAnalyses] = useState<Record<string, string>>({});
-  const [isControlPanelVisible, setIsControlPanelVisible] = useState(true);
 
   // Ladda workshop och boards från Supabase
   useEffect(() => {
@@ -312,35 +311,15 @@ const FacilitatorControl = () => {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const handleNextBoard = async () => {
+  const handleNextBoard = () => {
     if (currentBoardIndex < boards.length - 1) {
-      const nextBoard = boards[currentBoardIndex + 1];
-      
-      // Uppdatera active_board_id i Supabase för att synka med deltagare
-      const { error } = await supabase
-        .from('workshops')
-        .update({ active_board_id: nextBoard.id })
-        .eq('id', workshop.id);
-      
-      if (error) {
-        console.error("Fel vid uppdatering av active board:", error);
-        toast({
-          title: "Fel",
-          description: "Kunde inte byta board",
-          variant: "destructive",
-        });
-        return;
-      }
-      
       setCurrentBoardIndex(currentBoardIndex + 1);
-      setTimeRemaining(nextBoard.timeLimit * 60);
+      setTimeRemaining(boards[currentBoardIndex + 1].timeLimit * 60);
       setIsTimerRunning(false);
-      
-      console.log("✅ [Facilitator] Bytte till board:", nextBoard.title);
       
       toast({
         title: "Nästa board!",
-        description: `Nu på: ${nextBoard.title}`,
+        description: `Nu på: ${boards[currentBoardIndex + 1].title}`,
       });
     }
   };
@@ -484,43 +463,17 @@ const FacilitatorControl = () => {
         <div className="grid lg:grid-cols-4 gap-6">
           {/* Main Content - 3 columns */}
           <div className="lg:col-span-3 space-y-6">
-            {/* Control Panel - kan gömmas för presentation */}
-            {isControlPanelVisible ? (
-              <div className="relative">
-                <ControlPanel
-                  isTimerRunning={isTimerRunning}
-                  onToggleTimer={() => setIsTimerRunning(!isTimerRunning)}
-                  onNextBoard={handleNextBoard}
-                  onAIAnalysis={handleAIAnalysis}
-                  onExportPDF={handleExportPDF}
-                  isSoundEnabled={isSoundEnabled}
-                  onToggleSound={() => setIsSoundEnabled(!isSoundEnabled)}
-                  canGoNext={currentBoardIndex < boards.length - 1}
-                />
-                
-                {/* Toggle-knapp för att gömma panelen */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsControlPanelVisible(false)}
-                  className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-background"
-                >
-                  <EyeOff className="w-4 h-4 mr-2" />
-                  Dölj kontroller
-                </Button>
-              </div>
-            ) : (
-              /* Floating-knapp för att visa panelen igen */
-              <Button
-                variant="default"
-                size="lg"
-                onClick={() => setIsControlPanelVisible(true)}
-                className="fixed bottom-6 right-6 z-50 shadow-lg"
-              >
-                <Eye className="w-5 h-5 mr-2" />
-                Visa kontroller
-              </Button>
-            )}
+            {/* Control Panel */}
+            <ControlPanel
+              isTimerRunning={isTimerRunning}
+              onToggleTimer={() => setIsTimerRunning(!isTimerRunning)}
+              onNextBoard={handleNextBoard}
+              onAIAnalysis={handleAIAnalysis}
+              onExportPDF={handleExportPDF}
+              isSoundEnabled={isSoundEnabled}
+              onToggleSound={() => setIsSoundEnabled(!isSoundEnabled)}
+              canGoNext={currentBoardIndex < boards.length - 1}
+            />
 
             {/* Board Navigation Tabs */}
             <Tabs

@@ -188,7 +188,6 @@ export type Database = {
       }
       workshops: {
         Row: {
-          active_board_id: string | null
           code: string
           created_at: string
           date: string
@@ -197,7 +196,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          active_board_id?: string | null
           code: string
           created_at?: string
           date?: string
@@ -206,7 +204,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          active_board_id?: string | null
           code?: string
           created_at?: string
           date?: string
@@ -214,15 +211,7 @@ export type Database = {
           name?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "workshops_active_board_id_fkey"
-            columns: ["active_board_id"]
-            isOneToOne: false
-            referencedRelation: "boards"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
