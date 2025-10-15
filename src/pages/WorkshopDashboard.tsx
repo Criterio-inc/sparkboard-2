@@ -5,26 +5,60 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Plus, Calendar, Users, ArrowLeft, MoreVertical, Edit, Trash2, Copy } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { getAllWorkshops, deleteWorkshop, duplicateWorkshop, SavedWorkshop } from "@/utils/workshopStorage";
+import { getWorkshopsByFacilitator, deleteWorkshop, duplicateWorkshop, SavedWorkshop } from "@/utils/workshopStorage";
 import { useToast } from "@/hooks/use-toast";
+import { getCurrentFacilitator, clearSession, updateSessionTimestamp } from "@/utils/facilitatorStorage";
+import FacilitatorAuth from "@/components/FacilitatorAuth";
+import { LogOut, User } from "lucide-react";
 
 const WorkshopDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [workshops, setWorkshops] = useState<SavedWorkshop[]>([]);
+  const [showAuth, setShowAuth] = useState(false);
+  const [facilitator, setFacilitator] = useState(getCurrentFacilitator());
 
   useEffect(() => {
-    loadWorkshops();
+    const currentFacilitator = getCurrentFacilitator();
+    if (!currentFacilitator) {
+      setShowAuth(true);
+    } else {
+      setFacilitator(currentFacilitator);
+      loadWorkshops(currentFacilitator.id);
+      updateSessionTimestamp();
+    }
   }, []);
 
-  const loadWorkshops = () => {
-    const allWorkshops = getAllWorkshops();
-    setWorkshops(allWorkshops);
+  const loadWorkshops = (facilitatorId: string) => {
+    const facilitatorWorkshops = getWorkshopsByFacilitator(facilitatorId);
+    setWorkshops(facilitatorWorkshops);
+  };
+
+  const handleAuthenticated = () => {
+    const currentFacilitator = getCurrentFacilitator();
+    if (currentFacilitator) {
+      setFacilitator(currentFacilitator);
+      loadWorkshops(currentFacilitator.id);
+      setShowAuth(false);
+    }
+  };
+
+  const handleLogout = () => {
+    clearSession();
+    setFacilitator(null);
+    setWorkshops([]);
+    toast({
+      title: "Utloggad",
+      description: "Du har loggats ut",
+    });
+    navigate("/");
   };
 
   const handleDelete = (id: string) => {
+    if (!facilitator) return;
+    
     deleteWorkshop(id);
-    loadWorkshops();
+    loadWorkshops(facilitator.id);
     toast({
       title: "Workshop borttagen",
       description: "Workshopen har tagits bort",
@@ -32,9 +66,11 @@ const WorkshopDashboard = () => {
   };
 
   const handleDuplicate = (id: string) => {
-    const duplicated = duplicateWorkshop(id);
+    if (!facilitator) return;
+    
+    const duplicated = duplicateWorkshop(id, facilitator.id);
     if (duplicated) {
-      loadWorkshops();
+      loadWorkshops(facilitator.id);
       toast({
         title: "Workshop duplicerad",
         description: "En kopia av workshopen har skapats",
@@ -46,17 +82,38 @@ const WorkshopDashboard = () => {
     navigate(`/create-workshop/${id}`);
   };
 
+  if (showAuth) {
+    return <FacilitatorAuth open={showAuth} onAuthenticated={handleAuthenticated} />;
+  }
+
+  if (!facilitator) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <Link to="/">
-            <Button variant="ghost" size="sm" className="mb-4">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Tillbaka
-            </Button>
-          </Link>
+          <div className="flex items-center justify-between mb-4">
+            <Link to="/">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Tillbaka
+              </Button>
+            </Link>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg">
+                <User className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">{facilitator.name}</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Logga ut
+              </Button>
+            </div>
+          </div>
           
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -64,7 +121,7 @@ const WorkshopDashboard = () => {
                 Mina Workshops
               </h1>
               <p className="text-muted-foreground">
-                Hantera och skapa nya workshops
+                {workshops.length} {workshops.length === 1 ? 'workshop' : 'workshops'}
               </p>
             </div>
             

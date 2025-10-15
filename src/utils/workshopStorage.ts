@@ -18,13 +18,14 @@ export interface SavedWorkshop {
   boards: Board[];
   code?: string;
   status: "draft" | "active";
+  facilitatorId: string;
   createdAt: string;
   updatedAt: string;
 }
 
 const STORAGE_KEY = "workshops";
 
-export const saveWorkshop = (workshop: Omit<SavedWorkshop, "id" | "createdAt" | "updatedAt"> & { id?: string }): SavedWorkshop => {
+export const saveWorkshop = (workshop: Omit<SavedWorkshop, "id" | "createdAt" | "updatedAt"> & { id?: string; facilitatorId: string }): SavedWorkshop => {
   const workshops = getAllWorkshops();
 
   const normalizedCode = workshop.code
@@ -75,6 +76,11 @@ export const getAllWorkshops = (): SavedWorkshop[] => {
   }
 };
 
+export const getWorkshopsByFacilitator = (facilitatorId: string): SavedWorkshop[] => {
+  const allWorkshops = getAllWorkshops();
+  return allWorkshops.filter(w => w.facilitatorId === facilitatorId);
+};
+
 export const getWorkshopById = (id: string): SavedWorkshop | null => {
   const workshops = getAllWorkshops();
   return workshops.find(w => w.id === id) || null;
@@ -100,11 +106,11 @@ export const deleteWorkshop = (id: string): void => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
 };
 
-export const duplicateWorkshop = (id: string): SavedWorkshop | null => {
+export const duplicateWorkshop = (id: string, facilitatorId: string): SavedWorkshop | null => {
   const workshop = getWorkshopById(id);
   if (!workshop) return null;
 
-  const duplicated: Omit<SavedWorkshop, "id" | "createdAt" | "updatedAt"> = {
+  const duplicated: Omit<SavedWorkshop, "id" | "createdAt" | "updatedAt"> & { facilitatorId: string } = {
     title: `${workshop.title} (Kopia)`,
     description: workshop.description,
     boards: workshop.boards.map(board => ({
@@ -116,6 +122,7 @@ export const duplicateWorkshop = (id: string): SavedWorkshop | null => {
       }))
     })),
     status: "draft",
+    facilitatorId,
   };
 
   return saveWorkshop(duplicated);

@@ -11,6 +11,7 @@ import { BoardCard } from "@/components/BoardCard";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
 import { saveWorkshop, getWorkshopById } from "@/utils/workshopStorage";
+import { getCurrentFacilitator } from "@/utils/facilitatorStorage";
 
 interface Question {
   id: string;
@@ -155,6 +156,16 @@ const CreateWorkshop = () => {
   const handleSaveDraft = () => {
     if (!validateWorkshop()) return;
 
+    const currentFacilitator = getCurrentFacilitator();
+    if (!currentFacilitator) {
+      toast({
+        title: "Fel",
+        description: "Du måste vara inloggad som facilitator",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const saved = saveWorkshop({
       id: workshopId,
       title: workshop.title,
@@ -162,6 +173,7 @@ const CreateWorkshop = () => {
       boards: workshop.boards,
       code: workshop.code,
       status: "draft",
+      facilitatorId: currentFacilitator.id,
     });
 
     console.log("Workshop sparad med kod:", saved.code, saved);
@@ -182,6 +194,16 @@ const CreateWorkshop = () => {
   const handleActivate = () => {
     if (!validateWorkshop()) return;
 
+    const currentFacilitator = getCurrentFacilitator();
+    if (!currentFacilitator) {
+      toast({
+        title: "Fel",
+        description: "Du måste vara inloggad som facilitator",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const code = generatedCode || generateCode();
     setGeneratedCode(code);
 
@@ -192,6 +214,7 @@ const CreateWorkshop = () => {
       boards: workshop.boards,
       code: code,
       status: "active",
+      facilitatorId: currentFacilitator.id,
     });
 
     console.log("Workshop sparad med kod:", saved.code, saved);
