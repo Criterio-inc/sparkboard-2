@@ -22,6 +22,7 @@ interface BoardCardProps {
   index: number;
   onUpdate: (board: Board) => void;
   onDelete: () => void;
+  isDraggable?: boolean;
 }
 
 const boardColors = [
@@ -32,7 +33,7 @@ const boardColors = [
   "hsl(var(--board-5))",
 ];
 
-export const BoardCard = ({ board, index, onUpdate, onDelete }: BoardCardProps) => {
+export const BoardCard = ({ board, index, onUpdate, onDelete, isDraggable = true }: BoardCardProps) => {
   const boardColor = boardColors[board.colorIndex % boardColors.length];
 
   const addQuestion = () => {
@@ -75,7 +76,7 @@ export const BoardCard = ({ board, index, onUpdate, onDelete }: BoardCardProps) 
       <CardHeader>
         <div className="flex items-start gap-3">
           <div 
-            className="mt-1 cursor-grab"
+            className={`mt-1 ${isDraggable ? 'cursor-grab' : 'cursor-not-allowed opacity-50'}`}
             style={{ color: boardColor }}
           >
             <GripVertical className="w-5 h-5" />

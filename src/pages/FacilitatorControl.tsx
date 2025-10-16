@@ -449,6 +449,23 @@ const FacilitatorControl = () => {
     try {
       console.log("🗑️ [Facilitator] Tar bort deltagare:", participantId);
 
+      // First, delete all notes created by this participant
+      const { error: notesError } = await supabase
+        .from('notes')
+        .delete()
+        .eq('author_id', participantId);
+
+      if (notesError) {
+        console.error("Kunde inte ta bort deltagarens anteckningar:", notesError);
+        toast({
+          title: "Fel",
+          description: "Kunde inte ta bort deltagarens anteckningar",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Then delete the participant
       const { error } = await supabase
         .from('participants')
         .delete()
@@ -464,11 +481,11 @@ const FacilitatorControl = () => {
         return;
       }
 
-      console.log("✅ [Facilitator] Deltagare borttagen från Supabase");
+      console.log("✅ [Facilitator] Deltagare och anteckningar borttagna från Supabase");
       
       toast({
         title: "Deltagare borttagen",
-        description: "Deltagaren har tagits bort från workshopen",
+        description: "Deltagaren och deras anteckningar har tagits bort från workshopen",
       });
       
       // Realtime kommer automatiskt uppdatera participants-state

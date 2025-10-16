@@ -291,7 +291,9 @@ const WorkshopDashboard = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <CardTitle className="text-xl">{workshop.name}</CardTitle>
-                        <Badge variant="default">Aktiv</Badge>
+                        <Badge variant={(workshop as any).status === 'draft' ? 'outline' : 'default'}>
+                          {(workshop as any).status === 'draft' ? 'Utkast' : 'Aktiv'}
+                        </Badge>
                       </div>
                       <CardDescription className="flex items-center gap-2">
                         {workshop.code && (

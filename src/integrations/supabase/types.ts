@@ -249,6 +249,7 @@ export type Database = {
           facilitator_id: string
           id: string
           name: string
+          status: string | null
           time_remaining: number | null
           timer_running: boolean | null
           timer_started_at: string | null
@@ -262,6 +263,7 @@ export type Database = {
           facilitator_id: string
           id?: string
           name: string
+          status?: string | null
           time_remaining?: number | null
           timer_running?: boolean | null
           timer_started_at?: string | null
@@ -275,6 +277,7 @@ export type Database = {
           facilitator_id?: string
           id?: string
           name?: string
+          status?: string | null
           time_remaining?: number | null
           timer_running?: boolean | null
           timer_started_at?: string | null

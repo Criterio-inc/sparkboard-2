@@ -42,6 +42,9 @@ const CreateWorkshop = () => {
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
   const [workshopId, setWorkshopId] = useState<string | undefined>(id);
+  const [hasResponses, setHasResponses] = useState(false);
+  const [isLoadingResponses, setIsLoadingResponses] = useState(true);
+  const [draggedBoardIndex, setDraggedBoardIndex] = useState<number | null>(null);
 
   const [workshop, setWorkshop] = useState<Workshop>({
     title: "",
@@ -52,7 +55,10 @@ const CreateWorkshop = () => {
 
   useEffect(() => {
     const loadWorkshop = async () => {
-      if (!workshopId) return;
+      if (!workshopId) {
+        setIsLoadingResponses(false);
+        return;
+      }
 
       try {
         // Hämta workshop från Supabase
@@ -62,7 +68,10 @@ const CreateWorkshop = () => {
           .eq('id', workshopId)
           .single();
 
-        if (workshopError || !workshopData) return;
+        if (workshopError || !workshopData) {
+          setIsLoadingResponses(false);
+          return;
+        }
 
         // Hämta boards med frågor
         const { data: boardsData } = await supabase
@@ -93,19 +102,36 @@ const CreateWorkshop = () => {
           })
         );
 
+        // Check if workshop has any participant responses
+        const questionIds = boardsWithQuestions.flatMap(b => b.questions.map(q => q.id));
+        if (questionIds.length > 0) {
+          const { data: notesData, error: notesError } = await supabase
+            .from('notes')
+            .select('id')
+            .in('question_id', questionIds)
+            .limit(1);
+
+          if (!notesError && notesData && notesData.length > 0) {
+            setHasResponses(true);
+          }
+        }
+
         setWorkshop({
           title: workshopData.name,
           description: '', // Workshop table doesn't have description yet
           boards: boardsWithQuestions,
           code: workshopData.code,
-          status: 'active', // All workshops in Supabase are active
+          status: (workshopData.status === 'draft' ? 'draft' : 'active') as 'draft' | 'active',
         });
 
         if (workshopData.code) {
           setGeneratedCode(workshopData.code);
         }
+
+        setIsLoadingResponses(false);
       } catch (error) {
         console.error("Fel vid laddning av workshop:", error);
+        setIsLoadingResponses(false);
       }
     };
 
@@ -140,6 +166,27 @@ const CreateWorkshop = () => {
       ...workshop,
       boards: workshop.boards.filter((b) => b.id !== boardId),
     });
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedBoardIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedBoardIndex === null || draggedBoardIndex === index) return;
+
+    const newBoards = [...workshop.boards];
+    const draggedBoard = newBoards[draggedBoardIndex];
+    newBoards.splice(draggedBoardIndex, 1);
+    newBoards.splice(index, 0, draggedBoard);
+
+    setWorkshop({ ...workshop, boards: newBoards });
+    setDraggedBoardIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedBoardIndex(null);
   };
 
   const validateWorkshop = (): boolean => {
@@ -198,7 +245,7 @@ const CreateWorkshop = () => {
   const handleSaveDraft = async () => {
     if (!validateWorkshop()) return;
 
-    const currentFacilitator = getCurrentFacilitator();
+    const currentFacilitator = await getCurrentFacilitator();
     if (!currentFacilitator) {
       toast({
         title: "Fel",
@@ -210,18 +257,100 @@ const CreateWorkshop = () => {
 
     console.log("=== SPARAR WORKSHOP SOM DRAFT (SUPABASE) ===");
     
-    // Note: Draft functionality removed - all workshops go directly to Supabase as active
-    toast({
-      title: "Information",
-      description: "Använd 'Aktivera Workshop' för att spara",
-    });
+    try {
+      const codeToUse = workshop.code || await generateUniqueWorkshopCodeFromSupabase();
+
+      const workshopData = {
+        name: workshop.title,
+        code: codeToUse,
+        date: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        facilitator_id: currentFacilitator.id,
+        status: 'draft',
+      };
+
+      let savedWorkshop;
+      if (workshopId) {
+        // Update existing draft
+        const { data, error } = await supabase
+          .from('workshops')
+          .update(workshopData)
+          .eq('id', workshopId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        savedWorkshop = data;
+
+        // Delete old boards
+        await supabase.from('boards').delete().eq('workshop_id', workshopId);
+      } else {
+        // Create new draft
+        const { data, error } = await supabase
+          .from('workshops')
+          .insert(workshopData)
+          .select()
+          .single();
+
+        if (error) throw error;
+        savedWorkshop = data;
+        setWorkshopId(savedWorkshop.id);
+      }
+
+      // Save boards and questions
+      for (let boardIndex = 0; boardIndex < workshop.boards.length; boardIndex++) {
+        const board = workshop.boards[boardIndex];
+        
+        const { data: savedBoard, error: boardError } = await supabase
+          .from('boards')
+          .insert({
+            workshop_id: savedWorkshop.id,
+            title: board.title,
+            time_limit: board.timeLimit,
+            color_index: board.colorIndex,
+            order_index: boardIndex,
+          })
+          .select()
+          .single();
+
+        if (boardError) throw boardError;
+
+        for (let questionIndex = 0; questionIndex < board.questions.length; questionIndex++) {
+          const question = board.questions[questionIndex];
+          
+          const { error: questionError } = await supabase
+            .from('questions')
+            .insert({
+              board_id: savedBoard.id,
+              title: question.title,
+              order_index: questionIndex,
+            });
+
+          if (questionError) throw questionError;
+        }
+      }
+
+      toast({
+        title: "Utkast sparat",
+        description: "Din workshop har sparats som utkast",
+      });
+
+      navigate('/dashboard');
+    } catch (error) {
+      console.error("Fel vid sparning av draft:", error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte spara utkast",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleActivate = async () => {
     console.log("🚀 [CreateWorkshop] Aktiverar workshop...");
     if (!validateWorkshop()) return;
 
-    const currentFacilitator = getCurrentFacilitator();
+    const currentFacilitator = await getCurrentFacilitator();
     if (!currentFacilitator) {
       toast({
         title: "Fel",
@@ -256,7 +385,8 @@ const CreateWorkshop = () => {
         code: codeToUse,
         date: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        facilitator_id: facilitator.id, // Lägg till facilitator_id
+        facilitator_id: facilitator.id,
+        status: 'active',
       };
 
       let savedWorkshop;
@@ -589,17 +719,35 @@ const CreateWorkshop = () => {
           ) : (
             <div className="space-y-4">
               {workshop.boards.map((board, index) => (
-                <BoardCard
+                <div
                   key={board.id}
-                  board={board}
-                  index={index}
-                  onUpdate={(updated) => updateBoard(board.id, updated)}
-                  onDelete={() => deleteBoard(board.id)}
-                />
+                  draggable={!hasResponses}
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragEnd={handleDragEnd}
+                  className={draggedBoardIndex === index ? "opacity-50" : ""}
+                >
+                  <BoardCard
+                    board={board}
+                    index={index}
+                    onUpdate={(updated) => updateBoard(board.id, updated)}
+                    onDelete={() => deleteBoard(board.id)}
+                    isDraggable={!hasResponses}
+                  />
+                </div>
               ))}
             </div>
           )}
         </div>
+
+        {/* Warning for published workshops with responses */}
+        {hasResponses && (
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-destructive text-sm font-medium">
+              Du kan inte redigera en redan publicerad workshop som innehåller deltagarnas svar
+            </p>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <Card className="bg-muted/50">
@@ -610,9 +758,10 @@ const CreateWorkshop = () => {
                 variant="outline"
                 size="lg"
                 className="w-full"
+                disabled={hasResponses || isLoadingResponses}
               >
                 <Save className="w-5 h-5 mr-2" />
-                Spara som Draft
+                Spara som Utkast
               </Button>
 
               <Button
@@ -620,6 +769,7 @@ const CreateWorkshop = () => {
                 variant="hero"
                 size="lg"
                 className="w-full"
+                disabled={hasResponses || isLoadingResponses}
               >
                 <Play className="w-5 h-5 mr-2" />
                 Aktivera Workshop
