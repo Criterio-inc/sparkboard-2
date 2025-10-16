@@ -26,7 +26,7 @@ const Index = () => {
             </h1>
             
             <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-              Samarbeta, brainstorma och skapa tillsammans. En modern plattform för interaktiva workshops.
+              Samarbeta, brainstorma och skapa tillsammans. Idélabbet är en interaktiv, enkel och modern plattform för kreativa workshops.
             </p>
 
             {/* Role Selection Cards */}
