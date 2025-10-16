@@ -25,36 +25,38 @@ const participantColors = [
 ];
 
 export const ParticipantList = ({ participants, onDeleteParticipant }: ParticipantListProps) => {
+  const useGridLayout = participants.length > 10;
+  
   return (
     <Card className="h-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Users className="w-5 h-5" />
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Users className="w-4 h-4" />
           Deltagare ({participants.length})
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+        <div className={`${useGridLayout ? 'grid grid-cols-2 gap-2' : 'space-y-2'}`}>
           {participants.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <div className="text-center py-6 text-muted-foreground col-span-2">
+              <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
               <p className="text-sm">Inga deltagare än</p>
             </div>
           ) : (
             participants.map((participant) => (
               <div
                 key={participant.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors group"
+                className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors group"
               >
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                     participantColors[participant.colorIndex % participantColors.length]
                   }`}
                 >
-                  <User className="w-5 h-5 text-gray-700" />
+                  <User className="w-4 h-4 text-gray-700" />
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium">{participant.name}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{participant.name}</p>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="w-3 h-3" />
                     <span>{participant.joinedAt}</span>
@@ -67,9 +69,9 @@ export const ParticipantList = ({ participants, onDeleteParticipant }: Participa
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-destructive hover:text-destructive"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 flex-shrink-0 text-destructive hover:text-destructive"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>

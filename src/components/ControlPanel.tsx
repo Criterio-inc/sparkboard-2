@@ -33,23 +33,23 @@ export const ControlPanel = ({
 }: ControlPanelProps) => {
   return (
     <Card className="bg-gradient-to-br from-card to-muted/20">
-      <CardContent className="pt-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <CardContent className="pt-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           <Button
             onClick={onToggleTimer}
             variant={isTimerRunning ? "destructive" : "default"}
-            size="lg"
-            className="h-auto py-4 flex-col gap-2"
+            size="sm"
+            className="h-auto py-3 flex-col gap-1.5"
           >
             {isTimerRunning ? (
               <>
-                <Pause className="w-6 h-6" />
-                <span className="text-sm">Pausa Timer</span>
+                <Pause className="w-4 h-4" />
+                <span className="text-xs">Pausa</span>
               </>
             ) : (
               <>
-                <Play className="w-6 h-6" />
-                <span className="text-sm">Starta Timer</span>
+                <Play className="w-4 h-4" />
+                <span className="text-xs">Starta</span>
               </>
             )}
           </Button>
@@ -57,49 +57,49 @@ export const ControlPanel = ({
           <Button
             onClick={onNextBoard}
             variant="secondary"
-            size="lg"
+            size="sm"
             disabled={!canGoNext}
-            className="h-auto py-4 flex-col gap-2"
+            className="h-auto py-3 flex-col gap-1.5"
           >
-            <SkipForward className="w-6 h-6" />
-            <span className="text-sm">Nästa Board</span>
+            <SkipForward className="w-4 h-4" />
+            <span className="text-xs">Nästa Board</span>
           </Button>
 
           <Button
             onClick={onAIAnalysis}
             variant="hero"
-            size="lg"
-            className="h-auto py-4 flex-col gap-2"
+            size="sm"
+            className="h-auto py-3 flex-col gap-1.5"
           >
-            <Sparkles className="w-6 h-6" />
-            <span className="text-sm">AI-Analys</span>
+            <Sparkles className="w-4 h-4" />
+            <span className="text-xs">AI-Analys</span>
           </Button>
 
           <Button
             onClick={onExportPDF}
             variant="outline"
-            size="lg"
-            className="h-auto py-4 flex-col gap-2"
+            size="sm"
+            className="h-auto py-3 flex-col gap-1.5"
           >
-            <FileText className="w-6 h-6" />
-            <span className="text-sm">Exportera PDF</span>
+            <FileText className="w-4 h-4" />
+            <span className="text-xs">Export PDF</span>
           </Button>
 
           <Button
             onClick={onToggleSound}
             variant="ghost"
-            size="lg"
-            className="h-auto py-4 flex-col gap-2"
+            size="sm"
+            className="h-auto py-3 flex-col gap-1.5"
           >
             {isSoundEnabled ? (
               <>
-                <Volume2 className="w-6 h-6" />
-                <span className="text-sm">Ljud På</span>
+                <Volume2 className="w-4 h-4" />
+                <span className="text-xs">Ljud På</span>
               </>
             ) : (
               <>
-                <VolumeX className="w-6 h-6" />
-                <span className="text-sm">Ljud Av</span>
+                <VolumeX className="w-4 h-4" />
+                <span className="text-xs">Ljud Av</span>
               </>
             )}
           </Button>

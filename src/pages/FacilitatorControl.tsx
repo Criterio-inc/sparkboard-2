@@ -60,6 +60,7 @@ const FacilitatorControl = () => {
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [aiAnalyses, setAIAnalyses] = useState<Record<string, string>>({});
   const [isControlPanelVisible, setIsControlPanelVisible] = useState(true);
+  const [isParticipantListVisible, setIsParticipantListVisible] = useState(true);
 
   // Ladda workshop och boards från Supabase
   useEffect(() => {
@@ -649,9 +650,9 @@ const FacilitatorControl = () => {
                       const qBoardColor = `hsl(var(--board-${(board.colorIndex % 5) + 1}))`;
 
                       return (
-                        <Card key={question.id} className="p-6 space-y-4">
+                        <Card key={question.id} className="p-4 space-y-3">
                           <div>
-                            <h2 className="text-lg font-semibold mb-1" style={{ color: qBoardColor }}>
+                            <h2 className="text-[0.95rem] font-semibold mb-1 leading-tight" style={{ color: qBoardColor }}>
                               {question.title}
                             </h2>
                             <p className="text-xs text-muted-foreground">
@@ -685,11 +686,38 @@ const FacilitatorControl = () => {
           </div>
 
           {/* Sidebar - 1 column on desktop, hidden on mobile/tablet (shows in separate tab/view) */}
-          <div className="hidden lg:block lg:col-span-1">
-            <ParticipantList 
-              participants={participants} 
-              onDeleteParticipant={handleDeleteParticipant}
-            />
+          <div className="hidden lg:block lg:col-span-1 space-y-2">
+            {/* Toggle-knapp för deltagarlistan */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsParticipantListVisible(!isParticipantListVisible)}
+              className="w-full justify-start gap-2"
+            >
+              {isParticipantListVisible ? (
+                <>
+                  <EyeOff className="w-4 h-4" />
+                  Dölj deltagare
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4" />
+                  Visa deltagare
+                </>
+              )}
+            </Button>
+            
+            {/* Deltagarlistan med smooth animation */}
+            <div 
+              className={`transition-all duration-300 overflow-hidden ${
+                isParticipantListVisible ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+              }`}
+            >
+              <ParticipantList 
+                participants={participants} 
+                onDeleteParticipant={handleDeleteParticipant}
+              />
+            </div>
           </div>
           
           {/* Mobile/Tablet ParticipantList - shown below boards */}
