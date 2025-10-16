@@ -2,12 +2,12 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Users, UserPlus, Sparkles, Bot } from "lucide-react";
-import { useTranslation } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import heroImage from "@/assets/hero-braindrain.jpg";
 const Index = () => {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
 
   return <div className="min-h-screen bg-background">
       {/* Hero Section */}

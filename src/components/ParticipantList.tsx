@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Users, Clock, User, Trash2 } from "lucide-react";
-import { useTranslation } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Participant {
   id: string;
@@ -25,7 +25,7 @@ const participantColors = [
 ];
 
 export const ParticipantList = ({ participants, onDeleteParticipant }: ParticipantListProps) => {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const useGridLayout = participants.length > 10;
   
   return (

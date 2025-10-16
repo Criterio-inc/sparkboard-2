@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Trash2, Plus, GripVertical } from "lucide-react";
-import { useTranslation } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Question {
   id: string;
@@ -35,7 +35,7 @@ const boardColors = [
 ];
 
 export const BoardCard = ({ board, index, onUpdate, onDelete, isDraggable = true }: BoardCardProps) => {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const boardColor = boardColors[board.colorIndex % boardColors.length];
 
   const addQuestion = () => {

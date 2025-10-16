@@ -7,7 +7,7 @@ import { StickyNote } from "@/components/StickyNote";
 import { AddNoteDialog } from "@/components/AddNoteDialog";
 import { Plus, ArrowLeft, Clock, Users, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useTranslation } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Question {
@@ -37,7 +37,7 @@ const BoardView = () => {
   const { workshopId, boardId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const [board, setBoard] = useState<Board | null>(null);

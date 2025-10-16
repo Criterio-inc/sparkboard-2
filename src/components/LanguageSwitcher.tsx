@@ -1,27 +1,31 @@
-import { useTranslation } from '@/lib/i18n';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
+import { Globe } from 'lucide-react';
 
 export const LanguageSwitcher = () => {
-  const { language, changeLanguage } = useTranslation();
+  const { language, setLanguage } = useLanguage();
   
   return (
-    <div className="flex gap-2">
-      <Button
-        variant={language === 'sv' ? 'default' : 'outline'}
-        size="sm"
-        onClick={() => changeLanguage('sv')}
-        className="min-w-[50px]"
-      >
-        SV
-      </Button>
-      <Button
-        variant={language === 'en' ? 'default' : 'outline'}
-        size="sm"
-        onClick={() => changeLanguage('en')}
-        className="min-w-[50px]"
-      >
-        EN
-      </Button>
+    <div className="flex items-center gap-2">
+      <Globe className="w-4 h-4 text-muted-foreground" />
+      <div className="flex gap-1 border rounded-lg p-1">
+        <Button
+          variant={language === 'sv' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setLanguage('sv')}
+          className="h-8 px-3"
+        >
+          SV
+        </Button>
+        <Button
+          variant={language === 'en' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setLanguage('en')}
+          className="h-8 px-3"
+        >
+          EN
+        </Button>
+      </div>
     </div>
   );
 };

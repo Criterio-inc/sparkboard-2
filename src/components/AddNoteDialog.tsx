@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useTranslation } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,7 @@ export const AddNoteDialog = ({
   questions,
   onSubmit,
 }: AddNoteDialogProps) => {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const [selectedQuestion, setSelectedQuestion] = useState<string>("");
   const [content, setContent] = useState("");
 

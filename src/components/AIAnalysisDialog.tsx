@@ -15,7 +15,7 @@ import { Loader2, Copy, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
-import { useTranslation } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Note {
   id: string;
@@ -47,7 +47,7 @@ export const AIAnalysisDialog = ({
   onAnalysisComplete,
 }: AIAnalysisDialogProps) => {
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const [customPrompt, setCustomPrompt] = useState(DEFAULT_PROMPT);
   const [analysis, setAnalysis] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);

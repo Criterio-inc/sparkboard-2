@@ -16,7 +16,7 @@ import {
   resetPinWithSecurityAnswer,
 } from "@/utils/facilitatorStorage";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useTranslation } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface FacilitatorAuthProps {
   open: boolean;
@@ -27,7 +27,7 @@ type Mode = "login" | "register" | "forgot-pin";
 
 const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const [mode, setMode] = useState<Mode>("login");
   const [selectedFacilitator, setSelectedFacilitator] = useState<any>(null);
   

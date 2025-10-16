@@ -9,7 +9,7 @@ import {
   Volume2,
   VolumeX
 } from "lucide-react";
-import { useTranslation } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ControlPanelProps {
   isTimerRunning: boolean;
@@ -32,7 +32,7 @@ export const ControlPanel = ({
   onToggleSound,
   canGoNext,
 }: ControlPanelProps) => {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   
   return (
     <Card className="shadow-[var(--shadow-card)]">

@@ -13,7 +13,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { generateUniqueWorkshopCode } from "@/utils/workshopStorage";
 import { getCurrentFacilitator } from "@/utils/facilitatorStorage";
 import { supabase } from "@/integrations/supabase/client";
-import { useTranslation } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Question {
   id: string;
@@ -39,7 +39,7 @@ interface Workshop {
 const CreateWorkshop = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const { id } = useParams();
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
