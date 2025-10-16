@@ -98,7 +98,7 @@ const Index = () => {
             <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center mx-auto mb-4">
               <UserPlus className="w-6 h-6 text-accent" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Flexibel Design</h3>
+            <h3 className="text-lg font-semibold mb-2">Responsiv design</h3>
             <p className="text-muted-foreground text-sm">
               Fungerar perfekt på mobil och desktop
             </p>
