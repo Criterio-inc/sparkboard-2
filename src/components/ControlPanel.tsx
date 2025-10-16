@@ -9,7 +9,7 @@ import {
   Volume2,
   VolumeX
 } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { useTranslation } from "@/lib/i18n";
 
 interface ControlPanelProps {
   isTimerRunning: boolean;
@@ -47,12 +47,12 @@ export const ControlPanel = ({
             {isTimerRunning ? (
               <>
                 <Pause className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
-                <span className="text-xs font-semibold">{t('controlPanel.pause')}</span>
+                <span className="text-xs font-semibold">{t('control.pause')}</span>
               </>
             ) : (
               <>
                 <Play className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
-                <span className="text-xs font-semibold">{t('controlPanel.start')}</span>
+                <span className="text-xs font-semibold">{t('control.start')}</span>
               </>
             )}
           </Button>
@@ -65,7 +65,7 @@ export const ControlPanel = ({
             className="h-auto py-3 flex-col gap-2 bg-gradient-to-r from-[hsl(var(--accent))] to-[hsl(var(--secondary))] hover:shadow-[var(--shadow-accent)] group"
           >
             <SkipForward className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
-            <span className="text-xs font-semibold">{t('controlPanel.nextBoard')}</span>
+            <span className="text-xs font-semibold">{t('control.nextBoard')}</span>
           </Button>
 
           <Button
@@ -75,7 +75,7 @@ export const ControlPanel = ({
             className="h-auto py-3 flex-col gap-2 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--primary-glow))] hover:shadow-[var(--shadow-button-hover)] group"
           >
             <Sparkles className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
-            <span className="text-xs font-semibold">{t('controlPanel.aiAnalysis')}</span>
+            <span className="text-xs font-semibold">{t('control.aiAnalysis')}</span>
           </Button>
 
           <Button
@@ -85,7 +85,7 @@ export const ControlPanel = ({
             className="h-auto py-3 flex-col gap-2 group"
           >
             <FileText className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
-            <span className="text-xs font-semibold">{t('controlPanel.exportPDF')}</span>
+            <span className="text-xs font-semibold">{t('control.exportPDF')}</span>
           </Button>
 
           <Button
@@ -97,12 +97,12 @@ export const ControlPanel = ({
             {isSoundEnabled ? (
               <>
                 <Volume2 className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
-                <span className="text-xs font-semibold">{t('controlPanel.soundOn')}</span>
+                <span className="text-xs font-semibold">{t('control.soundOn')}</span>
               </>
             ) : (
               <>
                 <VolumeX className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
-                <span className="text-xs font-semibold">{t('controlPanel.soundOff')}</span>
+                <span className="text-xs font-semibold">{t('control.soundOff')}</span>
               </>
             )}
           </Button>

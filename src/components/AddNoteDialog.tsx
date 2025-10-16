@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useTranslation } from "@/lib/i18n";
 import {
   Dialog,
   DialogContent,
@@ -42,18 +42,18 @@ export const AddNoteDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('addNoteDialog.title')}</DialogTitle>
+          <DialogTitle>{t('addNote.title')}</DialogTitle>
           <DialogDescription>
-            {t('addNoteDialog.selectQuestion')}
+            {t('addNote.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="question">{t('addNoteDialog.selectQuestion')}</Label>
+            <Label htmlFor="question">{t('addNote.selectQuestion')}</Label>
             <Select value={selectedQuestion} onValueChange={setSelectedQuestion}>
               <SelectTrigger id="question">
-                <SelectValue placeholder={t('addNoteDialog.selectQuestion')} />
+                <SelectValue placeholder={t('addNote.selectPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 {questions.map((q) => (
@@ -66,10 +66,10 @@ export const AddNoteDialog = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="content">{t('addNoteDialog.yourNote')}</Label>
+            <Label htmlFor="content">{t('addNote.noteContent')}</Label>
             <Textarea
               id="content"
-              placeholder={t('addNoteDialog.notePlaceholder')}
+              placeholder={t('addNote.notePlaceholder')}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={5}
@@ -87,14 +87,14 @@ export const AddNoteDialog = ({
               className="flex-1"
               variant="hero"
             >
-              {t('addNoteDialog.add')}
+              {t('addNote.submit')}
             </Button>
             <Button
               onClick={() => onOpenChange(false)}
               variant="outline"
               className="flex-1"
             >
-              {t('addNoteDialog.cancel')}
+              {t('addNote.cancel')}
             </Button>
           </div>
         </div>

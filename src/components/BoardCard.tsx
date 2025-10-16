@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Trash2, Plus, GripVertical } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { useTranslation } from "@/lib/i18n";
 
 interface Question {
   id: string;
@@ -93,7 +93,7 @@ export const BoardCard = ({ board, index, onUpdate, onDelete, isDraggable = true
                   color: boardColor,
                 }}
               >
-                {t('boardCard.boardLabel', { index: index + 1 })}
+                {t('boardCard.label', { index: (index + 1).toString() })}
               </div>
               
               <Button
@@ -107,11 +107,11 @@ export const BoardCard = ({ board, index, onUpdate, onDelete, isDraggable = true
             </div>
 
             <div className="space-y-2">
-              <Label>{t('boardCard.boardTitle')}</Label>
+              <Label>{t('boardCard.title')}</Label>
               <Input
                 value={board.title}
                 onChange={(e) => onUpdate({ ...board, title: e.target.value })}
-                placeholder={t('boardCard.boardTitlePlaceholder')}
+                placeholder={t('boardCard.titlePlaceholder')}
                 className="text-lg font-semibold"
               />
             </div>
@@ -133,7 +133,7 @@ export const BoardCard = ({ board, index, onUpdate, onDelete, isDraggable = true
 
       <CardContent className="space-y-4">
         <div className="space-y-3">
-          <Label className="text-sm font-semibold">{t('boardCard.questions', { current: board.questions.length, max: 5 })}</Label>
+          <Label className="text-sm font-semibold">{t('boardCard.questions', { current: board.questions.length.toString(), max: '5' })}</Label>
           
           {board.questions.map((question, qIndex) => (
             <div key={question.id} className="flex gap-2">
@@ -141,7 +141,7 @@ export const BoardCard = ({ board, index, onUpdate, onDelete, isDraggable = true
                 <Input
                   value={question.title}
                   onChange={(e) => updateQuestion(question.id, e.target.value)}
-                  placeholder={t('boardCard.questionPlaceholder', { index: qIndex + 1 })}
+                  placeholder={t('boardCard.questionPlaceholder', { index: (qIndex + 1).toString() })}
                 />
               </div>
               <Button

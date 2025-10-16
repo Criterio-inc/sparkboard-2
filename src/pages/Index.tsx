@@ -2,8 +2,9 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Users, UserPlus, Sparkles, Bot } from "lucide-react";
-import { useTranslation } from "react-i18next";
-import { LanguageThemeToggle } from "@/components/LanguageThemeToggle";
+import { useTranslation } from "@/lib/i18n";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import heroImage from "@/assets/hero-braindrain.jpg";
 const Index = () => {
   const { t } = useTranslation();
@@ -19,8 +20,9 @@ const Index = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/10" />
         
         {/* Language & Theme Toggle */}
-        <div className="absolute top-4 right-4 z-10">
-          <LanguageThemeToggle />
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
+          <ThemeToggle />
+          <LanguageSwitcher />
         </div>
         
         <div className="relative container mx-auto px-4 py-20">
@@ -31,11 +33,11 @@ const Index = () => {
             </div>
             
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-              {t('landing.title')}
+              {t('app.title')}
             </h1>
             
             <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-              {t('landing.subtitle')}
+              {t('app.tagline')}
             </p>
 
             {/* Role Selection Cards */}

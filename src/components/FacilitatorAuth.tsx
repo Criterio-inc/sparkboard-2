@@ -16,7 +16,7 @@ import {
   resetPinWithSecurityAnswer,
 } from "@/utils/facilitatorStorage";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useTranslation } from "react-i18next";
+import { useTranslation } from "@/lib/i18n";
 
 interface FacilitatorAuthProps {
   open: boolean;
@@ -55,8 +55,8 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
   const handleRegister = async () => {
     if (registerPin !== registerPinConfirm) {
       toast({
-        title: t('facilitatorAuth.pinMismatch'),
-        description: t('facilitatorAuth.pinMismatchDesc'),
+        title: t('auth.pinMismatch'),
+        description: t('auth.pinMismatchDesc'),
         variant: "destructive",
       });
       return;
@@ -74,13 +74,13 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
     if (result.success && result.facilitator) {
       await createSession(result.facilitator.id);
       toast({
-        title: t('facilitatorAuth.welcome'),
-        description: t('facilitatorAuth.welcomeDesc'),
+        title: t('auth.welcome'),
+        description: t('auth.welcomeDesc'),
       });
       onAuthenticated();
     } else {
       toast({
-        title: t('facilitatorAuth.registerFailed'),
+        title: t('auth.registerFailed'),
         description: result.error,
         variant: "destructive",
       });
@@ -90,8 +90,8 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
   const handleLogin = async () => {
     if (lockedOut) {
       toast({
-        title: t('facilitatorAuth.accountLocked'),
-        description: t('facilitatorAuth.accountLockedDesc'),
+        title: t('auth.accountLocked'),
+        description: t('auth.accountLockedDesc'),
         variant: "destructive",
       });
       return;
@@ -99,8 +99,8 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
 
     if (!loginName.trim()) {
       toast({
-        title: t('facilitatorAuth.nameRequired'),
-        description: t('facilitatorAuth.nameRequiredDesc'),
+        title: t('auth.nameRequired'),
+        description: t('auth.nameRequiredDesc'),
         variant: "destructive",
       });
       return;
@@ -114,8 +114,8 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
     if (!facilitator) {
       setLoading(false);
       toast({
-        title: t('facilitatorAuth.accountNotFound'),
-        description: t('facilitatorAuth.accountNotFoundDesc'),
+        title: t('auth.accountNotFound'),
+        description: t('auth.accountNotFoundDesc'),
         variant: "destructive",
       });
       return;
@@ -129,17 +129,17 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
     if (isValid) {
       await createSession(facilitator.id);
       toast({
-        title: t('facilitatorAuth.loggedIn'),
-        description: t('facilitatorAuth.welcomeBack'),
+        title: t('auth.loggedIn'),
+        description: t('auth.welcomeBack'),
       });
       onAuthenticated();
     } else {
       const remaining = getRemainingAttempts();
       toast({
-        title: t('facilitatorAuth.incorrectPin'),
+        title: t('auth.incorrectPin'),
         description: remaining > 0 
-          ? t('facilitatorAuth.attemptsLeft', { count: remaining })
-          : t('facilitatorAuth.accountNowLocked'),
+          ? t('auth.attemptsLeft', { count: remaining.toString() })
+          : t('auth.accountNowLocked'),
         variant: "destructive",
       });
       setLoginPin("");
@@ -149,7 +149,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
   const handleForgotPin = async () => {
     if (newPin !== newPinConfirm) {
       toast({
-        title: t('facilitatorAuth.pinMismatch'),
+        title: t('auth.pinMismatch'),
         variant: "destructive",
       });
       return;
@@ -157,7 +157,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
 
     if (!selectedFacilitator) {
       toast({
-        title: t('facilitatorAuth.noAccountSelected'),
+        title: t('auth.noAccountSelected'),
         variant: "destructive",
       });
       return;
@@ -173,8 +173,8 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
 
     if (result.success) {
       toast({
-        title: t('facilitatorAuth.pinReset'),
-        description: t('facilitatorAuth.pinResetDesc'),
+        title: t('auth.pinReset'),
+        description: t('auth.pinResetDesc'),
       });
       setMode("login");
       setForgotAnswer("");
@@ -183,7 +183,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
       setSelectedFacilitator(null);
     } else {
       toast({
-        title: t('facilitatorAuth.resetFailed'),
+        title: t('auth.resetFailed'),
         description: result.error,
         variant: "destructive",
       });
@@ -195,10 +195,10 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <Lock className="w-5 h-5 text-primary" />
-          {t('facilitatorAuth.loginTitle')}
+          {t('auth.loginTitle')}
         </DialogTitle>
         <DialogDescription>
-          {t('facilitatorAuth.loginDescription')}
+          {t('auth.loginDescription')}
         </DialogDescription>
       </DialogHeader>
 
@@ -207,7 +207,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {t('facilitatorAuth.lockedOut')}
+              {t('auth.lockedOut')}
             </AlertDescription>
           </Alert>
         )}
@@ -216,25 +216,25 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {t('facilitatorAuth.attemptsRemaining', { count: remainingAttempts })}
+              {t('auth.attemptsRemaining', { count: remainingAttempts.toString() })}
             </AlertDescription>
           </Alert>
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="login-name">{t('facilitatorAuth.name')}</Label>
+          <Label htmlFor="login-name">{t('auth.name')}</Label>
           <Input
             id="login-name"
             type="text"
             value={loginName}
             onChange={(e) => setLoginName(e.target.value)}
-            placeholder={t('facilitatorAuth.namePlaceholder')}
+            placeholder={t('auth.namePlaceholder')}
             disabled={lockedOut || loading}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="login-pin">{t('facilitatorAuth.pin')}</Label>
+          <Label htmlFor="login-pin">{t('auth.pin')}</Label>
           <Input
             id="login-pin"
             type="password"
@@ -247,7 +247,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
                 handleLogin();
               }
             }}
-            placeholder={t('facilitatorAuth.pinPlaceholder')}
+            placeholder={t('auth.pinPlaceholder')}
             disabled={lockedOut || loading}
             className="text-center text-2xl tracking-widest"
           />
@@ -258,7 +258,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
           disabled={loginPin.length < 4 || !loginName.trim() || lockedOut || loading}
           className="w-full"
         >
-          {t('facilitatorAuth.loginButton')}
+          {t('auth.loginButton')}
         </Button>
 
         <div className="relative">
@@ -267,7 +267,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-background px-2 text-muted-foreground">
-              {t('facilitatorAuth.or')}
+              {t('auth.or')}
             </span>
           </div>
         </div>
@@ -277,7 +277,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
           className="w-full"
           onClick={() => setMode("register")}
         >
-          {t('facilitatorAuth.createAccount')}
+          {t('auth.createAccount')}
         </Button>
       </div>
     </>
@@ -288,26 +288,26 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <User className="w-5 h-5 text-primary" />
-          {t('facilitatorAuth.registerTitle')}
+          {t('auth.registerTitle')}
         </DialogTitle>
         <DialogDescription>
-          {t('facilitatorAuth.registerDescription')}
+          {t('auth.registerDescription')}
         </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4 py-4">
         <div className="space-y-2">
-          <Label htmlFor="name">{t('facilitatorAuth.nameOptional')}</Label>
+          <Label htmlFor="name">{t('auth.nameOptional')}</Label>
           <Input
             id="name"
             value={registerName}
             onChange={(e) => setRegisterName(e.target.value)}
-            placeholder={t('facilitatorAuth.nameOptionalPlaceholder')}
+            placeholder={t('auth.nameOptionalPlaceholder')}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="pin">{t('facilitatorAuth.createPin')}</Label>
+          <Label htmlFor="pin">{t('auth.createPin')}</Label>
           <Input
             id="pin"
             type="password"
@@ -315,13 +315,13 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             maxLength={6}
             value={registerPin}
             onChange={(e) => setRegisterPin(e.target.value.replace(/\D/g, ""))}
-            placeholder={t('facilitatorAuth.pinPlaceholder')}
+            placeholder={t('auth.pinPlaceholder')}
             className="text-center text-2xl tracking-widest"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="pin-confirm">{t('facilitatorAuth.confirmPin')}</Label>
+          <Label htmlFor="pin-confirm">{t('auth.confirmPin')}</Label>
           <Input
             id="pin-confirm"
             type="password"
@@ -329,34 +329,34 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             maxLength={6}
             value={registerPinConfirm}
             onChange={(e) => setRegisterPinConfirm(e.target.value.replace(/\D/g, ""))}
-            placeholder={t('facilitatorAuth.pinPlaceholder')}
+            placeholder={t('auth.pinPlaceholder')}
             className="text-center text-2xl tracking-widest"
           />
         </div>
 
         <div className="border-t pt-4 space-y-4">
           <p className="text-sm text-muted-foreground">
-            {t('facilitatorAuth.securityInfo')}
+            {t('auth.securityInfo')}
           </p>
           
           <div className="space-y-2">
-            <Label htmlFor="security-question">{t('facilitatorAuth.securityQuestion')}</Label>
+            <Label htmlFor="security-question">{t('auth.securityQuestion')}</Label>
             <Input
               id="security-question"
               value={securityQuestion}
               onChange={(e) => setSecurityQuestion(e.target.value)}
-              placeholder={t('facilitatorAuth.securityQuestionPlaceholder')}
+              placeholder={t('auth.securityQuestionPlaceholder')}
             />
           </div>
 
           {securityQuestion && (
             <div className="space-y-2">
-              <Label htmlFor="security-answer">{t('facilitatorAuth.securityAnswer')}</Label>
+              <Label htmlFor="security-answer">{t('auth.securityAnswer')}</Label>
               <Input
                 id="security-answer"
                 value={securityAnswer}
                 onChange={(e) => setSecurityAnswer(e.target.value)}
-                placeholder={t('facilitatorAuth.securityAnswerPlaceholder')}
+                placeholder={t('auth.securityAnswerPlaceholder')}
               />
             </div>
           )}
@@ -368,7 +368,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             variant="outline"
             className="flex-1"
           >
-            {t('facilitatorAuth.cancel')}
+            {t('auth.cancel')}
           </Button>
           <Button
             onClick={handleRegister}
@@ -379,7 +379,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             }
             className="flex-1"
           >
-            {t('facilitatorAuth.createAccountButton')}
+            {t('auth.createAccountButton')}
           </Button>
         </div>
       </div>
@@ -389,30 +389,30 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
   const renderForgotPin = () => (
     <>
       <DialogHeader>
-        <DialogTitle>{t('facilitatorAuth.resetPinTitle')}</DialogTitle>
+        <DialogTitle>{t('auth.resetPinTitle')}</DialogTitle>
         <DialogDescription>
-          {t('facilitatorAuth.resetPinDescription')}
+          {t('auth.resetPinDescription')}
         </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4 py-4">
         <div className="space-y-2">
-          <Label>{t('facilitatorAuth.securityQuestionLabel')}</Label>
+          <Label>{t('auth.securityQuestionLabel')}</Label>
           <p className="text-sm font-medium">{selectedFacilitator?.securityQuestion}</p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="security-answer">{t('facilitatorAuth.yourAnswer')}</Label>
+          <Label htmlFor="security-answer">{t('auth.yourAnswer')}</Label>
           <Input
             id="security-answer"
             value={forgotAnswer}
             onChange={(e) => setForgotAnswer(e.target.value)}
-            placeholder={t('facilitatorAuth.yourAnswerPlaceholder')}
+            placeholder={t('auth.yourAnswerPlaceholder')}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="new-pin">{t('facilitatorAuth.newPin')}</Label>
+          <Label htmlFor="new-pin">{t('auth.newPin')}</Label>
           <Input
             id="new-pin"
             type="password"
@@ -420,13 +420,13 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             maxLength={6}
             value={newPin}
             onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
-            placeholder={t('facilitatorAuth.pinPlaceholder')}
+            placeholder={t('auth.pinPlaceholder')}
             className="text-center text-2xl tracking-widest"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="new-pin-confirm">{t('facilitatorAuth.confirmNewPin')}</Label>
+          <Label htmlFor="new-pin-confirm">{t('auth.confirmNewPin')}</Label>
           <Input
             id="new-pin-confirm"
             type="password"
@@ -434,7 +434,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             maxLength={6}
             value={newPinConfirm}
             onChange={(e) => setNewPinConfirm(e.target.value.replace(/\D/g, ""))}
-            placeholder={t('facilitatorAuth.pinPlaceholder')}
+            placeholder={t('auth.pinPlaceholder')}
             className="text-center text-2xl tracking-widest"
           />
         </div>
@@ -450,7 +450,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             variant="outline"
             className="flex-1"
           >
-            {t('facilitatorAuth.cancel')}
+            {t('auth.cancel')}
           </Button>
           <Button
             onClick={handleForgotPin}
@@ -462,7 +462,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             }
             className="flex-1"
           >
-            {t('facilitatorAuth.resetButton')}
+            {t('auth.resetButton')}
           </Button>
         </div>
       </div>

@@ -15,7 +15,7 @@ import { Loader2, Copy, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
-import { useTranslation } from "react-i18next";
+import { useTranslation } from "@/lib/i18n";
 
 interface Note {
   id: string;
@@ -73,7 +73,7 @@ export const AIAnalysisDialog = ({
 
       if (data.error) {
         toast({
-          title: t('aiAnalysisDialog.analysisError'),
+          title: t('common.error'),
           description: data.error,
           variant: "destructive",
         });
@@ -88,14 +88,14 @@ export const AIAnalysisDialog = ({
       }
       
       toast({
-        title: t('aiAnalysisDialog.analysisComplete'),
-        description: t('aiAnalysisDialog.analysisCompleteDesc'),
+        title: "Analys klar!",
+        description: "AI-analysen är nu tillgänglig",
       });
     } catch (error) {
       console.error("Analysis error:", error);
       toast({
-        title: t('aiAnalysisDialog.generalError'),
-        description: t('aiAnalysisDialog.generalErrorDesc'),
+        title: t('common.error'),
+        description: "Kunde inte genomföra analysen. Försök igen.",
         variant: "destructive",
       });
     } finally {
@@ -108,14 +108,14 @@ export const AIAnalysisDialog = ({
       await navigator.clipboard.writeText(analysis);
       setCopied(true);
       toast({
-        title: t('aiAnalysisDialog.copySuccess'),
-        description: t('aiAnalysisDialog.copySuccessDesc'),
+        title: "Kopierat!",
+        description: "Analysen har kopierats till urklipp",
       });
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       toast({
-        title: t('aiAnalysisDialog.copyError'),
-        description: t('aiAnalysisDialog.copyErrorDesc'),
+        title: t('common.error'),
+        description: "Kunde inte kopiera. Försök igen.",
         variant: "destructive",
       });
     }
@@ -125,9 +125,9 @@ export const AIAnalysisDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl h-[80vh]">
         <DialogHeader>
-          <DialogTitle>{t('aiAnalysisDialog.title', { boardTitle })}</DialogTitle>
+          <DialogTitle>{t('ai.title', { boardTitle })}</DialogTitle>
           <DialogDescription>
-            {t('aiAnalysisDialog.description', { count: notes.length })}
+            {t('ai.description', { count: notes.length.toString() })}
           </DialogDescription>
         </DialogHeader>
 
@@ -136,7 +136,7 @@ export const AIAnalysisDialog = ({
           <div className="space-y-4">
             <div>
               <Label className="text-sm font-semibold mb-2 block">
-                {t('aiAnalysisDialog.notesLabel', { count: notes.length })}
+                {t('ai.notesLabel', { count: notes.length.toString() })}
               </Label>
               <ScrollArea className="h-[300px] rounded-lg border p-4 bg-muted/20">
                 <div className="space-y-3">
@@ -150,13 +150,13 @@ export const AIAnalysisDialog = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="prompt">{t('aiAnalysisDialog.customPrompt')}</Label>
+              <Label htmlFor="prompt">{t('ai.customPrompt')}</Label>
               <Textarea
                 id="prompt"
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
                 rows={4}
-                placeholder={t('aiAnalysisDialog.promptPlaceholder')}
+                placeholder={t('ai.promptPlaceholder')}
                 className="resize-none"
               />
             </div>
@@ -171,10 +171,10 @@ export const AIAnalysisDialog = ({
               {isAnalyzing ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  {t('aiAnalysisDialog.analyzing')}
+                  {t('ai.analyzing')}
                 </>
               ) : (
-                t('aiAnalysisDialog.analyzeButton')
+                t('ai.analyzeButton')
               )}
             </Button>
           </div>
@@ -182,7 +182,7 @@ export const AIAnalysisDialog = ({
           {/* Right: AI Analysis */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold">{t('aiAnalysisDialog.aiAnalysisLabel')}</Label>
+              <Label className="text-sm font-semibold">{t('ai.aiAnalysisLabel')}</Label>
               {analysis && (
                 <Button
                   onClick={handleCopy}
@@ -193,12 +193,12 @@ export const AIAnalysisDialog = ({
                   {copied ? (
                     <>
                       <CheckCircle2 className="w-4 h-4 mr-2" />
-                      {t('aiAnalysisDialog.copied')}
+                      {t('ai.copy')}
                     </>
                   ) : (
                     <>
                       <Copy className="w-4 h-4 mr-2" />
-                      {t('aiAnalysisDialog.copy')}
+                      {t('ai.copy')}
                     </>
                   )}
                 </Button>
@@ -209,8 +209,8 @@ export const AIAnalysisDialog = ({
               {isAnalyzing ? (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                   <Loader2 className="w-12 h-12 animate-spin mb-4" />
-                  <p>{t('aiAnalysisDialog.analyzingStatus')}</p>
-                  <p className="text-sm mt-2">{t('aiAnalysisDialog.analyzingWait')}</p>
+                  <p>{t('ai.analyzingStatus')}</p>
+                  <p className="text-sm mt-2">{t('ai.analyzingWait')}</p>
                 </div>
               ) : analysis ? (
                 <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -218,7 +218,7 @@ export const AIAnalysisDialog = ({
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <p>{t('aiAnalysisDialog.clickToStart')}</p>
+                  <p>{t('ai.clickToStart')}</p>
                 </div>
               )}
             </ScrollArea>

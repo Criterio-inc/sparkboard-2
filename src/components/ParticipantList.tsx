@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Users, Clock, User, Trash2 } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { useTranslation } from "@/lib/i18n";
 
 interface Participant {
   id: string;
@@ -31,9 +31,9 @@ export const ParticipantList = ({ participants, onDeleteParticipant }: Participa
   return (
     <Card className="h-full">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2 text-base">
           <Users className="w-4 h-4" />
-          {t('participantList.title', { count: participants.length })}
+          {t('participants.title', { count: participants.length.toString() })}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -41,7 +41,7 @@ export const ParticipantList = ({ participants, onDeleteParticipant }: Participa
           {participants.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground col-span-2">
               <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">{t('participantList.noParticipants')}</p>
+              <p className="text-sm">{t('participants.noParticipants')}</p>
             </div>
           ) : (
             participants.map((participant) => (
@@ -77,18 +77,18 @@ export const ParticipantList = ({ participants, onDeleteParticipant }: Participa
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>{t('participantList.deleteConfirm')}</AlertDialogTitle>
+                        <AlertDialogTitle>{t('participants.deleteConfirm')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          {t('participantList.deleteConfirmDesc', { name: participant.name })}
+                          {t('participants.deleteConfirmDesc', { name: participant.name })}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>{t('participantList.cancel')}</AlertDialogCancel>
+                        <AlertDialogCancel>{t('participants.cancel')}</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => onDeleteParticipant(participant.id)}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                          {t('participantList.delete')}
+                          {t('participants.delete')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

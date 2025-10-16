@@ -13,7 +13,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { generateUniqueWorkshopCode } from "@/utils/workshopStorage";
 import { getCurrentFacilitator } from "@/utils/facilitatorStorage";
 import { supabase } from "@/integrations/supabase/client";
-import { useTranslation } from "react-i18next";
+import { useTranslation } from "@/lib/i18n";
 
 interface Question {
   id: string;
