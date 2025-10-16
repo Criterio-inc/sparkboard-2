@@ -78,7 +78,7 @@ const Index = () => {
             <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Sparkles className="w-6 h-6 text-primary" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Real-time Samarbete</h3>
+            <h3 className="text-lg font-semibold mb-2">Samarbeta i realtid</h3>
             <p className="text-muted-foreground text-sm">
               Se alla bidrag direkt när de skapas
             </p>
