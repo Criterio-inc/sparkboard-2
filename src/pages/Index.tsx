@@ -90,7 +90,7 @@ const Index = () => {
             </div>
             <h3 className="text-lg font-semibold mb-2">Enkel åtkomst</h3>
             <p className="text-muted-foreground text-sm">
-              Gå med via 6-siffrig kod - inget konto krävs
+              Gå med via 6-siffrig kod eller QR - inget konto krävs
             </p>
           </div>
           
