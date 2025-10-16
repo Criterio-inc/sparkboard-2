@@ -1,0 +1,21 @@
+{
+  "name": "Sparkboard",
+  "short_name": "Sparkboard",
+  "description": "Interactive workshop platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F3DADF",
+  "theme_color": "#19305C",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

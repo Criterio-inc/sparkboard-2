@@ -1,0 +1,21 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sparkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#19305C;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#AE7DAC;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F1916D;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="32" height="32" rx="6" fill="url(#sparkGradient)"/>
+  
+  <!-- Spark/lightning bolt shape -->
+  <path d="M16 6 L18 13 L22 13 L17 18 L19 25 L13 19 L10 19 L14 13 L12 6 Z" 
+        fill="white" 
+        opacity="0.95"/>
+  
+  <!-- Small sparkles -->
+  <circle cx="8" cy="9" r="1.5" fill="white" opacity="0.7"/>
+  <circle cx="25" cy="23" r="1.5" fill="white" opacity="0.7"/>
+  <circle cx="24" cy="9" r="1" fill="white" opacity="0.6"/>
+</svg>
