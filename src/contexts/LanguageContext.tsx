@@ -13,7 +13,8 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 const translations: Record<Language, Record<string, string>> = {
   sv: {
     // LANDING
-    'app.title': 'Idélabbet',
+    'app.title': 'Sparkboard',
+    'app.description': 'Sparkboard är en interaktiv plattform för kreativa workshops med sticky-notes och AI-analys',
     'app.tagline': 'Samarbeta, brainstorma och skapa tillsammans',
     'landing.facilitator.title': 'Facilitator',
     'landing.facilitator.description': 'Skapa och hantera workshops. Bjud in deltagare och få insikter i realtid.',
@@ -295,7 +296,7 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.terms': 'Användarvillkor',
     'footer.cookies': 'Cookie-policy',
     'footer.contact': 'Kontakt',
-    'footer.copyright': '© 2025 Idélabbet. Alla rättigheter förbehållna.',
+    'footer.copyright': '© 2025 Sparkboard. Alla rättigheter förbehållna.',
     
     // NOT FOUND
     'notFound.title': 'Sidan hittades inte',
@@ -305,7 +306,8 @@ const translations: Record<Language, Record<string, string>> = {
   
   en: {
     // LANDING
-    'app.title': 'Idélabbet',
+    'app.title': 'Sparkboard',
+    'app.description': 'Sparkboard is an interactive platform for creative workshops with sticky-notes and AI analysis',
     'app.tagline': 'Collaborate, brainstorm and create together',
     'landing.facilitator.title': 'Facilitator',
     'landing.facilitator.description': 'Create and manage workshops. Invite participants and get real-time insights.',
@@ -587,7 +589,7 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.terms': 'Terms of Service',
     'footer.cookies': 'Cookie Policy',
     'footer.contact': 'Contact',
-    'footer.copyright': '© 2025 Idélabbet. All rights reserved.',
+    'footer.copyright': '© 2025 Sparkboard. All rights reserved.',
     
     // NOT FOUND
     'notFound.title': 'Page not found',
