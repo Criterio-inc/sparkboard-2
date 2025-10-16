@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { getCurrentFacilitator, clearSession, updateSessionTimestamp, getAllFacilitators, deleteFacilitator } from "@/utils/facilitatorStorage";
+import { getCurrentFacilitator, clearSession, updateSessionTimestamp, getAllFacilitators, deleteFacilitator, syncLocalFacilitatorsToBackend } from "@/utils/facilitatorStorage";
 import FacilitatorAuth from "@/components/FacilitatorAuth";
 import { LogOut, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +38,9 @@ const WorkshopDashboard = () => {
 
   useEffect(() => {
     const initializeFacilitator = async () => {
+      // One-time sync of local facilitators to backend
+      await syncLocalFacilitatorsToBackend();
+      
       const currentFacilitator = await getCurrentFacilitator();
       setFacilitator(currentFacilitator);
       if (currentFacilitator) {

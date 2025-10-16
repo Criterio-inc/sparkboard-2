@@ -6,10 +6,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, User, Shield, AlertCircle } from "lucide-react";
 import {
-  createFacilitator,
-  validatePin,
+  createFacilitatorInBackend,
+  getFacilitatorByName,
+  validatePinById,
   createSession,
-  getAllFacilitators,
   isLockedOut,
   recordLoginAttempt,
   getRemainingAttempts,
@@ -22,12 +22,12 @@ interface FacilitatorAuthProps {
   onAuthenticated: () => void;
 }
 
-type Mode = "select" | "login" | "register" | "forgot-pin";
+type Mode = "login" | "register" | "forgot-pin";
 
 const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
   const { toast } = useToast();
-  const [mode, setMode] = useState<Mode>("select");
-  const [selectedFacilitatorId, setSelectedFacilitatorId] = useState("");
+  const [mode, setMode] = useState<Mode>("login");
+  const [selectedFacilitator, setSelectedFacilitator] = useState<any>(null);
   
   // Register fields
   const [registerName, setRegisterName] = useState("");
@@ -37,6 +37,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
   const [securityAnswer, setSecurityAnswer] = useState("");
   
   // Login fields
+  const [loginName, setLoginName] = useState("");
   const [loginPin, setLoginPin] = useState("");
   
   // Forgot PIN fields
@@ -46,7 +47,6 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
   
   const [loading, setLoading] = useState(false);
 
-  const facilitators = getAllFacilitators();
   const lockedOut = isLockedOut();
   const remainingAttempts = getRemainingAttempts();
 
@@ -61,7 +61,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
     }
 
     setLoading(true);
-    const result = await createFacilitator(
+    const result = await createFacilitatorInBackend(
       registerName,
       registerPin,
       securityQuestion || undefined,
@@ -95,14 +95,37 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
       return;
     }
 
+    if (!loginName.trim()) {
+      toast({
+        title: "Namn krävs",
+        description: "Ange ditt namn för att logga in",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
-    const isValid = await validatePin(selectedFacilitatorId, loginPin);
+    
+    // Fetch facilitator by name
+    const facilitator = await getFacilitatorByName(loginName);
+    
+    if (!facilitator) {
+      setLoading(false);
+      toast({
+        title: "Kontot hittades inte",
+        description: "Inget konto finns med detta namn",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const isValid = await validatePinById(facilitator.id, loginPin);
     setLoading(false);
 
     recordLoginAttempt(isValid);
 
     if (isValid) {
-      await createSession(selectedFacilitatorId);
+      await createSession(facilitator.id);
       toast({
         title: "Inloggad!",
         description: "Välkommen tillbaka",
@@ -130,9 +153,17 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
       return;
     }
 
+    if (!selectedFacilitator) {
+      toast({
+        title: "Inget konto valt",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     const result = await resetPinWithSecurityAnswer(
-      selectedFacilitatorId,
+      selectedFacilitator.id,
       forgotAnswer,
       newPin
     );
@@ -147,6 +178,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
       setForgotAnswer("");
       setNewPin("");
       setNewPinConfirm("");
+      setSelectedFacilitator(null);
     } else {
       toast({
         title: "Återställning misslyckades",
@@ -156,38 +188,76 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
     }
   };
 
-  const renderSelect = () => (
+  const renderLogin = () => (
     <>
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
-          <Shield className="w-5 h-5 text-primary" />
+          <Lock className="w-5 h-5 text-primary" />
           Facilitator Inloggning
         </DialogTitle>
         <DialogDescription>
-          Välj ditt konto eller skapa ett nytt
+          Logga in med ditt namn och PIN-kod
         </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4 py-4">
-        {facilitators.length > 0 && (
-          <div className="space-y-2">
-            <Label>Välj facilitator</Label>
-            {facilitators.map((facilitator) => (
-              <Button
-                key={facilitator.id}
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => {
-                  setSelectedFacilitatorId(facilitator.id);
-                  setMode("login");
-                }}
-              >
-                <User className="w-4 h-4 mr-2" />
-                {facilitator.name}
-              </Button>
-            ))}
-          </div>
+        {lockedOut && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              För många felaktiga försök. Kontot är låst i 5 minuter.
+            </AlertDescription>
+          </Alert>
         )}
+
+        {!lockedOut && remainingAttempts < 3 && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {remainingAttempts} försök kvar innan kontot låses
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="login-name">Namn</Label>
+          <Input
+            id="login-name"
+            type="text"
+            value={loginName}
+            onChange={(e) => setLoginName(e.target.value)}
+            placeholder="Ditt namn"
+            disabled={lockedOut || loading}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="login-pin">PIN-kod (4-6 siffror)</Label>
+          <Input
+            id="login-pin"
+            type="password"
+            inputMode="numeric"
+            maxLength={6}
+            value={loginPin}
+            onChange={(e) => setLoginPin(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && loginPin.length >= 4 && loginName.trim()) {
+                handleLogin();
+              }
+            }}
+            placeholder="••••"
+            disabled={lockedOut || loading}
+            className="text-center text-2xl tracking-widest"
+          />
+        </div>
+
+        <Button
+          onClick={handleLogin}
+          disabled={loginPin.length < 4 || !loginName.trim() || lockedOut || loading}
+          className="w-full"
+        >
+          Logga in
+        </Button>
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
@@ -195,109 +265,21 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-background px-2 text-muted-foreground">
-              {facilitators.length > 0 ? "Eller" : "Kom igång"}
+              Eller
             </span>
           </div>
         </div>
 
         <Button
-          onClick={() => setMode("register")}
+          variant="outline"
           className="w-full"
-          variant="default"
+          onClick={() => setMode("register")}
         >
-          Skapa nytt facilitator-konto
+          Skapa nytt konto
         </Button>
       </div>
     </>
   );
-
-  const renderLogin = () => {
-    const facilitator = facilitators.find(f => f.id === selectedFacilitatorId);
-    
-    return (
-      <>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Lock className="w-5 h-5 text-primary" />
-            Ange PIN-kod
-          </DialogTitle>
-          <DialogDescription>
-            Logga in som {facilitator?.name}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          {lockedOut && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                För många felaktiga försök. Kontot är låst i 5 minuter.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {!lockedOut && remainingAttempts < 3 && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {remainingAttempts} försök kvar innan kontot låses
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="login-pin">PIN-kod (4-6 siffror)</Label>
-            <Input
-              id="login-pin"
-              type="password"
-              inputMode="numeric"
-              maxLength={6}
-              value={loginPin}
-              onChange={(e) => setLoginPin(e.target.value.replace(/\D/g, ""))}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && loginPin.length >= 4) {
-                  handleLogin();
-                }
-              }}
-              placeholder="••••"
-              disabled={lockedOut || loading}
-              className="text-center text-2xl tracking-widest"
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              onClick={() => {
-                setMode("select");
-                setLoginPin("");
-              }}
-              variant="outline"
-              className="flex-1"
-            >
-              Tillbaka
-            </Button>
-            <Button
-              onClick={handleLogin}
-              disabled={loginPin.length < 4 || lockedOut || loading}
-              className="flex-1"
-            >
-              Logga in
-            </Button>
-          </div>
-
-          {facilitator?.securityQuestion && (
-            <Button
-              variant="link"
-              className="w-full text-sm"
-              onClick={() => setMode("forgot-pin")}
-            >
-              Glömt PIN-kod?
-            </Button>
-          )}
-        </div>
-      </>
-    );
-  };
 
   const renderRegister = () => (
     <>
@@ -380,7 +362,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
 
         <div className="flex gap-2">
           <Button
-            onClick={() => setMode("select")}
+            onClick={() => setMode("login")}
             variant="outline"
             className="flex-1"
           >
@@ -402,97 +384,92 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
     </>
   );
 
-  const renderForgotPin = () => {
-    const facilitator = facilitators.find(f => f.id === selectedFacilitatorId);
-    
-    return (
-      <>
-        <DialogHeader>
-          <DialogTitle>Återställ PIN-kod</DialogTitle>
-          <DialogDescription>
-            Svara på säkerhetsfrågan för att skapa en ny PIN
-          </DialogDescription>
-        </DialogHeader>
+  const renderForgotPin = () => (
+    <>
+      <DialogHeader>
+        <DialogTitle>Återställ PIN-kod</DialogTitle>
+        <DialogDescription>
+          Svara på säkerhetsfrågan för att skapa en ny PIN
+        </DialogDescription>
+      </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Säkerhetsfråga</Label>
-            <p className="text-sm font-medium">{facilitator?.securityQuestion}</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="security-answer">Ditt svar</Label>
-            <Input
-              id="security-answer"
-              value={forgotAnswer}
-              onChange={(e) => setForgotAnswer(e.target.value)}
-              placeholder="Ange ditt svar"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="new-pin">Ny PIN-kod (4-6 siffror)</Label>
-            <Input
-              id="new-pin"
-              type="password"
-              inputMode="numeric"
-              maxLength={6}
-              value={newPin}
-              onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
-              placeholder="••••"
-              className="text-center text-2xl tracking-widest"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="new-pin-confirm">Bekräfta ny PIN-kod</Label>
-            <Input
-              id="new-pin-confirm"
-              type="password"
-              inputMode="numeric"
-              maxLength={6}
-              value={newPinConfirm}
-              onChange={(e) => setNewPinConfirm(e.target.value.replace(/\D/g, ""))}
-              placeholder="••••"
-              className="text-center text-2xl tracking-widest"
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              onClick={() => {
-                setMode("login");
-                setForgotAnswer("");
-                setNewPin("");
-                setNewPinConfirm("");
-              }}
-              variant="outline"
-              className="flex-1"
-            >
-              Avbryt
-            </Button>
-            <Button
-              onClick={handleForgotPin}
-              disabled={
-                !forgotAnswer ||
-                newPin.length < 4 ||
-                newPin !== newPinConfirm ||
-                loading
-              }
-              className="flex-1"
-            >
-              Återställ PIN
-            </Button>
-          </div>
+      <div className="space-y-4 py-4">
+        <div className="space-y-2">
+          <Label>Säkerhetsfråga</Label>
+          <p className="text-sm font-medium">{selectedFacilitator?.securityQuestion}</p>
         </div>
-      </>
-    );
-  };
+
+        <div className="space-y-2">
+          <Label htmlFor="security-answer">Ditt svar</Label>
+          <Input
+            id="security-answer"
+            value={forgotAnswer}
+            onChange={(e) => setForgotAnswer(e.target.value)}
+            placeholder="Ange ditt svar"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="new-pin">Ny PIN-kod (4-6 siffror)</Label>
+          <Input
+            id="new-pin"
+            type="password"
+            inputMode="numeric"
+            maxLength={6}
+            value={newPin}
+            onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
+            placeholder="••••"
+            className="text-center text-2xl tracking-widest"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="new-pin-confirm">Bekräfta ny PIN-kod</Label>
+          <Input
+            id="new-pin-confirm"
+            type="password"
+            inputMode="numeric"
+            maxLength={6}
+            value={newPinConfirm}
+            onChange={(e) => setNewPinConfirm(e.target.value.replace(/\D/g, ""))}
+            placeholder="••••"
+            className="text-center text-2xl tracking-widest"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            onClick={() => {
+              setMode("login");
+              setForgotAnswer("");
+              setNewPin("");
+              setNewPinConfirm("");
+            }}
+            variant="outline"
+            className="flex-1"
+          >
+            Avbryt
+          </Button>
+          <Button
+            onClick={handleForgotPin}
+            disabled={
+              !forgotAnswer ||
+              newPin.length < 4 ||
+              newPin !== newPinConfirm ||
+              loading
+            }
+            className="flex-1"
+          >
+            Återställ PIN
+          </Button>
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
-        {mode === "select" && renderSelect()}
         {mode === "login" && renderLogin()}
         {mode === "register" && renderRegister()}
         {mode === "forgot-pin" && renderForgotPin()}

@@ -27,6 +27,39 @@ const hashPin = async (pin: string): Promise<string> => {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
+// Sync local facilitators to backend (one-time migration)
+export const syncLocalFacilitatorsToBackend = async (): Promise<void> => {
+  try {
+    const data = localStorage.getItem(FACILITATORS_KEY);
+    if (!data) return;
+
+    const localFacilitators: Facilitator[] = JSON.parse(data);
+    
+    for (const facilitator of localFacilitators) {
+      // Check if already exists in backend
+      const { data: existing } = await supabase
+        .from('facilitators')
+        .select('id')
+        .eq('id', facilitator.id)
+        .single();
+
+      if (!existing) {
+        // Insert to backend, preserving the id
+        await supabase.from('facilitators').insert({
+          id: facilitator.id,
+          name: facilitator.name,
+          pin_hash: facilitator.pinHash,
+          created_at: facilitator.createdAt,
+          security_question: facilitator.securityQuestion,
+          security_answer_hash: facilitator.securityAnswerHash,
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Failed to sync facilitators:", error);
+  }
+};
+
 export const getAllFacilitators = (): Facilitator[] => {
   try {
     const data = localStorage.getItem(FACILITATORS_KEY);
@@ -37,7 +70,31 @@ export const getAllFacilitators = (): Facilitator[] => {
   }
 };
 
-export const createFacilitator = async (
+export const getFacilitatorByName = async (name: string): Promise<Facilitator | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('facilitators')
+      .select('*')
+      .ilike('name', name)
+      .single();
+
+    if (error || !data) return null;
+
+    return {
+      id: data.id,
+      name: data.name,
+      pinHash: data.pin_hash,
+      createdAt: data.created_at,
+      securityQuestion: data.security_question,
+      securityAnswerHash: data.security_answer_hash,
+    };
+  } catch (error) {
+    console.error("Failed to get facilitator by name:", error);
+    return null;
+  }
+};
+
+export const createFacilitatorInBackend = async (
   name: string,
   pin: string,
   securityQuestion?: string,
@@ -47,32 +104,73 @@ export const createFacilitator = async (
     return { success: false, error: "PIN måste vara 4-6 siffror" };
   }
 
-  const facilitators = getAllFacilitators();
   const pinHash = await hashPin(pin);
+  const facilitatorId = `facilitator-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   
-  const newFacilitator: Facilitator = {
-    id: `facilitator-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+  const newFacilitator = {
+    id: facilitatorId,
     name: name.trim() || "Facilitator",
-    pinHash,
-    createdAt: new Date().toISOString(),
-    securityQuestion,
-    securityAnswerHash: securityAnswer ? await hashPin(securityAnswer.toLowerCase().trim()) : undefined,
+    pin_hash: pinHash,
+    created_at: new Date().toISOString(),
+    security_question: securityQuestion,
+    security_answer_hash: securityAnswer ? await hashPin(securityAnswer.toLowerCase().trim()) : undefined,
   };
 
-  facilitators.push(newFacilitator);
-  localStorage.setItem(FACILITATORS_KEY, JSON.stringify(facilitators));
+  const { error } = await supabase
+    .from('facilitators')
+    .insert(newFacilitator);
 
-  return { success: true, facilitator: newFacilitator };
+  if (error) {
+    if (error.code === '23505') { // Unique constraint violation
+      return { success: false, error: "Ett konto med detta namn finns redan" };
+    }
+    return { success: false, error: "Kunde inte skapa konto" };
+  }
+
+  return {
+    success: true,
+    facilitator: {
+      id: newFacilitator.id,
+      name: newFacilitator.name,
+      pinHash: newFacilitator.pin_hash,
+      createdAt: newFacilitator.created_at,
+      securityQuestion: newFacilitator.security_question,
+      securityAnswerHash: newFacilitator.security_answer_hash,
+    },
+  };
+};
+
+export const createFacilitator = async (
+  name: string,
+  pin: string,
+  securityQuestion?: string,
+  securityAnswer?: string
+): Promise<{ success: boolean; facilitator?: Facilitator; error?: string }> => {
+  // Legacy function - redirect to backend
+  return createFacilitatorInBackend(name, pin, securityQuestion, securityAnswer);
+};
+
+export const validatePinById = async (facilitatorId: string, pin: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .from('facilitators')
+      .select('pin_hash')
+      .eq('id', facilitatorId)
+      .single();
+
+    if (error || !data) return false;
+
+    const pinHash = await hashPin(pin);
+    return pinHash === data.pin_hash;
+  } catch (error) {
+    console.error("Failed to validate PIN:", error);
+    return false;
+  }
 };
 
 export const validatePin = async (facilitatorId: string, pin: string): Promise<boolean> => {
-  const facilitators = getAllFacilitators();
-  const facilitator = facilitators.find(f => f.id === facilitatorId);
-  
-  if (!facilitator) return false;
-  
-  const pinHash = await hashPin(pin);
-  return pinHash === facilitator.pinHash;
+  // Legacy function - redirect to backend
+  return validatePinById(facilitatorId, pin);
 };
 
 export const isLockedOut = (): boolean => {
@@ -182,8 +280,28 @@ export const getCurrentFacilitator = async (): Promise<Facilitator | null> => {
   const session = await getCurrentSession();
   if (!session) return null;
   
-  const facilitators = getAllFacilitators();
-  return facilitators.find(f => f.id === session.facilitatorId) || null;
+  // Fetch from backend instead of localStorage
+  try {
+    const { data, error } = await supabase
+      .from('facilitators')
+      .select('*')
+      .eq('id', session.facilitatorId)
+      .single();
+
+    if (error || !data) return null;
+
+    return {
+      id: data.id,
+      name: data.name,
+      pinHash: data.pin_hash,
+      createdAt: data.created_at,
+      securityQuestion: data.security_question,
+      securityAnswerHash: data.security_answer_hash,
+    };
+  } catch (error) {
+    console.error("Failed to get current facilitator:", error);
+    return null;
+  }
 };
 
 export const clearSession = async (): Promise<void> => {
@@ -217,33 +335,47 @@ export const resetPinWithSecurityAnswer = async (
   securityAnswer: string,
   newPin: string
 ): Promise<{ success: boolean; error?: string }> => {
-  const facilitators = getAllFacilitators();
-  const index = facilitators.findIndex(f => f.id === facilitatorId);
-  
-  if (index === -1) {
-    return { success: false, error: "Facilitator hittades inte" };
+  try {
+    const { data: facilitator, error: fetchError } = await supabase
+      .from('facilitators')
+      .select('*')
+      .eq('id', facilitatorId)
+      .single();
+
+    if (fetchError || !facilitator) {
+      return { success: false, error: "Facilitator hittades inte" };
+    }
+
+    if (!facilitator.security_answer_hash) {
+      return { success: false, error: "Ingen säkerhetsfråga konfigurerad" };
+    }
+
+    const answerHash = await hashPin(securityAnswer.toLowerCase().trim());
+
+    if (answerHash !== facilitator.security_answer_hash) {
+      return { success: false, error: "Felaktigt svar på säkerhetsfrågan" };
+    }
+
+    if (newPin.length < 4 || newPin.length > 6 || !/^\d+$/.test(newPin)) {
+      return { success: false, error: "PIN måste vara 4-6 siffror" };
+    }
+
+    const newPinHash = await hashPin(newPin);
+
+    const { error: updateError } = await supabase
+      .from('facilitators')
+      .update({ pin_hash: newPinHash })
+      .eq('id', facilitatorId);
+
+    if (updateError) {
+      return { success: false, error: "Kunde inte uppdatera PIN" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to reset PIN:", error);
+    return { success: false, error: "Ett oväntat fel uppstod" };
   }
-  
-  const facilitator = facilitators[index];
-  
-  if (!facilitator.securityAnswerHash) {
-    return { success: false, error: "Ingen säkerhetsfråga konfigurerad" };
-  }
-  
-  const answerHash = await hashPin(securityAnswer.toLowerCase().trim());
-  
-  if (answerHash !== facilitator.securityAnswerHash) {
-    return { success: false, error: "Felaktigt svar på säkerhetsfrågan" };
-  }
-  
-  if (newPin.length < 4 || newPin.length > 6 || !/^\d+$/.test(newPin)) {
-    return { success: false, error: "PIN måste vara 4-6 siffror" };
-  }
-  
-  facilitator.pinHash = await hashPin(newPin);
-  localStorage.setItem(FACILITATORS_KEY, JSON.stringify(facilitators));
-  
-  return { success: true };
 };
 
 export const deleteFacilitator = async (facilitatorId: string): Promise<boolean> => {

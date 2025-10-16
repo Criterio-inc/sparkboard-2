@@ -108,6 +108,33 @@ export type Database = {
         }
         Relationships: []
       }
+      facilitators: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          pin_hash: string
+          security_answer_hash: string | null
+          security_question: string | null
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          name: string
+          pin_hash: string
+          security_answer_hash?: string | null
+          security_question?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          pin_hash?: string
+          security_answer_hash?: string | null
+          security_question?: string | null
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           author_id: string
