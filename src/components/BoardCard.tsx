@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Trash2, Plus, GripVertical } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Question {
   id: string;
@@ -34,6 +35,7 @@ const boardColors = [
 ];
 
 export const BoardCard = ({ board, index, onUpdate, onDelete, isDraggable = true }: BoardCardProps) => {
+  const { t } = useTranslation();
   const boardColor = boardColors[board.colorIndex % boardColors.length];
 
   const addQuestion = () => {
@@ -91,7 +93,7 @@ export const BoardCard = ({ board, index, onUpdate, onDelete, isDraggable = true
                   color: boardColor,
                 }}
               >
-                Board {index + 1}
+                {t('boardCard.boardLabel', { index: index + 1 })}
               </div>
               
               <Button
@@ -105,17 +107,17 @@ export const BoardCard = ({ board, index, onUpdate, onDelete, isDraggable = true
             </div>
 
             <div className="space-y-2">
-              <Label>Board-titel</Label>
+              <Label>{t('boardCard.boardTitle')}</Label>
               <Input
                 value={board.title}
                 onChange={(e) => onUpdate({ ...board, title: e.target.value })}
-                placeholder="T.ex. Brev från framtiden"
+                placeholder={t('boardCard.boardTitlePlaceholder')}
                 className="text-lg font-semibold"
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Tidsgräns (minuter)</Label>
+              <Label>{t('boardCard.timeLimit')}</Label>
               <Input
                 type="number"
                 min="1"
@@ -131,7 +133,7 @@ export const BoardCard = ({ board, index, onUpdate, onDelete, isDraggable = true
 
       <CardContent className="space-y-4">
         <div className="space-y-3">
-          <Label className="text-sm font-semibold">Frågor ({board.questions.length}/5)</Label>
+          <Label className="text-sm font-semibold">{t('boardCard.questions', { current: board.questions.length, max: 5 })}</Label>
           
           {board.questions.map((question, qIndex) => (
             <div key={question.id} className="flex gap-2">
@@ -139,7 +141,7 @@ export const BoardCard = ({ board, index, onUpdate, onDelete, isDraggable = true
                 <Input
                   value={question.title}
                   onChange={(e) => updateQuestion(question.id, e.target.value)}
-                  placeholder={`Fråga ${qIndex + 1}`}
+                  placeholder={t('boardCard.questionPlaceholder', { index: qIndex + 1 })}
                 />
               </div>
               <Button
@@ -161,7 +163,7 @@ export const BoardCard = ({ board, index, onUpdate, onDelete, isDraggable = true
             size="sm"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Lägg till fråga
+            {t('boardCard.addQuestion')}
           </Button>
         )}
       </CardContent>

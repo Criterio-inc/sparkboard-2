@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Users, Clock, User, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Participant {
   id: string;
@@ -24,6 +25,7 @@ const participantColors = [
 ];
 
 export const ParticipantList = ({ participants, onDeleteParticipant }: ParticipantListProps) => {
+  const { t } = useTranslation();
   const useGridLayout = participants.length > 10;
   
   return (
@@ -31,7 +33,7 @@ export const ParticipantList = ({ participants, onDeleteParticipant }: Participa
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Users className="w-4 h-4" />
-          Deltagare ({participants.length})
+          {t('participantList.title', { count: participants.length })}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -39,7 +41,7 @@ export const ParticipantList = ({ participants, onDeleteParticipant }: Participa
           {participants.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground col-span-2">
               <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Inga deltagare än</p>
+              <p className="text-sm">{t('participantList.noParticipants')}</p>
             </div>
           ) : (
             participants.map((participant) => (
@@ -75,18 +77,18 @@ export const ParticipantList = ({ participants, onDeleteParticipant }: Participa
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Ta bort deltagare?</AlertDialogTitle>
+                        <AlertDialogTitle>{t('participantList.deleteConfirm')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Är du säker på att du vill ta bort {participant.name} från workshopen? Detta kan inte ångras.
+                          {t('participantList.deleteConfirmDesc', { name: participant.name })}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                        <AlertDialogCancel>{t('participantList.cancel')}</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => onDeleteParticipant(participant.id)}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                          Ta bort
+                          {t('participantList.delete')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

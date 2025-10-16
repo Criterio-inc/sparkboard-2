@@ -13,6 +13,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { generateUniqueWorkshopCode } from "@/utils/workshopStorage";
 import { getCurrentFacilitator } from "@/utils/facilitatorStorage";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 
 interface Question {
   id: string;
@@ -38,6 +39,7 @@ interface Workshop {
 const CreateWorkshop = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { id } = useParams();
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
@@ -192,8 +194,8 @@ const CreateWorkshop = () => {
   const validateWorkshop = (): boolean => {
     if (!workshop.title.trim()) {
       toast({
-        title: "Titel saknas",
-        description: "Vänligen ange ett namn för workshopen",
+        title: t('createWorkshop.titleMissing'),
+        description: t('createWorkshop.titleMissingDesc'),
         variant: "destructive",
       });
       return false;
@@ -201,8 +203,8 @@ const CreateWorkshop = () => {
 
     if (workshop.boards.length === 0) {
       toast({
-        title: "Inga boards",
-        description: "Lägg till minst ett board till workshopen",
+        title: t('createWorkshop.noBoards'),
+        description: t('createWorkshop.noBoardsDesc'),
         variant: "destructive",
       });
       return false;
@@ -211,8 +213,8 @@ const CreateWorkshop = () => {
     for (const board of workshop.boards) {
       if (!board.title.trim()) {
         toast({
-          title: "Board-titel saknas",
-          description: "Alla boards måste ha en titel",
+          title: t('createWorkshop.boardTitleMissing'),
+          description: t('createWorkshop.boardTitleMissingDesc'),
           variant: "destructive",
         });
         return false;
@@ -220,8 +222,8 @@ const CreateWorkshop = () => {
 
       if (board.questions.length === 0) {
         toast({
-          title: "Inga frågor",
-          description: `Board "${board.title}" måste ha minst en fråga`,
+          title: t('createWorkshop.noQuestions'),
+          description: t('createWorkshop.noQuestionsDesc', { title: board.title }),
           variant: "destructive",
         });
         return false;
@@ -230,8 +232,8 @@ const CreateWorkshop = () => {
       for (const question of board.questions) {
         if (!question.title.trim()) {
           toast({
-            title: "Fråga saknas",
-            description: `Alla frågor i "${board.title}" måste ha en titel`,
+            title: t('createWorkshop.questionMissing'),
+            description: t('createWorkshop.questionMissingDesc', { title: board.title }),
             variant: "destructive",
           });
           return false;

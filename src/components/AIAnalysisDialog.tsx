@@ -15,6 +15,7 @@ import { Loader2, Copy, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
+import { useTranslation } from "react-i18next";
 
 interface Note {
   id: string;
@@ -46,6 +47,7 @@ export const AIAnalysisDialog = ({
   onAnalysisComplete,
 }: AIAnalysisDialogProps) => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [customPrompt, setCustomPrompt] = useState(DEFAULT_PROMPT);
   const [analysis, setAnalysis] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -71,7 +73,7 @@ export const AIAnalysisDialog = ({
 
       if (data.error) {
         toast({
-          title: "Fel vid AI-analys",
+          title: t('aiAnalysisDialog.analysisError'),
           description: data.error,
           variant: "destructive",
         });
@@ -86,14 +88,14 @@ export const AIAnalysisDialog = ({
       }
       
       toast({
-        title: "Analys klar!",
-        description: "AI-analysen är nu tillgänglig",
+        title: t('aiAnalysisDialog.analysisComplete'),
+        description: t('aiAnalysisDialog.analysisCompleteDesc'),
       });
     } catch (error) {
       console.error("Analysis error:", error);
       toast({
-        title: "Något gick fel",
-        description: "Kunde inte genomföra analysen. Försök igen.",
+        title: t('aiAnalysisDialog.generalError'),
+        description: t('aiAnalysisDialog.generalErrorDesc'),
         variant: "destructive",
       });
     } finally {
@@ -106,14 +108,14 @@ export const AIAnalysisDialog = ({
       await navigator.clipboard.writeText(analysis);
       setCopied(true);
       toast({
-        title: "Kopierat!",
-        description: "Analysen har kopierats till urklipp",
+        title: t('aiAnalysisDialog.copySuccess'),
+        description: t('aiAnalysisDialog.copySuccessDesc'),
       });
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       toast({
-        title: "Kunde inte kopiera",
-        description: "Försök igen",
+        title: t('aiAnalysisDialog.copyError'),
+        description: t('aiAnalysisDialog.copyErrorDesc'),
         variant: "destructive",
       });
     }
@@ -123,9 +125,9 @@ export const AIAnalysisDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl h-[80vh]">
         <DialogHeader>
-          <DialogTitle>AI-Analys: {boardTitle}</DialogTitle>
+          <DialogTitle>{t('aiAnalysisDialog.title', { boardTitle })}</DialogTitle>
           <DialogDescription>
-            Analysera {notes.length} notes med AI för att hitta teman och insights
+            {t('aiAnalysisDialog.description', { count: notes.length })}
           </DialogDescription>
         </DialogHeader>
 
@@ -134,7 +136,7 @@ export const AIAnalysisDialog = ({
           <div className="space-y-4">
             <div>
               <Label className="text-sm font-semibold mb-2 block">
-                Workshop Notes ({notes.length})
+                {t('aiAnalysisDialog.notesLabel', { count: notes.length })}
               </Label>
               <ScrollArea className="h-[300px] rounded-lg border p-4 bg-muted/20">
                 <div className="space-y-3">
@@ -148,13 +150,13 @@ export const AIAnalysisDialog = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="prompt">Anpassad Prompt (valfritt)</Label>
+              <Label htmlFor="prompt">{t('aiAnalysisDialog.customPrompt')}</Label>
               <Textarea
                 id="prompt"
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
                 rows={4}
-                placeholder="Beskriv hur AI ska analysera notes..."
+                placeholder={t('aiAnalysisDialog.promptPlaceholder')}
                 className="resize-none"
               />
             </div>
@@ -169,10 +171,10 @@ export const AIAnalysisDialog = ({
               {isAnalyzing ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Analyserar...
+                  {t('aiAnalysisDialog.analyzing')}
                 </>
               ) : (
-                "Analysera med AI"
+                t('aiAnalysisDialog.analyzeButton')
               )}
             </Button>
           </div>
@@ -180,7 +182,7 @@ export const AIAnalysisDialog = ({
           {/* Right: AI Analysis */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold">AI-Analys</Label>
+              <Label className="text-sm font-semibold">{t('aiAnalysisDialog.aiAnalysisLabel')}</Label>
               {analysis && (
                 <Button
                   onClick={handleCopy}
@@ -191,12 +193,12 @@ export const AIAnalysisDialog = ({
                   {copied ? (
                     <>
                       <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Kopierad!
+                      {t('aiAnalysisDialog.copied')}
                     </>
                   ) : (
                     <>
                       <Copy className="w-4 h-4 mr-2" />
-                      Kopiera
+                      {t('aiAnalysisDialog.copy')}
                     </>
                   )}
                 </Button>
@@ -207,8 +209,8 @@ export const AIAnalysisDialog = ({
               {isAnalyzing ? (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                   <Loader2 className="w-12 h-12 animate-spin mb-4" />
-                  <p>AI analyserar dina workshop-notes...</p>
-                  <p className="text-sm mt-2">Detta kan ta några sekunder</p>
+                  <p>{t('aiAnalysisDialog.analyzingStatus')}</p>
+                  <p className="text-sm mt-2">{t('aiAnalysisDialog.analyzingWait')}</p>
                 </div>
               ) : analysis ? (
                 <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -216,7 +218,7 @@ export const AIAnalysisDialog = ({
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <p>Klicka på "Analysera med AI" för att starta</p>
+                  <p>{t('aiAnalysisDialog.clickToStart')}</p>
                 </div>
               )}
             </ScrollArea>

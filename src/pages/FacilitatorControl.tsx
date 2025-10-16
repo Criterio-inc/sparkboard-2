@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateWorkshopPDF } from "@/utils/pdfExport";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 
 interface Question {
   id: string;
@@ -48,6 +49,7 @@ const FacilitatorControl = () => {
   const { workshopId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const [currentBoardIndex, setCurrentBoardIndex] = useState(0);
   const [workshop, setWorkshop] = useState<any>(null);

@@ -16,6 +16,7 @@ import {
   resetPinWithSecurityAnswer,
 } from "@/utils/facilitatorStorage";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useTranslation } from "react-i18next";
 
 interface FacilitatorAuthProps {
   open: boolean;
@@ -26,6 +27,7 @@ type Mode = "login" | "register" | "forgot-pin";
 
 const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>("login");
   const [selectedFacilitator, setSelectedFacilitator] = useState<any>(null);
   
@@ -53,8 +55,8 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
   const handleRegister = async () => {
     if (registerPin !== registerPinConfirm) {
       toast({
-        title: "PIN-koderna matchar inte",
-        description: "Kontrollera att båda PIN-koderna är identiska",
+        title: t('facilitatorAuth.pinMismatch'),
+        description: t('facilitatorAuth.pinMismatchDesc'),
         variant: "destructive",
       });
       return;
@@ -72,13 +74,13 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
     if (result.success && result.facilitator) {
       await createSession(result.facilitator.id);
       toast({
-        title: "Välkommen!",
-        description: "Ditt facilitator-konto har skapats",
+        title: t('facilitatorAuth.welcome'),
+        description: t('facilitatorAuth.welcomeDesc'),
       });
       onAuthenticated();
     } else {
       toast({
-        title: "Registrering misslyckades",
+        title: t('facilitatorAuth.registerFailed'),
         description: result.error,
         variant: "destructive",
       });
@@ -88,8 +90,8 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
   const handleLogin = async () => {
     if (lockedOut) {
       toast({
-        title: "Kontot är låst",
-        description: "Försök igen om 5 minuter",
+        title: t('facilitatorAuth.accountLocked'),
+        description: t('facilitatorAuth.accountLockedDesc'),
         variant: "destructive",
       });
       return;
@@ -97,8 +99,8 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
 
     if (!loginName.trim()) {
       toast({
-        title: "Namn krävs",
-        description: "Ange ditt namn för att logga in",
+        title: t('facilitatorAuth.nameRequired'),
+        description: t('facilitatorAuth.nameRequiredDesc'),
         variant: "destructive",
       });
       return;
@@ -112,8 +114,8 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
     if (!facilitator) {
       setLoading(false);
       toast({
-        title: "Kontot hittades inte",
-        description: "Inget konto finns med detta namn",
+        title: t('facilitatorAuth.accountNotFound'),
+        description: t('facilitatorAuth.accountNotFoundDesc'),
         variant: "destructive",
       });
       return;
@@ -127,17 +129,17 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
     if (isValid) {
       await createSession(facilitator.id);
       toast({
-        title: "Inloggad!",
-        description: "Välkommen tillbaka",
+        title: t('facilitatorAuth.loggedIn'),
+        description: t('facilitatorAuth.welcomeBack'),
       });
       onAuthenticated();
     } else {
       const remaining = getRemainingAttempts();
       toast({
-        title: "Felaktig PIN-kod",
+        title: t('facilitatorAuth.incorrectPin'),
         description: remaining > 0 
-          ? `${remaining} försök kvar` 
-          : "Kontot är nu låst i 5 minuter",
+          ? t('facilitatorAuth.attemptsLeft', { count: remaining })
+          : t('facilitatorAuth.accountNowLocked'),
         variant: "destructive",
       });
       setLoginPin("");
@@ -147,7 +149,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
   const handleForgotPin = async () => {
     if (newPin !== newPinConfirm) {
       toast({
-        title: "PIN-koderna matchar inte",
+        title: t('facilitatorAuth.pinMismatch'),
         variant: "destructive",
       });
       return;
@@ -155,7 +157,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
 
     if (!selectedFacilitator) {
       toast({
-        title: "Inget konto valt",
+        title: t('facilitatorAuth.noAccountSelected'),
         variant: "destructive",
       });
       return;
@@ -171,8 +173,8 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
 
     if (result.success) {
       toast({
-        title: "PIN återställd!",
-        description: "Du kan nu logga in med din nya PIN",
+        title: t('facilitatorAuth.pinReset'),
+        description: t('facilitatorAuth.pinResetDesc'),
       });
       setMode("login");
       setForgotAnswer("");
@@ -181,7 +183,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
       setSelectedFacilitator(null);
     } else {
       toast({
-        title: "Återställning misslyckades",
+        title: t('facilitatorAuth.resetFailed'),
         description: result.error,
         variant: "destructive",
       });
@@ -193,10 +195,10 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <Lock className="w-5 h-5 text-primary" />
-          Facilitator Inloggning
+          {t('facilitatorAuth.loginTitle')}
         </DialogTitle>
         <DialogDescription>
-          Logga in med ditt namn och PIN-kod
+          {t('facilitatorAuth.loginDescription')}
         </DialogDescription>
       </DialogHeader>
 
@@ -205,7 +207,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              För många felaktiga försök. Kontot är låst i 5 minuter.
+              {t('facilitatorAuth.lockedOut')}
             </AlertDescription>
           </Alert>
         )}
@@ -214,25 +216,25 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {remainingAttempts} försök kvar innan kontot låses
+              {t('facilitatorAuth.attemptsRemaining', { count: remainingAttempts })}
             </AlertDescription>
           </Alert>
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="login-name">Namn</Label>
+          <Label htmlFor="login-name">{t('facilitatorAuth.name')}</Label>
           <Input
             id="login-name"
             type="text"
             value={loginName}
             onChange={(e) => setLoginName(e.target.value)}
-            placeholder="Ditt namn"
+            placeholder={t('facilitatorAuth.namePlaceholder')}
             disabled={lockedOut || loading}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="login-pin">PIN-kod (4-6 siffror)</Label>
+          <Label htmlFor="login-pin">{t('facilitatorAuth.pin')}</Label>
           <Input
             id="login-pin"
             type="password"
@@ -245,7 +247,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
                 handleLogin();
               }
             }}
-            placeholder="••••"
+            placeholder={t('facilitatorAuth.pinPlaceholder')}
             disabled={lockedOut || loading}
             className="text-center text-2xl tracking-widest"
           />
@@ -256,7 +258,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
           disabled={loginPin.length < 4 || !loginName.trim() || lockedOut || loading}
           className="w-full"
         >
-          Logga in
+          {t('facilitatorAuth.loginButton')}
         </Button>
 
         <div className="relative">
@@ -265,7 +267,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-background px-2 text-muted-foreground">
-              Eller
+              {t('facilitatorAuth.or')}
             </span>
           </div>
         </div>
@@ -275,7 +277,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
           className="w-full"
           onClick={() => setMode("register")}
         >
-          Skapa nytt konto
+          {t('facilitatorAuth.createAccount')}
         </Button>
       </div>
     </>
@@ -286,26 +288,26 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <User className="w-5 h-5 text-primary" />
-          Skapa Facilitator-konto
+          {t('facilitatorAuth.registerTitle')}
         </DialogTitle>
         <DialogDescription>
-          Fyll i dina uppgifter för att komma igång
+          {t('facilitatorAuth.registerDescription')}
         </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4 py-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Namn / Företag (valfritt)</Label>
+          <Label htmlFor="name">{t('facilitatorAuth.nameOptional')}</Label>
           <Input
             id="name"
             value={registerName}
             onChange={(e) => setRegisterName(e.target.value)}
-            placeholder="T.ex. Anna Andersson"
+            placeholder={t('facilitatorAuth.nameOptionalPlaceholder')}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="pin">Skapa PIN-kod (4-6 siffror) *</Label>
+          <Label htmlFor="pin">{t('facilitatorAuth.createPin')}</Label>
           <Input
             id="pin"
             type="password"
@@ -313,13 +315,13 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             maxLength={6}
             value={registerPin}
             onChange={(e) => setRegisterPin(e.target.value.replace(/\D/g, ""))}
-            placeholder="••••"
+            placeholder={t('facilitatorAuth.pinPlaceholder')}
             className="text-center text-2xl tracking-widest"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="pin-confirm">Bekräfta PIN-kod *</Label>
+          <Label htmlFor="pin-confirm">{t('facilitatorAuth.confirmPin')}</Label>
           <Input
             id="pin-confirm"
             type="password"
@@ -327,34 +329,34 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             maxLength={6}
             value={registerPinConfirm}
             onChange={(e) => setRegisterPinConfirm(e.target.value.replace(/\D/g, ""))}
-            placeholder="••••"
+            placeholder={t('facilitatorAuth.pinPlaceholder')}
             className="text-center text-2xl tracking-widest"
           />
         </div>
 
         <div className="border-t pt-4 space-y-4">
           <p className="text-sm text-muted-foreground">
-            Säkerhetsfråga (valfritt, för att återställa PIN)
+            {t('facilitatorAuth.securityInfo')}
           </p>
           
           <div className="space-y-2">
-            <Label htmlFor="security-question">Fråga</Label>
+            <Label htmlFor="security-question">{t('facilitatorAuth.securityQuestion')}</Label>
             <Input
               id="security-question"
               value={securityQuestion}
               onChange={(e) => setSecurityQuestion(e.target.value)}
-              placeholder="T.ex. Vad heter ditt första husdjur?"
+              placeholder={t('facilitatorAuth.securityQuestionPlaceholder')}
             />
           </div>
 
           {securityQuestion && (
             <div className="space-y-2">
-              <Label htmlFor="security-answer">Svar</Label>
+              <Label htmlFor="security-answer">{t('facilitatorAuth.securityAnswer')}</Label>
               <Input
                 id="security-answer"
                 value={securityAnswer}
                 onChange={(e) => setSecurityAnswer(e.target.value)}
-                placeholder="Ditt svar"
+                placeholder={t('facilitatorAuth.securityAnswerPlaceholder')}
               />
             </div>
           )}
@@ -366,7 +368,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             variant="outline"
             className="flex-1"
           >
-            Avbryt
+            {t('facilitatorAuth.cancel')}
           </Button>
           <Button
             onClick={handleRegister}
@@ -377,7 +379,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             }
             className="flex-1"
           >
-            Skapa konto
+            {t('facilitatorAuth.createAccountButton')}
           </Button>
         </div>
       </div>
@@ -387,30 +389,30 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
   const renderForgotPin = () => (
     <>
       <DialogHeader>
-        <DialogTitle>Återställ PIN-kod</DialogTitle>
+        <DialogTitle>{t('facilitatorAuth.resetPinTitle')}</DialogTitle>
         <DialogDescription>
-          Svara på säkerhetsfrågan för att skapa en ny PIN
+          {t('facilitatorAuth.resetPinDescription')}
         </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4 py-4">
         <div className="space-y-2">
-          <Label>Säkerhetsfråga</Label>
+          <Label>{t('facilitatorAuth.securityQuestionLabel')}</Label>
           <p className="text-sm font-medium">{selectedFacilitator?.securityQuestion}</p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="security-answer">Ditt svar</Label>
+          <Label htmlFor="security-answer">{t('facilitatorAuth.yourAnswer')}</Label>
           <Input
             id="security-answer"
             value={forgotAnswer}
             onChange={(e) => setForgotAnswer(e.target.value)}
-            placeholder="Ange ditt svar"
+            placeholder={t('facilitatorAuth.yourAnswerPlaceholder')}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="new-pin">Ny PIN-kod (4-6 siffror)</Label>
+          <Label htmlFor="new-pin">{t('facilitatorAuth.newPin')}</Label>
           <Input
             id="new-pin"
             type="password"
@@ -418,13 +420,13 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             maxLength={6}
             value={newPin}
             onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
-            placeholder="••••"
+            placeholder={t('facilitatorAuth.pinPlaceholder')}
             className="text-center text-2xl tracking-widest"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="new-pin-confirm">Bekräfta ny PIN-kod</Label>
+          <Label htmlFor="new-pin-confirm">{t('facilitatorAuth.confirmNewPin')}</Label>
           <Input
             id="new-pin-confirm"
             type="password"
@@ -432,7 +434,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             maxLength={6}
             value={newPinConfirm}
             onChange={(e) => setNewPinConfirm(e.target.value.replace(/\D/g, ""))}
-            placeholder="••••"
+            placeholder={t('facilitatorAuth.pinPlaceholder')}
             className="text-center text-2xl tracking-widest"
           />
         </div>
@@ -448,7 +450,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             variant="outline"
             className="flex-1"
           >
-            Avbryt
+            {t('facilitatorAuth.cancel')}
           </Button>
           <Button
             onClick={handleForgotPin}
@@ -460,7 +462,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
             }
             className="flex-1"
           >
-            Återställ PIN
+            {t('facilitatorAuth.resetButton')}
           </Button>
         </div>
       </div>
