@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Clock, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Users, Clock, User, Trash2 } from "lucide-react";
 
 interface Participant {
   id: string;
@@ -10,6 +12,7 @@ interface Participant {
 
 interface ParticipantListProps {
   participants: Participant[];
+  onDeleteParticipant?: (participantId: string) => void;
 }
 
 const participantColors = [
@@ -21,7 +24,7 @@ const participantColors = [
   "bg-orange-200",
 ];
 
-export const ParticipantList = ({ participants }: ParticipantListProps) => {
+export const ParticipantList = ({ participants, onDeleteParticipant }: ParticipantListProps) => {
   return (
     <Card className="h-full">
       <CardHeader>
@@ -41,7 +44,7 @@ export const ParticipantList = ({ participants }: ParticipantListProps) => {
             participants.map((participant) => (
               <div
                 key={participant.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors group"
               >
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -57,6 +60,37 @@ export const ParticipantList = ({ participants }: ParticipantListProps) => {
                     <span>{participant.joinedAt}</span>
                   </div>
                 </div>
+                
+                {onDeleteParticipant && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Ta bort deltagare?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Är du säker på att du vill ta bort {participant.name} från workshopen? Detta kan inte ångras.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => onDeleteParticipant(participant.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Ta bort
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
             ))
           )}

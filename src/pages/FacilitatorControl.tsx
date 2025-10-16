@@ -268,7 +268,7 @@ const FacilitatorControl = () => {
   const isLowTime = timeRemaining <= 120 && timeRemaining > 0;
   const isTimeUp = timeRemaining === 0;
 
-  // Timer logic
+  // Timer logic - sync with database
   useEffect(() => {
     if (!isTimerRunning) return;
 
@@ -276,6 +276,21 @@ const FacilitatorControl = () => {
       setTimeRemaining((prev) => {
         if (prev <= 0) {
           setIsTimerRunning(false);
+          
+          // Uppdatera timer state i Supabase när timern stannar
+          if (workshop?.id) {
+            supabase
+              .from('workshops')
+              .update({ 
+                timer_running: false,
+                time_remaining: 0
+              })
+              .eq('id', workshop.id)
+              .then(({ error }) => {
+                if (error) console.error("Kunde inte uppdatera timer state:", error);
+              });
+          }
+          
           if (isSoundEnabled) {
             // Play sound alert
             const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUQ0PVqzn77BdGAg+ltryxnMpBSuBzvLZiTYIG2m98OGenVEMD1as6O+wXRgIPpba8sZzKQUrgc7y2Yk2CBlpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+Lw==");
@@ -294,7 +309,7 @@ const FacilitatorControl = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isTimerRunning, isSoundEnabled, toast]);
+  }, [isTimerRunning, isSoundEnabled, toast, workshop?.id]);
 
   // Warning at 2 minutes
   useEffect(() => {
@@ -316,10 +331,15 @@ const FacilitatorControl = () => {
     if (currentBoardIndex < boards.length - 1) {
       const nextBoard = boards[currentBoardIndex + 1];
       
-      // Uppdatera active_board_id i Supabase för att synka med deltagare
+      // Uppdatera active_board_id och återställ timer state i Supabase
       const { error } = await supabase
         .from('workshops')
-        .update({ active_board_id: nextBoard.id })
+        .update({ 
+          active_board_id: nextBoard.id,
+          timer_running: false,
+          timer_started_at: null,
+          time_remaining: null
+        })
         .eq('id', workshop.id);
       
       if (error) {
@@ -424,6 +444,38 @@ const FacilitatorControl = () => {
     }
   };
 
+  const handleDeleteParticipant = async (participantId: string) => {
+    try {
+      console.log("🗑️ [Facilitator] Tar bort deltagare:", participantId);
+
+      const { error } = await supabase
+        .from('participants')
+        .delete()
+        .eq('id', participantId);
+
+      if (error) {
+        console.error("Kunde inte ta bort deltagare:", error);
+        toast({
+          title: "Fel",
+          description: "Kunde inte ta bort deltagare",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("✅ [Facilitator] Deltagare borttagen från Supabase");
+      
+      toast({
+        title: "Deltagare borttagen",
+        description: "Deltagaren har tagits bort från workshopen",
+      });
+      
+      // Realtime kommer automatiskt uppdatera participants-state
+    } catch (error) {
+      console.error("Fel vid borttagning av deltagare:", error);
+    }
+  };
+
   // Get all notes from current board with question titles
   const getCurrentBoardNotes = () => {
     return notes.map((note) => {
@@ -489,7 +541,40 @@ const FacilitatorControl = () => {
               <div className="relative">
                 <ControlPanel
                   isTimerRunning={isTimerRunning}
-                  onToggleTimer={() => setIsTimerRunning(!isTimerRunning)}
+                  onToggleTimer={async () => {
+                    const newRunningState = !isTimerRunning;
+                    setIsTimerRunning(newRunningState);
+                    
+                    if (workshop?.id) {
+                      const updateData = newRunningState 
+                        ? { 
+                            timer_running: true, 
+                            timer_started_at: new Date().toISOString(),
+                            time_remaining: null
+                          }
+                        : { 
+                            timer_running: false, 
+                            timer_started_at: null,
+                            time_remaining: timeRemaining
+                          };
+                      
+                      const { error } = await supabase
+                        .from('workshops')
+                        .update(updateData)
+                        .eq('id', workshop.id);
+                      
+                      if (error) {
+                        console.error("Kunde inte uppdatera timer state:", error);
+                        toast({
+                          title: "Fel",
+                          description: "Kunde inte uppdatera timer",
+                          variant: "destructive",
+                        });
+                      } else {
+                        console.log("✅ Timer state uppdaterad:", newRunningState ? "Startad" : "Pausad");
+                      }
+                    }
+                  }}
                   onNextBoard={handleNextBoard}
                   onAIAnalysis={handleAIAnalysis}
                   onExportPDF={handleExportPDF}
@@ -601,14 +686,20 @@ const FacilitatorControl = () => {
 
           {/* Sidebar - 1 column on desktop, hidden on mobile/tablet (shows in separate tab/view) */}
           <div className="hidden lg:block lg:col-span-1">
-            <ParticipantList participants={participants} />
+            <ParticipantList 
+              participants={participants} 
+              onDeleteParticipant={handleDeleteParticipant}
+            />
           </div>
           
           {/* Mobile/Tablet ParticipantList - shown below boards */}
           <div className="lg:hidden mt-6">
             <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4">Deltagare</h3>
-              <ParticipantList participants={participants} />
+              <ParticipantList 
+                participants={participants}
+                onDeleteParticipant={handleDeleteParticipant}
+              />
             </Card>
           </div>
         </div>

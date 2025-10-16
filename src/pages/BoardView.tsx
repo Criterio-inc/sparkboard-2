@@ -257,9 +257,9 @@ const BoardView = () => {
     if (!workshopId) return;
 
     const fetchParticipantCount = async () => {
-      const { data, error } = await supabase
+      const { count, error } = await supabase
         .from('participants')
-        .select('id', { count: 'exact', head: true })
+        .select('*', { count: 'exact', head: true })
         .eq('workshop_id', workshopId);
 
       if (error) {
@@ -267,8 +267,7 @@ const BoardView = () => {
         return;
       }
 
-      const count = data?.length || 0;
-      setParticipantCount(count);
+      setParticipantCount(count || 0);
       console.log("👥 [Participant] Deltagarantal:", count);
     };
 
@@ -296,26 +295,106 @@ const BoardView = () => {
     };
   }, [workshopId]);
 
-  // Timer countdown
+  // Sync timer from workshop in Supabase (controlled by facilitator)
   useEffect(() => {
-    if (!board || timeRemaining <= 0) return;
+    if (!workshopId) return;
 
-    const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 0) {
-          clearInterval(timer);
-          toast({
-            title: "Tiden är ute!",
-            description: "Boardens tidsgräns har nåtts",
-          });
-          return 0;
+    const fetchTimerState = async () => {
+      const { data, error } = await supabase
+        .from('workshops')
+        .select('timer_running, timer_started_at, time_remaining')
+        .eq('id', workshopId)
+        .single();
+
+      if (error || !data) {
+        console.error("Fel vid hämtning av timer state:", error);
+        return;
+      }
+
+      if (data.timer_running && data.timer_started_at && board) {
+        // Beräkna återstående tid baserat på när timern startades
+        const startTime = new Date(data.timer_started_at).getTime();
+        const now = Date.now();
+        const elapsedSeconds = Math.floor((now - startTime) / 1000);
+        const totalSeconds = board.timeLimit * 60;
+        const remaining = Math.max(0, totalSeconds - elapsedSeconds);
+        setTimeRemaining(remaining);
+      } else if (data.time_remaining !== null) {
+        // Timer pausad, visa återstående tid
+        setTimeRemaining(data.time_remaining);
+      }
+    };
+
+    fetchTimerState();
+
+    // Lyssna på realtime uppdateringar av timer state
+    const channel = supabase
+      .channel(`workshop-timer-${workshopId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'workshops',
+          filter: `id=eq.${workshopId}`,
+        },
+        (payload: any) => {
+          console.log("🔔 [BoardView] Timer update från facilitator");
+          const newData = payload.new;
+          
+          if (newData.timer_running && newData.timer_started_at && board) {
+            const startTime = new Date(newData.timer_started_at).getTime();
+            const now = Date.now();
+            const elapsedSeconds = Math.floor((now - startTime) / 1000);
+            const totalSeconds = board.timeLimit * 60;
+            const remaining = Math.max(0, totalSeconds - elapsedSeconds);
+            setTimeRemaining(remaining);
+          } else if (newData.time_remaining !== null) {
+            setTimeRemaining(newData.time_remaining);
+          }
         }
-        return prev - 1;
-      });
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [workshopId, board]);
+
+  // Lokal countdown när timer körs
+  useEffect(() => {
+    const checkTimerRunning = async () => {
+      if (!workshopId) return false;
+      
+      const { data } = await supabase
+        .from('workshops')
+        .select('timer_running')
+        .eq('id', workshopId)
+        .single();
+      
+      return data?.timer_running || false;
+    };
+
+    const interval = setInterval(async () => {
+      const isRunning = await checkTimerRunning();
+      
+      if (isRunning && timeRemaining > 0) {
+        setTimeRemaining((prev) => {
+          if (prev <= 0) {
+            toast({
+              title: "Tiden är ute!",
+              description: "Boardens tidsgräns har nåtts",
+              variant: "destructive",
+            });
+            return 0;
+          }
+          return prev - 1;
+        });
+      }
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [board, toast]);
+    return () => clearInterval(interval);
+  }, [workshopId, timeRemaining, toast]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

@@ -195,6 +195,9 @@ export type Database = {
           facilitator_id: string
           id: string
           name: string
+          time_remaining: number | null
+          timer_running: boolean | null
+          timer_started_at: string | null
           updated_at: string
         }
         Insert: {
@@ -205,6 +208,9 @@ export type Database = {
           facilitator_id: string
           id?: string
           name: string
+          time_remaining?: number | null
+          timer_running?: boolean | null
+          timer_started_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -215,6 +221,9 @@ export type Database = {
           facilitator_id?: string
           id?: string
           name?: string
+          time_remaining?: number | null
+          timer_running?: boolean | null
+          timer_started_at?: string | null
           updated_at?: string
         }
         Relationships: [
