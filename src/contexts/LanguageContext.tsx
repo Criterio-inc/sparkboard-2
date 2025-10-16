@@ -179,9 +179,29 @@ const translations: Record<Language, Record<string, string>> = {
     'addNote.submit': 'Lägg till',
     'addNote.cancel': 'Avbryt',
     
+    // NAVIGATION
+    'nav.back': 'Tillbaka',
+    'nav.login': 'Logga in',
+    'nav.logout': 'Logga ut',
+    
     // FACILITATOR CONTROL
     'facilitator.control': 'Facilitator Control',
     'facilitator.workshop': 'Workshop',
+    'control.title': 'Facilitator Control',
+    'control.workshop': 'Workshop',
+    'control.start': 'Start',
+    'control.pause': 'Pausa',
+    'control.resume': 'Fortsätt',
+    'control.nextBoard': 'Next Board',
+    'control.prevBoard': 'Previous Board',
+    'control.aiAnalysis': 'AI Analysis',
+    'control.exportPDF': 'Export PDF',
+    'control.soundOn': 'Sound On',
+    'control.soundOff': 'Sound Off',
+    'control.hideControls': 'Dölj kontroller',
+    'control.showControls': 'Visa kontroller',
+    'control.hideParticipants': 'Dölj deltagare',
+    'control.showParticipants': 'Visa deltagare',
     'facilitator.startTimer': 'Starta',
     'facilitator.pauseTimer': 'Pausa',
     'facilitator.nextBoard': 'Nästa Board',
@@ -199,17 +219,9 @@ const translations: Record<Language, Record<string, string>> = {
     'facilitator.paused': 'Pausad',
     'facilitator.running': 'Körs',
     
-    // CONTROL PANEL
-    'control.start': 'Starta',
-    'control.pause': 'Pausa',
-    'control.nextBoard': 'Nästa Board',
-    'control.aiAnalysis': 'AI-Analys',
-    'control.exportPDF': 'Exportera PDF',
-    'control.soundOn': 'Ljud På',
-    'control.soundOff': 'Ljud Av',
-    
     // PARTICIPANTS
     'participants.title': 'Deltagare ({count})',
+    'participants.noParticipantsYet': 'Inga deltagare ännu',
     'participants.noParticipants': 'Inga deltagare ännu',
     'participants.deleteConfirm': 'Ta bort deltagare?',
     'participants.deleteConfirmDesc': 'Är du säker på att du vill ta bort {name}? Alla deras anteckningar kommer att raderas.',
@@ -228,9 +240,18 @@ const translations: Record<Language, Record<string, string>> = {
     'ai.success': 'Analys klar!',
     'ai.copied': 'Kopierat till urklipp',
     
+    // BOARDS & NOTES  
+    'board.title': 'Board',
+    'board.of': 'av',
+    'board.notes': 'notes',
+    'board.noNotes': 'Inga notes än',
+    'board.noNotesYet': 'Inga notes än',
+    
     // DASHBOARD
     'dashboard.title': 'Mina Workshops',
     'dashboard.createNew': 'Skapa Ny Workshop',
+    'dashboard.workshop': 'workshop',
+    'dashboard.workshops': 'workshops',
     'dashboard.active': 'Aktiva',
     'dashboard.drafts': 'Utkast',
     'dashboard.archived': 'Arkiverade',
@@ -240,7 +261,12 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.edit': 'Redigera',
     'dashboard.delete': 'Ta bort',
     'dashboard.open': 'Öppna',
-    'dashboard.noWorkshops': 'Inga workshops ännu',
+    'dashboard.noWorkshops': 'Inga workshops än',
+    'dashboard.comeBack': 'Kom igång genom att skapa din första workshop',
+    'dashboard.createWorkshop': 'Skapa Workshop',
+    'dashboard.status.active': 'Aktiv',
+    'dashboard.status.draft': 'Utkast',
+    'dashboard.openWorkshop': 'Öppna Workshop',
     'dashboard.startFacilitating': 'Starta',
     
     // COMMON
@@ -445,9 +471,29 @@ const translations: Record<Language, Record<string, string>> = {
     'addNote.submit': 'Add',
     'addNote.cancel': 'Cancel',
     
+    // NAVIGATION
+    'nav.back': 'Back',
+    'nav.login': 'Log in',
+    'nav.logout': 'Log out',
+    
     // FACILITATOR CONTROL
     'facilitator.control': 'Facilitator Control',
     'facilitator.workshop': 'Workshop',
+    'control.title': 'Facilitator Control',
+    'control.workshop': 'Workshop',
+    'control.start': 'Start',
+    'control.pause': 'Pause',
+    'control.resume': 'Resume',
+    'control.nextBoard': 'Next Board',
+    'control.prevBoard': 'Previous Board',
+    'control.aiAnalysis': 'AI Analysis',
+    'control.exportPDF': 'Export PDF',
+    'control.soundOn': 'Sound On',
+    'control.soundOff': 'Sound Off',
+    'control.hideControls': 'Hide controls',
+    'control.showControls': 'Show controls',
+    'control.hideParticipants': 'Hide participants',
+    'control.showParticipants': 'Show participants',
     'facilitator.startTimer': 'Start',
     'facilitator.pauseTimer': 'Pause',
     'facilitator.nextBoard': 'Next Board',
@@ -465,17 +511,9 @@ const translations: Record<Language, Record<string, string>> = {
     'facilitator.paused': 'Paused',
     'facilitator.running': 'Running',
     
-    // CONTROL PANEL
-    'control.start': 'Start',
-    'control.pause': 'Pause',
-    'control.nextBoard': 'Next Board',
-    'control.aiAnalysis': 'AI Analysis',
-    'control.exportPDF': 'Export PDF',
-    'control.soundOn': 'Sound On',
-    'control.soundOff': 'Sound Off',
-    
     // PARTICIPANTS
     'participants.title': 'Participants ({count})',
+    'participants.noParticipantsYet': 'No participants yet',
     'participants.noParticipants': 'No participants yet',
     'participants.deleteConfirm': 'Remove participant?',
     'participants.deleteConfirmDesc': 'Are you sure you want to remove {name}? All their notes will be deleted.',
@@ -494,9 +532,18 @@ const translations: Record<Language, Record<string, string>> = {
     'ai.success': 'Analysis complete!',
     'ai.copied': 'Copied to clipboard',
     
+    // BOARDS & NOTES
+    'board.title': 'Board',
+    'board.of': 'of',
+    'board.notes': 'notes',
+    'board.noNotes': 'No notes yet',
+    'board.noNotesYet': 'No notes yet',
+    
     // DASHBOARD
     'dashboard.title': 'My Workshops',
     'dashboard.createNew': 'Create New Workshop',
+    'dashboard.workshop': 'workshop',
+    'dashboard.workshops': 'workshops',
     'dashboard.active': 'Active',
     'dashboard.drafts': 'Drafts',
     'dashboard.archived': 'Archived',
@@ -507,6 +554,11 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.delete': 'Delete',
     'dashboard.open': 'Open',
     'dashboard.noWorkshops': 'No workshops yet',
+    'dashboard.comeBack': 'Get started by creating your first workshop',
+    'dashboard.createWorkshop': 'Create Workshop',
+    'dashboard.status.active': 'Active',
+    'dashboard.status.draft': 'Draft',
+    'dashboard.openWorkshop': 'Open Workshop',
     'dashboard.startFacilitating': 'Start',
     
     // COMMON

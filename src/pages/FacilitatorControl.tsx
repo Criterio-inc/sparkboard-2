@@ -611,7 +611,7 @@ const FacilitatorControl = () => {
                   className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-background"
                 >
                   <EyeOff className="w-4 h-4 mr-2" />
-                  Dölj kontroller
+                  {t('control.hideControls')}
                 </Button>
               </div>
             ) : (
@@ -623,7 +623,7 @@ const FacilitatorControl = () => {
                 className="fixed bottom-6 right-6 z-50 shadow-lg"
               >
                 <Eye className="w-5 h-5 mr-2" />
-                Visa kontroller
+                {t('control.showControls')}
               </Button>
             )}
 
@@ -675,14 +675,14 @@ const FacilitatorControl = () => {
                               {question.title}
                             </h2>
                             <p className="text-xs text-muted-foreground">
-                              {questionNotes.length} {questionNotes.length === 1 ? "note" : "notes"}
+                              {questionNotes.length} {t('board.notes')}
                             </p>
                           </div>
 
                           <div className="space-y-3 min-h-[200px]">
                             {questionNotes.length === 0 ? (
                               <div className="flex items-center justify-center h-40 border-2 border-dashed border-muted rounded-lg">
-                                <p className="text-sm text-muted-foreground">Inga notes än</p>
+                                <p className="text-sm text-muted-foreground">{t('board.noNotesYet')}</p>
                               </div>
                             ) : (
                               questionNotes.map((note) => (
@@ -716,12 +716,12 @@ const FacilitatorControl = () => {
               {isParticipantListVisible ? (
                 <>
                   <EyeOff className="w-4 h-4" />
-                  Dölj deltagare
+                  {t('control.hideParticipants')}
                 </>
               ) : (
                 <>
                   <Eye className="w-4 h-4" />
-                  Visa deltagare
+                  {t('control.showParticipants')}
                 </>
               )}
             </Button>

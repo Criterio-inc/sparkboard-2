@@ -206,7 +206,7 @@ const WorkshopDashboard = () => {
             <Link to="/">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Tillbaka
+                {t('nav.back')}
               </Button>
             </Link>
 
@@ -219,13 +219,13 @@ const WorkshopDashboard = () => {
                   </div>
                   <Button variant="outline" size="sm" onClick={handleLogout}>
                     <LogOut className="w-4 h-4 mr-2" />
-                    Logga ut
+                    {t('nav.logout')}
                   </Button>
                 </>
               ) : (
                 <Button variant="outline" size="sm" onClick={() => setShowAuth(true)}>
                   <User className="w-4 h-4 mr-2" />
-                  Logga in
+                  {t('nav.login')}
                 </Button>
               )}
             </div>
@@ -234,10 +234,10 @@ const WorkshopDashboard = () => {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
-                Mina Workshops
+                {t('dashboard.title')}
               </h1>
               <p className="text-muted-foreground">
-                {workshops.length} {workshops.length === 1 ? "workshop" : "workshops"}
+                {workshops.length} {workshops.length === 1 ? t('dashboard.workshop') : t('dashboard.workshops')}
               </p>
             </div>
 
@@ -245,13 +245,13 @@ const WorkshopDashboard = () => {
               <Link to="/create-workshop">
                 <Button variant="hero" size="lg">
                   <Plus className="w-5 h-5 mr-2" />
-                  Skapa Ny Workshop
+                  {t('dashboard.createNew')}
                 </Button>
               </Link>
             ) : (
               <Button variant="hero" size="lg" onClick={() => setShowAuth(true)}>
                 <Plus className="w-5 h-5 mr-2" />
-                Skapa Ny Workshop
+                {t('dashboard.createNew')}
               </Button>
             )}
           </div>
@@ -264,19 +264,19 @@ const WorkshopDashboard = () => {
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                 <Users className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Inga workshops än</h3>
-              <p className="text-muted-foreground mb-6">Kom igång genom att skapa din första workshop</p>
+              <h3 className="text-xl font-semibold mb-2">{t('dashboard.noWorkshops')}</h3>
+              <p className="text-muted-foreground mb-6">{t('dashboard.comeBack')}</p>
               {facilitator ? (
                 <Link to="/create-workshop">
                   <Button variant="hero">
                     <Plus className="w-5 h-5 mr-2" />
-                    Skapa Workshop
+                    {t('dashboard.createWorkshop')}
                   </Button>
                 </Link>
               ) : (
                 <Button variant="hero" onClick={() => setShowAuth(true)}>
                   <Plus className="w-5 h-5 mr-2" />
-                  Skapa Workshop
+                  {t('dashboard.createWorkshop')}
                 </Button>
               )}
             </div>
@@ -294,7 +294,7 @@ const WorkshopDashboard = () => {
                       <div className="flex items-center gap-2 mb-2">
                         <CardTitle className="text-xl">{workshop.name}</CardTitle>
                         <Badge variant={(workshop as any).status === 'draft' ? 'outline' : 'default'}>
-                          {(workshop as any).status === 'draft' ? 'Utkast' : 'Aktiv'}
+                          {(workshop as any).status === 'draft' ? t('dashboard.status.draft') : t('dashboard.status.active')}
                         </Badge>
                       </div>
                       <CardDescription className="flex items-center gap-2">
@@ -337,12 +337,12 @@ const WorkshopDashboard = () => {
 
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Users className="w-4 h-4" />
-                      <span>{workshop.boards_count || 0} boards</span>
+                      <span>{workshop.boards_count || 0} {t('dashboard.boards')}</span>
                     </div>
 
                     <Link to={`/facilitator/${workshop.id}`} className="w-full">
                       <Button className="w-full mt-4" variant="default">
-                        Öppna Workshop
+                        {t('dashboard.openWorkshop')}
                       </Button>
                     </Link>
                   </div>
