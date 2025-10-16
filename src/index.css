@@ -8,87 +8,119 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 250 100% 98%;
-    --foreground: 260 40% 15%;
+    /* Backgrounds - ljusa, eleganta toner */
+    --background: 347 44% 95%;  /* Ljus rosa/beige bakgrund */
+    --foreground: 220 82% 10%;  /* Mörkblå navy för text */
 
-    --card: 0 0% 100%;
-    --card-foreground: 260 40% 15%;
+    --card: 0 0% 100%;  /* Vit för cards */
+    --card-foreground: 220 82% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 260 40% 15%;
+    --popover-foreground: 220 82% 10%;
 
-    --primary: 260 70% 50%;
+    /* Primary - Medium blå med gradient till djup lila */
+    --primary: 220 56% 23%;  /* Medium blå #19305C */
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 260 80% 65%;
+    --primary-glow: 250 25% 31%;  /* Djup lila för glow #413B61 */
 
-    --secondary: 280 50% 60%;
+    /* Secondary - Mjuk lila */
+    --secondary: 302 31% 58%;  /* Mjuk lila #AE7DAC */
     --secondary-foreground: 0 0% 100%;
 
-    --accent: 20 90% 60%;
+    /* Accent - Persika/coral för CTA */
+    --accent: 17 80% 69%;  /* Persika #F1916D */
     --accent-foreground: 0 0% 100%;
-    --accent-glow: 20 100% 70%;
+    --accent-glow: 17 90% 75%;
 
-    --muted: 250 30% 95%;
-    --muted-foreground: 260 20% 50%;
+    /* Muted - ljusa neutrala toner */
+    --muted: 347 44% 90%;  /* Ljus rosa/beige */
+    --muted-foreground: 0 0% 40%;  /* Mörkgrå för secondary text */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 250 30% 90%;
-    --input: 250 30% 90%;
-    --ring: 260 70% 50%;
+    --border: 347 30% 85%;
+    --input: 347 30% 90%;
+    --ring: 220 56% 23%;
 
     --radius: 0.75rem;
 
-    --gradient-hero: linear-gradient(135deg, hsl(260 70% 50%), hsl(280 60% 55%));
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(250 50% 98%));
-    --shadow-glow: 0 8px 32px hsl(260 70% 50% / 0.15);
-    --shadow-accent: 0 8px 32px hsl(20 90% 60% / 0.2);
+    /* Gradients - moderna gradient combinations */
+    --gradient-hero: linear-gradient(135deg, hsl(220 56% 23%), hsl(250 25% 31%), hsl(302 31% 58%));
+    --gradient-primary: linear-gradient(135deg, hsl(220 56% 23%), hsl(250 25% 31%));
+    --gradient-cta: linear-gradient(135deg, hsl(17 80% 69%), hsl(302 31% 58%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(347 44% 98%));
+    --gradient-subtle-bg: linear-gradient(180deg, hsl(0 0% 98%), hsl(347 44% 95%));
+    
+    /* Shadows med nya färger */
+    --shadow-glow: 0 8px 32px hsl(250 25% 31% / 0.3);
+    --shadow-accent: 0 8px 32px hsl(17 80% 69% / 0.25);
+    --shadow-card: 0 2px 8px hsl(220 82% 10% / 0.08);
+    --shadow-button-hover: 0 4px 12px hsl(250 25% 31% / 0.3);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    /* Board colors */
-    --board-1: 260 70% 60%;
-    --board-2: 200 80% 55%;
-    --board-3: 160 70% 50%;
-    --board-4: 30 90% 60%;
-    --board-5: 330 75% 60%;
+    /* Board colors - modernare palett */
+    --board-1: 250 25% 31%;  /* Djup lila */
+    --board-2: 220 56% 23%;  /* Medium blå */
+    --board-3: 302 31% 58%;  /* Mjuk lila */
+    --board-4: 17 80% 69%;   /* Persika */
+    --board-5: 347 44% 75%;  /* Rosa */
+
+    /* Sticky note colors - pastellversioner */
+    --note-1: 347 44% 90%;  /* Ljus rosa #F3DADF */
+    --note-2: 267 35% 82%;  /* Ljus lila #D4C5E2 */
+    --note-3: 25 100% 87%;  /* Ljus persika #FFD9C0 */
+    --note-4: 214 42% 84%;  /* Ljus blå #C8D5E8 */
+    --note-5: 277 33% 88%;  /* Ljus lavendel #E8DCED */
+
+    /* Participant colors - roterande färger */
+    --participant-1: 17 80% 69%;   /* Persika */
+    --participant-2: 302 31% 58%;  /* Mjuk lila */
+    --participant-3: 250 25% 31%;  /* Djup lila */
+    --participant-4: 220 56% 23%;  /* Medium blå */
+    --participant-5: 347 60% 70%;  /* Rosa */
   }
 
   .dark {
-    --background: 260 50% 8%;
-    --foreground: 250 30% 95%;
+    --background: 220 82% 8%;   /* Mörkblå navy background */
+    --foreground: 347 44% 95%;  /* Ljus text */
 
-    --card: 260 40% 12%;
-    --card-foreground: 250 30% 95%;
+    --card: 220 60% 12%;
+    --card-foreground: 347 44% 95%;
 
-    --popover: 260 40% 12%;
-    --popover-foreground: 250 30% 95%;
+    --popover: 220 60% 12%;
+    --popover-foreground: 347 44% 95%;
 
-    --primary: 260 70% 55%;
+    --primary: 220 56% 30%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 260 80% 70%;
+    --primary-glow: 250 25% 40%;
 
-    --secondary: 280 50% 50%;
+    --secondary: 302 31% 55%;
     --secondary-foreground: 0 0% 100%;
 
-    --accent: 20 85% 65%;
+    --accent: 17 80% 65%;
     --accent-foreground: 0 0% 100%;
-    --accent-glow: 20 95% 75%;
+    --accent-glow: 17 90% 70%;
 
-    --muted: 260 30% 18%;
-    --muted-foreground: 250 20% 65%;
+    --muted: 220 40% 18%;
+    --muted-foreground: 347 20% 70%;
 
     --destructive: 0 62.8% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 260 30% 20%;
-    --input: 260 30% 20%;
-    --ring: 260 70% 55%;
+    --border: 220 40% 20%;
+    --input: 220 40% 20%;
+    --ring: 220 56% 30%;
 
-    --gradient-hero: linear-gradient(135deg, hsl(260 70% 45%), hsl(280 60% 50%));
-    --gradient-card: linear-gradient(145deg, hsl(260 40% 12%), hsl(260 35% 15%));
-    --shadow-glow: 0 8px 32px hsl(260 70% 50% / 0.3);
-    --shadow-accent: 0 8px 32px hsl(20 85% 65% / 0.25);
+    --gradient-hero: linear-gradient(135deg, hsl(220 56% 20%), hsl(250 25% 25%), hsl(302 31% 45%));
+    --gradient-primary: linear-gradient(135deg, hsl(220 56% 20%), hsl(250 25% 25%));
+    --gradient-cta: linear-gradient(135deg, hsl(17 80% 60%), hsl(302 31% 50%));
+    --gradient-card: linear-gradient(145deg, hsl(220 60% 12%), hsl(220 50% 15%));
+    --gradient-subtle-bg: linear-gradient(180deg, hsl(220 60% 10%), hsl(220 70% 8%));
+    --shadow-glow: 0 8px 32px hsl(250 25% 31% / 0.5);
+    --shadow-accent: 0 8px 32px hsl(17 80% 69% / 0.35);
+    --shadow-card: 0 2px 8px hsl(220 82% 10% / 0.3);
+    --shadow-button-hover: 0 4px 12px hsl(250 25% 31% / 0.5);
   }
 }
 

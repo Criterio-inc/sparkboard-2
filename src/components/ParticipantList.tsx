@@ -16,12 +16,11 @@ interface ParticipantListProps {
 }
 
 const participantColors = [
-  "bg-yellow-200",
-  "bg-pink-200",
-  "bg-blue-200",
-  "bg-green-200",
-  "bg-purple-200",
-  "bg-orange-200",
+  "bg-[hsl(var(--participant-1))]",
+  "bg-[hsl(var(--participant-2))]",
+  "bg-[hsl(var(--participant-3))]",
+  "bg-[hsl(var(--participant-4))]",
+  "bg-[hsl(var(--participant-5))]",
 ];
 
 export const ParticipantList = ({ participants, onDeleteParticipant }: ParticipantListProps) => {
@@ -53,7 +52,7 @@ export const ParticipantList = ({ participants, onDeleteParticipant }: Participa
                     participantColors[participant.colorIndex % participantColors.length]
                   }`}
                 >
-                  <User className="w-4 h-4 text-gray-700" />
+                  <User className="w-4 h-4 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{participant.name}</p>

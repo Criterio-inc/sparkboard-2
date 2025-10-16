@@ -32,7 +32,7 @@ export const ControlPanel = ({
   canGoNext,
 }: ControlPanelProps) => {
   return (
-    <Card className="bg-gradient-to-br from-card to-muted/20">
+    <Card className="shadow-[var(--shadow-card)]">
       <CardContent className="pt-4">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           <Button
@@ -56,10 +56,10 @@ export const ControlPanel = ({
 
           <Button
             onClick={onNextBoard}
-            variant="secondary"
+            variant="default"
             size="sm"
             disabled={!canGoNext}
-            className="h-auto py-3 flex-col gap-1.5"
+            className="h-auto py-3 flex-col gap-1.5 bg-gradient-to-r from-[hsl(var(--accent))] to-[hsl(var(--secondary))] hover:shadow-[var(--shadow-accent)]"
           >
             <SkipForward className="w-4 h-4" />
             <span className="text-xs">Nästa Board</span>
@@ -67,9 +67,9 @@ export const ControlPanel = ({
 
           <Button
             onClick={onAIAnalysis}
-            variant="hero"
+            variant="accent"
             size="sm"
-            className="h-auto py-3 flex-col gap-1.5"
+            className="h-auto py-3 flex-col gap-1.5 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--primary-glow))] hover:shadow-[var(--shadow-button-hover)]"
           >
             <Sparkles className="w-4 h-4" />
             <span className="text-xs">AI-Analys</span>
