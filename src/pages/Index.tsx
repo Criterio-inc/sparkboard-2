@@ -88,7 +88,7 @@ const Index = () => {
             <div className="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center mx-auto mb-4">
               <Users className="w-6 h-6 text-secondary" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Enkel Åtkomst</h3>
+            <h3 className="text-lg font-semibold mb-2">Enkel åtkomst</h3>
             <p className="text-muted-foreground text-sm">
               Gå med via 6-siffrig kod - inget konto krävs
             </p>
