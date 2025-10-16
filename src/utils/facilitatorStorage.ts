@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export interface Facilitator {
   id: string;
   name: string;
@@ -8,7 +10,7 @@ export interface Facilitator {
 }
 
 const FACILITATORS_KEY = "facilitators";
-const CURRENT_SESSION_KEY = "current_facilitator_session";
+const SESSION_TOKEN_KEY = "facilitator_session_token";
 const LOGIN_ATTEMPTS_KEY = "login_attempts";
 const LOCKOUT_KEY = "facilitator_lockout";
 
@@ -111,52 +113,103 @@ export const getRemainingAttempts = (): number => {
   return Math.max(0, MAX_ATTEMPTS - attempts);
 };
 
-export const createSession = (facilitatorId: string): void => {
-  const session = {
-    facilitatorId,
-    timestamp: Date.now(),
-  };
-  sessionStorage.setItem(CURRENT_SESSION_KEY, JSON.stringify(session));
+export const createSession = async (facilitatorId: string): Promise<void> => {
+  // Generate unique session token
+  const sessionToken = `${facilitatorId}-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  const expiresAt = new Date(Date.now() + SESSION_TIMEOUT);
+
+  // Store session in Supabase
+  const { error } = await supabase
+    .from('facilitator_sessions')
+    .insert({
+      facilitator_id: facilitatorId,
+      session_token: sessionToken,
+      expires_at: expiresAt.toISOString(),
+    });
+
+  if (error) {
+    console.error("Failed to create session:", error);
+    return;
+  }
+
+  // Store session token in localStorage (shared across tabs in same browser)
+  localStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
 };
 
-export const getCurrentSession = (): { facilitatorId: string; timestamp: number } | null => {
+export const getCurrentSession = async (): Promise<{ facilitatorId: string; timestamp: number } | null> => {
   try {
-    const data = sessionStorage.getItem(CURRENT_SESSION_KEY);
-    if (!data) return null;
-    
-    const session = JSON.parse(data);
-    const now = Date.now();
-    
-    if (now - session.timestamp > SESSION_TIMEOUT) {
-      clearSession();
+    const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+    if (!sessionToken) return null;
+
+    // Validate session in Supabase
+    const { data: session, error } = await supabase
+      .from('facilitator_sessions')
+      .select('*')
+      .eq('session_token', sessionToken)
+      .single();
+
+    if (error || !session) {
+      await clearSession();
       return null;
     }
+
+    // Check if session is expired
+    const now = new Date();
+    const expiresAt = new Date(session.expires_at);
     
-    return session;
+    if (now > expiresAt) {
+      await clearSession();
+      return null;
+    }
+
+    // Update last_active_at
+    await supabase
+      .from('facilitator_sessions')
+      .update({ last_active_at: now.toISOString() })
+      .eq('session_token', sessionToken);
+
+    return {
+      facilitatorId: session.facilitator_id,
+      timestamp: new Date(session.last_active_at).getTime(),
+    };
   } catch (error) {
     console.error("Failed to get session:", error);
     return null;
   }
 };
 
-export const getCurrentFacilitator = (): Facilitator | null => {
-  const session = getCurrentSession();
+export const getCurrentFacilitator = async (): Promise<Facilitator | null> => {
+  const session = await getCurrentSession();
   if (!session) return null;
   
   const facilitators = getAllFacilitators();
   return facilitators.find(f => f.id === session.facilitatorId) || null;
 };
 
-export const clearSession = (): void => {
-  sessionStorage.removeItem(CURRENT_SESSION_KEY);
+export const clearSession = async (): Promise<void> => {
+  const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+  
+  if (sessionToken) {
+    // Delete session from Supabase
+    await supabase
+      .from('facilitator_sessions')
+      .delete()
+      .eq('session_token', sessionToken);
+  }
+  
+  // Remove from localStorage
+  localStorage.removeItem(SESSION_TOKEN_KEY);
 };
 
-export const updateSessionTimestamp = (): void => {
-  const session = getCurrentSession();
-  if (session) {
-    session.timestamp = Date.now();
-    sessionStorage.setItem(CURRENT_SESSION_KEY, JSON.stringify(session));
-  }
+export const updateSessionTimestamp = async (): Promise<void> => {
+  const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+  if (!sessionToken) return;
+
+  const now = new Date();
+  await supabase
+    .from('facilitator_sessions')
+    .update({ last_active_at: now.toISOString() })
+    .eq('session_token', sessionToken);
 };
 
 export const resetPinWithSecurityAnswer = async (
@@ -193,7 +246,7 @@ export const resetPinWithSecurityAnswer = async (
   return { success: true };
 };
 
-export const deleteFacilitator = (facilitatorId: string): boolean => {
+export const deleteFacilitator = async (facilitatorId: string): Promise<boolean> => {
   const facilitators = getAllFacilitators();
   const filtered = facilitators.filter(f => f.id !== facilitatorId);
   
@@ -204,9 +257,9 @@ export const deleteFacilitator = (facilitatorId: string): boolean => {
   localStorage.setItem(FACILITATORS_KEY, JSON.stringify(filtered));
   
   // Clear session if deleting current facilitator
-  const session = getCurrentSession();
+  const session = await getCurrentSession();
   if (session?.facilitatorId === facilitatorId) {
-    clearSession();
+    await clearSession();
   }
   
   return true;

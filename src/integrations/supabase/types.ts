@@ -81,6 +81,33 @@ export type Database = {
           },
         ]
       }
+      facilitator_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          facilitator_id: string
+          id: string
+          last_active_at: string
+          session_token: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          facilitator_id: string
+          id?: string
+          last_active_at?: string
+          session_token: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          facilitator_id?: string
+          id?: string
+          last_active_at?: string
+          session_token?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           author_id: string
@@ -241,7 +268,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

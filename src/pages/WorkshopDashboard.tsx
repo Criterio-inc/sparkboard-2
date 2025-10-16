@@ -31,23 +31,27 @@ const WorkshopDashboard = () => {
   const { toast } = useToast();
   const [workshops, setWorkshops] = useState<any[]>([]);
   const [showAuth, setShowAuth] = useState(false);
-  const [facilitator, setFacilitator] = useState(getCurrentFacilitator());
+  const [facilitator, setFacilitator] = useState<any>(null);
   const [allFacilitators, setAllFacilitators] = useState(getAllFacilitators());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [facilitatorToDelete, setFacilitatorToDelete] = useState<string | null>(null);
 
   useEffect(() => {
+    const initializeFacilitator = async () => {
+      const currentFacilitator = await getCurrentFacilitator();
+      setFacilitator(currentFacilitator);
+      if (currentFacilitator) {
+        await updateSessionTimestamp();
+      }
+    };
+    
+    initializeFacilitator();
     loadWorkshops(); // Ladda alltid workshops
-    const currentFacilitator = getCurrentFacilitator();
-    setFacilitator(currentFacilitator);
-    if (currentFacilitator) {
-      updateSessionTimestamp();
-    }
   }, []);
 
   const loadWorkshops = async () => {
     try {
-      const currentFacilitator = getCurrentFacilitator();
+      const currentFacilitator = await getCurrentFacilitator();
       
       if (!currentFacilitator) {
         setWorkshops([]);
@@ -113,8 +117,8 @@ const WorkshopDashboard = () => {
     }
   };
 
-  const handleAuthenticated = () => {
-    const currentFacilitator = getCurrentFacilitator();
+  const handleAuthenticated = async () => {
+    const currentFacilitator = await getCurrentFacilitator();
     if (currentFacilitator) {
       setFacilitator(currentFacilitator);
       setAllFacilitators(getAllFacilitators());
@@ -123,8 +127,8 @@ const WorkshopDashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await clearSession();
     setFacilitator(null);
     setWorkshops([]);
     toast({
@@ -170,12 +174,13 @@ const WorkshopDashboard = () => {
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (facilitatorToDelete) {
-      const success = deleteFacilitator(facilitatorToDelete);
+      const success = await deleteFacilitator(facilitatorToDelete);
       if (success) {
         setAllFacilitators(getAllFacilitators());
-        setFacilitator(getCurrentFacilitator());
+        const currentFacilitator = await getCurrentFacilitator();
+        setFacilitator(currentFacilitator);
         toast({
           title: "Facilitator borttagen",
           description: "Kontot har raderats",

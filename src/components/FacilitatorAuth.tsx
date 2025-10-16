@@ -70,7 +70,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
     setLoading(false);
 
     if (result.success && result.facilitator) {
-      createSession(result.facilitator.id);
+      await createSession(result.facilitator.id);
       toast({
         title: "Välkommen!",
         description: "Ditt facilitator-konto har skapats",
@@ -102,7 +102,7 @@ const FacilitatorAuth = ({ open, onAuthenticated }: FacilitatorAuthProps) => {
     recordLoginAttempt(isValid);
 
     if (isValid) {
-      createSession(selectedFacilitatorId);
+      await createSession(selectedFacilitatorId);
       toast({
         title: "Inloggad!",
         description: "Välkommen tillbaka",

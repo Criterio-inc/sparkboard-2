@@ -239,13 +239,24 @@ const CreateWorkshop = () => {
       const codeToUse = normalized.length === 6 ? normalized : await generateUniqueWorkshopCodeFromSupabase();
       console.log("🔑 Kod att använda:", codeToUse);
 
+      // Hämta facilitator
+      const facilitator = await getCurrentFacilitator();
+      if (!facilitator) {
+        toast({
+          title: "Fel",
+          description: "Du måste vara inloggad som facilitator",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Spara eller uppdatera workshop
       const workshopData = {
         name: workshop.title,
         code: codeToUse,
         date: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        facilitator_id: currentFacilitator.id, // Lägg till facilitator_id
+        facilitator_id: facilitator.id, // Lägg till facilitator_id
       };
 
       let savedWorkshop;
