@@ -245,10 +245,70 @@ const CreateWorkshop = () => {
         code: codeToUse,
         date: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        facilitator_id: currentFacilitator.id, // Lägg till facilitator_id
       };
 
       let savedWorkshop;
       if (workshopId) {
+        // Om detta är en uppdatering, radera gamla data FÖRST
+        console.log("🗑️ Raderar gamla data för workshop:", workshopId);
+        
+        // Hämta alla boards för workshopen
+        const { data: oldBoards } = await supabase
+          .from('boards')
+          .select('id')
+          .eq('workshop_id', workshopId);
+        
+        if (oldBoards && oldBoards.length > 0) {
+          const boardIds = oldBoards.map(b => b.id);
+          
+          // Hämta alla questions för dessa boards
+          const { data: oldQuestions } = await supabase
+            .from('questions')
+            .select('id')
+            .in('board_id', boardIds);
+          
+          if (oldQuestions && oldQuestions.length > 0) {
+            const questionIds = oldQuestions.map(q => q.id);
+            
+            // 1. Radera notes först (foreign key till questions)
+            const { error: deleteNotesError } = await supabase
+              .from('notes')
+              .delete()
+              .in('question_id', questionIds);
+            
+            if (deleteNotesError) {
+              console.error("Kunde inte radera gamla notes:", deleteNotesError);
+              throw deleteNotesError;
+            }
+            console.log("✅ Gamla notes raderade");
+          }
+          
+          // 2. Radera questions (foreign key till boards)
+          const { error: deleteQuestionsError } = await supabase
+            .from('questions')
+            .delete()
+            .in('board_id', boardIds);
+          
+          if (deleteQuestionsError) {
+            console.error("Kunde inte radera gamla questions:", deleteQuestionsError);
+            throw deleteQuestionsError;
+          }
+          console.log("✅ Gamla questions raderade");
+        }
+        
+        // 3. Radera boards sist
+        const { error: deleteBoardsError } = await supabase
+          .from('boards')
+          .delete()
+          .eq('workshop_id', workshopId);
+        
+        if (deleteBoardsError) {
+          console.error("Kunde inte radera gamla boards:", deleteBoardsError);
+          throw deleteBoardsError;
+        }
+        console.log("✅ Gamla boards raderade");
+
         // Uppdatera befintlig workshop
         const { data, error } = await supabase
           .from('workshops')
@@ -273,67 +333,6 @@ const CreateWorkshop = () => {
       }
 
       console.log("✅ Workshop sparad i Supabase:", savedWorkshop.id);
-
-      // Om detta är en uppdatering, radera gamla notes -> questions -> boards
-      if (workshopId) {
-        console.log("🗑️ Raderar gamla data för workshop:", savedWorkshop.id);
-        
-        // Hämta alla boards för workshopen
-        const { data: oldBoards } = await supabase
-          .from('boards')
-          .select('id')
-          .eq('workshop_id', savedWorkshop.id);
-        
-        if (oldBoards && oldBoards.length > 0) {
-          const boardIds = oldBoards.map(b => b.id);
-          
-          // Hämta alla questions för dessa boards
-          const { data: oldQuestions } = await supabase
-            .from('questions')
-            .select('id')
-            .in('board_id', boardIds);
-          
-          if (oldQuestions && oldQuestions.length > 0) {
-            const questionIds = oldQuestions.map(q => q.id);
-            
-            // 1. Radera notes först (foreign key till questions)
-            const { error: deleteNotesError } = await supabase
-              .from('notes')
-              .delete()
-              .in('question_id', questionIds);
-            
-            if (deleteNotesError) {
-              console.error("Kunde inte radera gamla notes:", deleteNotesError);
-            } else {
-              console.log("✅ Gamla notes raderade");
-            }
-          }
-          
-          // 2. Radera questions (foreign key till boards)
-          const { error: deleteQuestionsError } = await supabase
-            .from('questions')
-            .delete()
-            .in('board_id', boardIds);
-          
-          if (deleteQuestionsError) {
-            console.error("Kunde inte radera gamla questions:", deleteQuestionsError);
-          } else {
-            console.log("✅ Gamla questions raderade");
-          }
-        }
-        
-        // 3. Radera boards sist
-        const { error: deleteBoardsError } = await supabase
-          .from('boards')
-          .delete()
-          .eq('workshop_id', savedWorkshop.id);
-        
-        if (deleteBoardsError) {
-          console.error("Kunde inte radera gamla boards:", deleteBoardsError);
-        } else {
-          console.log("✅ Gamla boards raderade");
-        }
-      }
 
       // Spara boards och questions
       let firstBoardId = null;

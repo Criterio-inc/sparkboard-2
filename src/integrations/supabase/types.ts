@@ -192,6 +192,7 @@ export type Database = {
           code: string
           created_at: string
           date: string
+          facilitator_id: string
           id: string
           name: string
           updated_at: string
@@ -201,6 +202,7 @@ export type Database = {
           code: string
           created_at?: string
           date?: string
+          facilitator_id: string
           id?: string
           name: string
           updated_at?: string
@@ -210,6 +212,7 @@ export type Database = {
           code?: string
           created_at?: string
           date?: string
+          facilitator_id?: string
           id?: string
           name?: string
           updated_at?: string

@@ -47,10 +47,19 @@ const WorkshopDashboard = () => {
 
   const loadWorkshops = async () => {
     try {
-      // Hämta workshops utan nested select
+      const currentFacilitator = getCurrentFacilitator();
+      
+      if (!currentFacilitator) {
+        setWorkshops([]);
+        console.log("📦 Ingen inloggad facilitator - visar inga workshops");
+        return;
+      }
+
+      // Hämta endast workshops för den inloggade facilitatorn
       const { data: workshopsData, error } = await supabase
         .from("workshops")
         .select("*")
+        .eq("facilitator_id", currentFacilitator.id)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -263,7 +272,7 @@ const WorkshopDashboard = () => {
             </div>
           </Card>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {workshops.map((workshop) => (
               <Card
                 key={workshop.id}

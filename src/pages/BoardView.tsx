@@ -478,8 +478,8 @@ const BoardView = () => {
       </div>
 
       {/* Questions Grid */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="container mx-auto px-4 py-6 md:py-8">
+        <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {board.questions.map((question) => {
             const questionNotes = getNotesForQuestion(question.id);
             

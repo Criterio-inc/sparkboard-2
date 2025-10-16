@@ -481,8 +481,8 @@ const FacilitatorControl = () => {
       </div>
 
       <div className="container mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-4 gap-6">
-          {/* Main Content - 3 columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Main Content - 3 columns on desktop, full width on mobile/tablet */}
           <div className="lg:col-span-3 space-y-6">
             {/* Control Panel - kan gömmas för presentation */}
             {isControlPanelVisible ? (
@@ -599,9 +599,17 @@ const FacilitatorControl = () => {
             </Tabs>
           </div>
 
-          {/* Sidebar - 1 column */}
-          <div className="lg:col-span-1">
+          {/* Sidebar - 1 column on desktop, hidden on mobile/tablet (shows in separate tab/view) */}
+          <div className="hidden lg:block lg:col-span-1">
             <ParticipantList participants={participants} />
+          </div>
+          
+          {/* Mobile/Tablet ParticipantList - shown below boards */}
+          <div className="lg:hidden mt-6">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Deltagare</h3>
+              <ParticipantList participants={participants} />
+            </Card>
           </div>
         </div>
 
