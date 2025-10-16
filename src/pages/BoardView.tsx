@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { StickyNote } from "@/components/StickyNote";
 import { AddNoteDialog } from "@/components/AddNoteDialog";
 import { Plus, ArrowLeft, Clock, Users, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Question {
@@ -36,6 +37,8 @@ const BoardView = () => {
   const { workshopId, boardId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const [board, setBoard] = useState<Board | null>(null);
   const [workshopTitle, setWorkshopTitle] = useState("");
@@ -235,8 +238,8 @@ const BoardView = () => {
             console.log("🔔 [Participant] Board ändrad till:", newActiveBoardId);
             
             toast({
-              title: "Nytt board!",
-              description: "Facilitator har bytt övning",
+              title: t('board.movedToNext'),
+              description: t('board.syncing'),
             });
             
             // Navigera till nytt board
@@ -250,7 +253,63 @@ const BoardView = () => {
       console.log("🔌 [Participant] Kopplar från board-synkning");
       supabase.removeChannel(channel);
     };
-  }, [workshopId, boardId, navigate, toast]);
+  }, [workshopId, boardId, navigate, toast, t]);
+
+  // Sync board when screen becomes visible (wake from sleep)
+  useEffect(() => {
+    if (!workshopId || !boardId) return;
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log("👁️ [Participant] Screen became visible, syncing board...");
+
+        // Clear any pending sync timeout
+        if (syncTimeoutRef.current) {
+          clearTimeout(syncTimeoutRef.current);
+        }
+
+        // Debounce sync to prevent multiple rapid calls
+        syncTimeoutRef.current = setTimeout(async () => {
+          try {
+            const { data: workshop, error } = await supabase
+              .from('workshops')
+              .select('active_board_id')
+              .eq('id', workshopId)
+              .single();
+
+            if (error) {
+              console.error("Error syncing board:", error);
+              return;
+            }
+
+            if (workshop?.active_board_id && workshop.active_board_id !== boardId) {
+              console.log("🔄 [Participant] Board changed while away, navigating to:", workshop.active_board_id);
+              
+              toast({
+                title: t('board.movedToNext'),
+                description: t('board.syncing'),
+              });
+
+              navigate(`/board/${workshopId}/${workshop.active_board_id}`);
+            } else {
+              console.log("✅ [Participant] Board is up to date");
+            }
+          } catch (error) {
+            console.error("Error in visibility sync:", error);
+          }
+        }, 500);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, [workshopId, boardId, navigate, toast, t]);
 
   // Synka deltagarantal från Supabase Realtime
   useEffect(() => {

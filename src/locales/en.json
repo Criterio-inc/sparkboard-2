@@ -1,0 +1,149 @@
+{
+  "landing": {
+    "title": "Idélabbet",
+    "subtitle": "Collaborate, brainstorm and create together in real-time",
+    "facilitator": {
+      "title": "For Facilitators",
+      "description": "Create and manage workshops with multiple boards and questions",
+      "button": "Create Workshop"
+    },
+    "participant": {
+      "title": "For Participants",
+      "description": "Join a workshop and share your ideas",
+      "button": "Join Workshop"
+    },
+    "features": {
+      "title": "Key Features",
+      "realtime": {
+        "title": "Real-time Collaboration",
+        "description": "All changes are synchronized instantly between participants"
+      },
+      "easy": {
+        "title": "Easy Access",
+        "description": "No account required - just join with a code"
+      },
+      "responsive": {
+        "title": "Responsive Design",
+        "description": "Works perfectly on all devices"
+      },
+      "ai": {
+        "title": "AI Analysis",
+        "description": "Get insights from workshop discussions"
+      }
+    }
+  },
+  "dashboard": {
+    "title": "My Workshops",
+    "create": "Create New Workshop",
+    "noWorkshops": "You don't have any workshops yet",
+    "getStarted": "Get started by creating your first workshop",
+    "draft": "Draft",
+    "active": "Active",
+    "participants": "participants",
+    "boards": "boards",
+    "manage": "Manage",
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirmDelete": "Are you sure you want to delete this workshop?",
+    "cancel": "Cancel"
+  },
+  "createWorkshop": {
+    "title": "Create Workshop",
+    "editTitle": "Edit Workshop",
+    "workshopName": "Workshop Name",
+    "workshopNamePlaceholder": "e.g. Team Brainstorming Session",
+    "boards": "Boards",
+    "addBoard": "Add Board",
+    "boardTitle": "Board Title",
+    "timeLimit": "Time Limit (minutes)",
+    "questions": "Questions",
+    "addQuestion": "Add Question",
+    "questionTitle": "Question",
+    "questionPlaceholder": "Enter your question here...",
+    "saveDraft": "Save as Draft",
+    "activate": "Activate Workshop",
+    "cannotEdit": "You cannot edit an already published workshop that contains participant responses",
+    "fillRequired": "Please fill in all required fields",
+    "addQuestion": "Add at least one question to each board",
+    "workshopCreated": "Workshop created!",
+    "workshopUpdated": "Workshop updated!",
+    "workshopSaved": "Workshop saved as draft",
+    "error": "Could not save workshop. Please try again."
+  },
+  "join": {
+    "title": "Join Workshop",
+    "enterCode": "Enter Workshop Code",
+    "codePlaceholder": "Enter 6-digit code",
+    "yourName": "Your Name",
+    "namePlaceholder": "Enter your name",
+    "joinButton": "Join Workshop",
+    "invalidCode": "Invalid workshop code",
+    "enterName": "Please enter your name",
+    "workshopNotFound": "Workshop not found",
+    "notActive": "This workshop is no longer active",
+    "error": "Could not join workshop. Please try again."
+  },
+  "board": {
+    "participants": "participants",
+    "timeRemaining": "Time Remaining",
+    "timeUp": "Time's up!",
+    "addNote": "Add Note",
+    "noNotes": "No notes yet. Click + to add one!",
+    "syncing": "Syncing with facilitator...",
+    "movedToNext": "You've been moved to the next exercise"
+  },
+  "addNoteDialog": {
+    "title": "Add Note",
+    "selectQuestion": "Select a question",
+    "yourNote": "Your note",
+    "notePlaceholder": "Write your note here...",
+    "cancel": "Cancel",
+    "add": "Add",
+    "noteAdded": "Note added!",
+    "error": "Could not add note"
+  },
+  "facilitatorControl": {
+    "title": "Facilitator Control Panel",
+    "currentBoard": "Current Board",
+    "timer": "Timer",
+    "start": "Start",
+    "pause": "Pause",
+    "reset": "Reset",
+    "participants": "Participants",
+    "boards": "Boards",
+    "switchTo": "Switch to",
+    "current": "(Current)",
+    "workshopCode": "Workshop Code",
+    "download": "Download",
+    "downloadPDF": "Download PDF",
+    "aiAnalysis": "AI Analysis",
+    "endWorkshop": "End Workshop",
+    "confirmEnd": "Are you sure you want to end this workshop?",
+    "cancel": "Cancel",
+    "end": "End",
+    "workshopEnded": "Workshop ended",
+    "confirmDelete": "Are you sure you want to remove this participant?",
+    "participantRemoved": "Participant removed"
+  },
+  "aiAnalysis": {
+    "title": "AI Analysis",
+    "analyze": "Analyze with AI",
+    "analyzing": "Analyzing...",
+    "close": "Close",
+    "error": "Could not analyze notes"
+  },
+  "notFound": {
+    "title": "Page Not Found",
+    "message": "The page you're looking for doesn't exist",
+    "home": "Back to Home"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success!",
+    "delete": "Delete",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel"
+  }
+}

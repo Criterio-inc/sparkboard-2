@@ -1,0 +1,149 @@
+{
+  "landing": {
+    "title": "Idélabbet",
+    "subtitle": "Samarbeta, brainstorma och skapa tillsammans i realtid",
+    "facilitator": {
+      "title": "För Facilitatorer",
+      "description": "Skapa och hantera workshops med flera tavlor och frågor",
+      "button": "Skapa Workshop"
+    },
+    "participant": {
+      "title": "För Deltagare",
+      "description": "Gå med i en workshop och dela dina idéer",
+      "button": "Gå med i Workshop"
+    },
+    "features": {
+      "title": "Huvudfunktioner",
+      "realtime": {
+        "title": "Samarbete i Realtid",
+        "description": "Alla ändringar synkroniseras direkt mellan deltagare"
+      },
+      "easy": {
+        "title": "Enkel Åtkomst",
+        "description": "Inget konto krävs - bara gå med med en kod"
+      },
+      "responsive": {
+        "title": "Responsiv Design",
+        "description": "Fungerar perfekt på alla enheter"
+      },
+      "ai": {
+        "title": "AI-Analys",
+        "description": "Få insikter från workshop-diskussioner"
+      }
+    }
+  },
+  "dashboard": {
+    "title": "Mina Workshops",
+    "create": "Skapa Ny Workshop",
+    "noWorkshops": "Du har inga workshops än",
+    "getStarted": "Kom igång genom att skapa din första workshop",
+    "draft": "Utkast",
+    "active": "Aktiv",
+    "participants": "deltagare",
+    "boards": "tavlor",
+    "manage": "Hantera",
+    "edit": "Redigera",
+    "delete": "Radera",
+    "confirmDelete": "Är du säker på att du vill radera denna workshop?",
+    "cancel": "Avbryt"
+  },
+  "createWorkshop": {
+    "title": "Skapa Workshop",
+    "editTitle": "Redigera Workshop",
+    "workshopName": "Workshop-namn",
+    "workshopNamePlaceholder": "t.ex. Team Brainstorming Session",
+    "boards": "Tavlor",
+    "addBoard": "Lägg till Tavla",
+    "boardTitle": "Taveltitel",
+    "timeLimit": "Tidsgräns (minuter)",
+    "questions": "Frågor",
+    "addQuestion": "Lägg till Fråga",
+    "questionTitle": "Fråga",
+    "questionPlaceholder": "Skriv din fråga här...",
+    "saveDraft": "Spara som Utkast",
+    "activate": "Aktivera Workshop",
+    "cannotEdit": "Du kan inte redigera en redan publicerad workshop som innehåller deltagarnas svar",
+    "fillRequired": "Vänligen fyll i alla obligatoriska fält",
+    "addQuestion": "Lägg till minst en fråga till varje tavla",
+    "workshopCreated": "Workshop skapad!",
+    "workshopUpdated": "Workshop uppdaterad!",
+    "workshopSaved": "Workshop sparad som utkast",
+    "error": "Kunde inte spara workshop. Försök igen."
+  },
+  "join": {
+    "title": "Gå med i Workshop",
+    "enterCode": "Ange Workshop-kod",
+    "codePlaceholder": "Ange 6-siffrig kod",
+    "yourName": "Ditt Namn",
+    "namePlaceholder": "Ange ditt namn",
+    "joinButton": "Gå med i Workshop",
+    "invalidCode": "Ogiltig workshop-kod",
+    "enterName": "Vänligen ange ditt namn",
+    "workshopNotFound": "Workshop hittades inte",
+    "notActive": "Denna workshop är inte längre aktiv",
+    "error": "Kunde inte gå med i workshop. Försök igen."
+  },
+  "board": {
+    "participants": "deltagare",
+    "timeRemaining": "Tid kvar",
+    "timeUp": "Tiden är ute!",
+    "addNote": "Lägg till Anteckning",
+    "noNotes": "Inga anteckningar än. Klicka + för att lägga till en!",
+    "syncing": "Synkroniserar med facilitator...",
+    "movedToNext": "Du har flyttats till nästa övning"
+  },
+  "addNoteDialog": {
+    "title": "Lägg till Anteckning",
+    "selectQuestion": "Välj en fråga",
+    "yourNote": "Din anteckning",
+    "notePlaceholder": "Skriv din anteckning här...",
+    "cancel": "Avbryt",
+    "add": "Lägg till",
+    "noteAdded": "Anteckning tillagd!",
+    "error": "Kunde inte lägga till anteckning"
+  },
+  "facilitatorControl": {
+    "title": "Facilitator Kontrollpanel",
+    "currentBoard": "Nuvarande Tavla",
+    "timer": "Timer",
+    "start": "Starta",
+    "pause": "Pausa",
+    "reset": "Återställ",
+    "participants": "Deltagare",
+    "boards": "Tavlor",
+    "switchTo": "Byt till",
+    "current": "(Nuvarande)",
+    "workshopCode": "Workshop-kod",
+    "download": "Ladda ner",
+    "downloadPDF": "Ladda ner PDF",
+    "aiAnalysis": "AI-Analys",
+    "endWorkshop": "Avsluta Workshop",
+    "confirmEnd": "Är du säker på att du vill avsluta denna workshop?",
+    "cancel": "Avbryt",
+    "end": "Avsluta",
+    "workshopEnded": "Workshop avslutad",
+    "confirmDelete": "Är du säker på att du vill ta bort denna deltagare?",
+    "participantRemoved": "Deltagare borttagen"
+  },
+  "aiAnalysis": {
+    "title": "AI-Analys",
+    "analyze": "Analysera med AI",
+    "analyzing": "Analyserar...",
+    "close": "Stäng",
+    "error": "Kunde inte analysera anteckningar"
+  },
+  "notFound": {
+    "title": "Sidan hittades inte",
+    "message": "Sidan du letar efter finns inte",
+    "home": "Tillbaka till Startsidan"
+  },
+  "common": {
+    "loading": "Laddar...",
+    "error": "Ett fel uppstod",
+    "success": "Lyckades!",
+    "delete": "Radera",
+    "edit": "Redigera",
+    "save": "Spara",
+    "cancel": "Avbryt"
+  }
+}

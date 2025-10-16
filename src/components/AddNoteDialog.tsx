@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,7 @@ export const AddNoteDialog = ({
   questions,
   onSubmit,
 }: AddNoteDialogProps) => {
+  const { t } = useTranslation();
   const [selectedQuestion, setSelectedQuestion] = useState<string>("");
   const [content, setContent] = useState("");
 
@@ -40,18 +42,18 @@ export const AddNoteDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Skapa Sticky Note</DialogTitle>
+          <DialogTitle>{t('addNoteDialog.title')}</DialogTitle>
           <DialogDescription>
-            Skriv din idé och välj vilken fråga den hör till
+            {t('addNoteDialog.selectQuestion')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="question">Välj fråga</Label>
+            <Label htmlFor="question">{t('addNoteDialog.selectQuestion')}</Label>
             <Select value={selectedQuestion} onValueChange={setSelectedQuestion}>
               <SelectTrigger id="question">
-                <SelectValue placeholder="Välj en fråga..." />
+                <SelectValue placeholder={t('addNoteDialog.selectQuestion')} />
               </SelectTrigger>
               <SelectContent>
                 {questions.map((q) => (
@@ -64,17 +66,17 @@ export const AddNoteDialog = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="content">Din idé</Label>
+            <Label htmlFor="content">{t('addNoteDialog.yourNote')}</Label>
             <Textarea
               id="content"
-              placeholder="Skriv din idé här..."
+              placeholder={t('addNoteDialog.notePlaceholder')}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={5}
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              {content.length} / 500 tecken
+              {content.length} / 500
             </p>
           </div>
 
@@ -85,14 +87,14 @@ export const AddNoteDialog = ({
               className="flex-1"
               variant="hero"
             >
-              Lägg till Note
+              {t('addNoteDialog.add')}
             </Button>
             <Button
               onClick={() => onOpenChange(false)}
               variant="outline"
               className="flex-1"
             >
-              Avbryt
+              {t('addNoteDialog.cancel')}
             </Button>
           </div>
         </div>
