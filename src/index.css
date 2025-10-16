@@ -43,7 +43,9 @@ All colors MUST be HSL.
     --input: 347 30% 90%;
     --ring: 220 56% 23%;
 
-    --radius: 0.75rem;
+    --radius: 0.75rem;  /* 12px for cards */
+    --radius-button: 0.5rem;  /* 8px for buttons */
+    --radius-note: 1rem;  /* 16px for sticky notes */
 
     /* Gradients - moderna gradient combinations */
     --gradient-hero: linear-gradient(135deg, hsl(220 56% 23%), hsl(250 25% 31%), hsl(302 31% 58%));
@@ -131,5 +133,32 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Typography enhancements */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold;
+  }
+
+  h1 {
+    @apply text-4xl tracking-tight;
+  }
+
+  h2 {
+    @apply text-3xl tracking-tight;
+  }
+
+  h3 {
+    @apply text-2xl tracking-tight;
+  }
+
+  /* Smooth transitions for all interactive elements */
+  button, a, [role="button"] {
+    @apply transition-all duration-200;
+  }
+
+  /* Icon hover animations */
+  .icon-hover {
+    @apply transition-transform duration-200 hover:scale-110;
   }
 }

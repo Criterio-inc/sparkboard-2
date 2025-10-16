@@ -59,9 +59,19 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "var(--radius)",  /* 12px */
+        md: "0.5rem",  /* 8px */
+        sm: "0.375rem",  /* 6px */
+        xl: "1rem",  /* 16px */
+        "2xl": "1.5rem",  /* 24px */
+      },
+      spacing: {
+        '1': '0.25rem',  /* 4px */
+        '2': '0.5rem',   /* 8px */
+        '4': '1rem',     /* 16px */
+        '6': '1.5rem',   /* 24px */
+        '8': '2rem',     /* 32px */
+        '12': '3rem',    /* 48px */
       },
       keyframes: {
         "accordion-down": {

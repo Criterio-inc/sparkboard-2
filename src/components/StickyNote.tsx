@@ -41,7 +41,7 @@ export const StickyNote = ({
 
   return (
     <div
-      className={`relative p-4 rounded-sm shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-button-hover)] transition-all duration-300 min-h-[140px] flex flex-col ${colorClass} ${rotationClass} animate-sticky-appear border-t-8`}
+      className={`relative p-4 rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-button-hover)] transition-all duration-300 hover:-translate-y-1 min-h-[140px] flex flex-col ${colorClass} ${rotationClass} animate-sticky-appear border-t-8`}
       style={{
         "--rotation": rotationClass.match(/\[(.*?)\]/)?.[1] || "0deg",
       } as React.CSSProperties}

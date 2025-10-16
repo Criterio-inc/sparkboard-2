@@ -506,7 +506,7 @@ const FacilitatorControl = () => {
               </Button>
 
               <div>
-                <h1 className="text-2xl font-bold">Facilitator Control</h1>
+                <h1 className="text-2xl font-semibold tracking-tight">Facilitator Control</h1>
                 <p className="text-sm text-muted-foreground">Workshop: {workshop?.name || "—"}</p>
               </div>
             </div>
@@ -650,9 +650,9 @@ const FacilitatorControl = () => {
                       const qBoardColor = `hsl(var(--board-${(board.colorIndex % 5) + 1}))`;
 
                       return (
-                        <Card key={question.id} className="p-4 space-y-3">
+                        <Card key={question.id} className="p-4 space-y-3 hover:shadow-[var(--shadow-button-hover)] transition-all duration-200">
                           <div>
-                            <h2 className="text-[0.95rem] font-semibold mb-1 leading-tight" style={{ color: qBoardColor }}>
+                            <h2 className="text-[0.95rem] font-semibold mb-1 leading-tight tracking-tight" style={{ color: qBoardColor }}>
                               {question.title}
                             </h2>
                             <p className="text-xs text-muted-foreground">

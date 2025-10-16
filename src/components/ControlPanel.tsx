@@ -39,17 +39,17 @@ export const ControlPanel = ({
             onClick={onToggleTimer}
             variant={isTimerRunning ? "destructive" : "default"}
             size="sm"
-            className="h-auto py-3 flex-col gap-1.5"
+            className="h-auto py-3 flex-col gap-2"
           >
             {isTimerRunning ? (
               <>
-                <Pause className="w-4 h-4" />
-                <span className="text-xs">Pausa</span>
+                <Pause className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+                <span className="text-xs font-semibold">Pausa</span>
               </>
             ) : (
               <>
-                <Play className="w-4 h-4" />
-                <span className="text-xs">Starta</span>
+                <Play className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+                <span className="text-xs font-semibold">Starta</span>
               </>
             )}
           </Button>
@@ -59,47 +59,47 @@ export const ControlPanel = ({
             variant="default"
             size="sm"
             disabled={!canGoNext}
-            className="h-auto py-3 flex-col gap-1.5 bg-gradient-to-r from-[hsl(var(--accent))] to-[hsl(var(--secondary))] hover:shadow-[var(--shadow-accent)]"
+            className="h-auto py-3 flex-col gap-2 bg-gradient-to-r from-[hsl(var(--accent))] to-[hsl(var(--secondary))] hover:shadow-[var(--shadow-accent)] group"
           >
-            <SkipForward className="w-4 h-4" />
-            <span className="text-xs">Nästa Board</span>
+            <SkipForward className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+            <span className="text-xs font-semibold">Nästa Board</span>
           </Button>
 
           <Button
             onClick={onAIAnalysis}
             variant="accent"
             size="sm"
-            className="h-auto py-3 flex-col gap-1.5 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--primary-glow))] hover:shadow-[var(--shadow-button-hover)]"
+            className="h-auto py-3 flex-col gap-2 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--primary-glow))] hover:shadow-[var(--shadow-button-hover)] group"
           >
-            <Sparkles className="w-4 h-4" />
-            <span className="text-xs">AI-Analys</span>
+            <Sparkles className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+            <span className="text-xs font-semibold">AI-Analys</span>
           </Button>
 
           <Button
             onClick={onExportPDF}
             variant="outline"
             size="sm"
-            className="h-auto py-3 flex-col gap-1.5"
+            className="h-auto py-3 flex-col gap-2 group"
           >
-            <FileText className="w-4 h-4" />
-            <span className="text-xs">Export PDF</span>
+            <FileText className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+            <span className="text-xs font-semibold">Export PDF</span>
           </Button>
 
           <Button
             onClick={onToggleSound}
             variant="ghost"
             size="sm"
-            className="h-auto py-3 flex-col gap-1.5"
+            className="h-auto py-3 flex-col gap-2 group"
           >
             {isSoundEnabled ? (
               <>
-                <Volume2 className="w-4 h-4" />
-                <span className="text-xs">Ljud På</span>
+                <Volume2 className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+                <span className="text-xs font-semibold">Ljud På</span>
               </>
             ) : (
               <>
-                <VolumeX className="w-4 h-4" />
-                <span className="text-xs">Ljud Av</span>
+                <VolumeX className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+                <span className="text-xs font-semibold">Ljud Av</span>
               </>
             )}
           </Button>

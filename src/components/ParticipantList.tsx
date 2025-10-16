@@ -45,7 +45,7 @@ export const ParticipantList = ({ participants, onDeleteParticipant }: Participa
             participants.map((participant) => (
               <div
                 key={participant.id}
-                className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors group"
+                className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-all duration-200 hover:-translate-y-0.5 group"
               >
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
