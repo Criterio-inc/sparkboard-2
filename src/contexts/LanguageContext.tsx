@@ -230,6 +230,16 @@ const translations: Record<Language, Record<string, string>> = {
     'participants.delete': 'Ta bort',
     
     // AI ANALYSIS
+    'ai.title': 'AI-Analys: {boardTitle}',
+    'ai.description': 'Analysera {count} anteckningar med AI',
+    'ai.notesLabel': 'Anteckningar ({count})',
+    'ai.customPrompt': 'Anpassad prompt',
+    'ai.promptPlaceholder': 'Beskriv vad du vill att AI:n ska fokusera på...',
+    'ai.analyzeButton': 'Analysera med AI',
+    'ai.aiAnalysisLabel': 'AI-Analys',
+    'ai.analyzingStatus': 'Analyserar anteckningar...',
+    'ai.analyzingWait': 'Detta kan ta några sekunder',
+    'ai.clickToStart': 'Klicka på "Analysera med AI" för att börja',
     'ai.analyze': 'Analysera med AI',
     'ai.analyzing': 'Analyserar...',
     'ai.prompt': 'Sammanfatta huvudteman och insikter från dessa workshop-svar',
@@ -523,6 +533,16 @@ const translations: Record<Language, Record<string, string>> = {
     'participants.delete': 'Delete',
     
     // AI ANALYSIS
+    'ai.title': 'AI Analysis: {boardTitle}',
+    'ai.description': 'Analyze {count} notes with AI',
+    'ai.notesLabel': 'Notes ({count})',
+    'ai.customPrompt': 'Custom prompt',
+    'ai.promptPlaceholder': 'Describe what you want the AI to focus on...',
+    'ai.analyzeButton': 'Analyze with AI',
+    'ai.aiAnalysisLabel': 'AI Analysis',
+    'ai.analyzingStatus': 'Analyzing notes...',
+    'ai.analyzingWait': 'This may take a few seconds',
+    'ai.clickToStart': 'Click "Analyze with AI" to start',
     'ai.analyze': 'Analyze with AI',
     'ai.analyzing': 'Analyzing...',
     'ai.prompt': 'Summarize main themes and insights from these workshop responses',
