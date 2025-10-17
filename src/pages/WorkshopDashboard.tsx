@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Calendar, Users, ArrowLeft, MoreVertical, Edit, Trash2, Copy } from "lucide-react";
+import { Plus, Calendar, Users, ArrowLeft, MoreVertical, Edit, Trash2, Copy, QrCode } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { WorkshopQRDialog } from "@/components/WorkshopQRDialog";
 
 const WorkshopDashboard = () => {
   const navigate = useNavigate();
@@ -37,6 +38,8 @@ const WorkshopDashboard = () => {
   const [allFacilitators, setAllFacilitators] = useState(getAllFacilitators());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [facilitatorToDelete, setFacilitatorToDelete] = useState<string | null>(null);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [selectedWorkshopCode, setSelectedWorkshopCode] = useState<string>("");
 
   useEffect(() => {
     const initializeFacilitator = async () => {
@@ -196,6 +199,11 @@ const WorkshopDashboard = () => {
     setFacilitatorToDelete(null);
   };
 
+  const handleShowQR = (code: string) => {
+    setSelectedWorkshopCode(code);
+    setQrDialogOpen(true);
+  };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -340,11 +348,24 @@ const WorkshopDashboard = () => {
                       <span>{workshop.boards_count || 0} {t('dashboard.boards')}</span>
                     </div>
 
-                    <Link to={`/facilitator/${workshop.id}`} className="w-full">
-                      <Button className="w-full mt-4" variant="default">
-                        {t('dashboard.openWorkshop')}
-                      </Button>
-                    </Link>
+                    <div className="flex flex-col gap-2">
+                      <Link to={`/facilitator/${workshop.id}`} className="w-full">
+                        <Button className="w-full mt-4" variant="default">
+                          {t('dashboard.openWorkshop')}
+                        </Button>
+                      </Link>
+                      
+                      {(workshop as any).status === 'active' && workshop.code && (
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={() => handleShowQR(workshop.code)}
+                        >
+                          <QrCode className="w-4 h-4 mr-2" />
+                          Visa QR-kod
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -354,6 +375,12 @@ const WorkshopDashboard = () => {
       </div>
       
       {showAuth && <FacilitatorAuth open={showAuth} onAuthenticated={handleAuthenticated} />}
+      
+      <WorkshopQRDialog 
+        code={selectedWorkshopCode} 
+        open={qrDialogOpen} 
+        onOpenChange={setQrDialogOpen} 
+      />
 
       {/* Facilitator Management Section */}
       {facilitator && allFacilitators.length > 0 && (

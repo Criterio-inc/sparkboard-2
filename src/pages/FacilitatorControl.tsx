@@ -6,7 +6,8 @@ import { StickyNote } from "@/components/StickyNote";
 import { ParticipantList } from "@/components/ParticipantList";
 import { ControlPanel } from "@/components/ControlPanel";
 import { AIAnalysisDialog } from "@/components/AIAnalysisDialog";
-import { ArrowLeft, Clock, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Clock, AlertCircle, Eye, EyeOff, QrCode } from "lucide-react";
+import { WorkshopQRDialog } from "@/components/WorkshopQRDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateWorkshopPDF } from "@/utils/pdfExport";
@@ -58,8 +59,8 @@ const FacilitatorControl = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
   const [showAIDialog, setShowAIDialog] = useState(false);
+  const [showQRDialog, setShowQRDialog] = useState(false);
   const [aiAnalyses, setAIAnalyses] = useState<Record<string, string>>({});
   const [isControlPanelVisible, setIsControlPanelVisible] = useState(true);
   const [isParticipantListVisible, setIsParticipantListVisible] = useState(true);
@@ -294,12 +295,6 @@ const FacilitatorControl = () => {
               });
           }
           
-          if (isSoundEnabled) {
-            // Play sound alert
-            const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUQ0PVqzn77BdGAg+ltryxnMpBSuBzvLZiTYIG2m98OGenVEMD1as6O+wXRgIPpba8sZzKQUrgc7y2Yk2CBlpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+LwYsgs/y2YkxBxZpu+3mnl0RDFFq5u+zYxkHO5XX8sp2LAUngM7y24o3CRdnvO7kpF4UCkig4O68YRsFM4nU8dF+Lw==");
-            audio.play().catch(console.error);
-          }
-          
           toast({
             title: "Tiden är ute!",
             description: "Boardens tidsgräns har nåtts",
@@ -312,7 +307,7 @@ const FacilitatorControl = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isTimerRunning, isSoundEnabled, toast, workshop?.id]);
+  }, [isTimerRunning, toast, workshop?.id]);
 
   // Warning at 2 minutes
   useEffect(() => {
@@ -528,6 +523,18 @@ const FacilitatorControl = () => {
                 <h1 className="text-2xl font-semibold tracking-tight">Facilitator Control</h1>
                 <p className="text-sm text-muted-foreground">Workshop: {workshop?.name || "—"}</p>
               </div>
+              
+              {workshop?.code && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowQRDialog(true)}
+                  className="ml-4"
+                >
+                  <QrCode className="w-4 h-4 mr-2" />
+                  Visa QR
+                </Button>
+              )}
             </div>
 
             {/* Timer Display */}
@@ -598,8 +605,6 @@ const FacilitatorControl = () => {
                   onNextBoard={handleNextBoard}
                   onAIAnalysis={handleAIAnalysis}
                   onExportPDF={handleExportPDF}
-                  isSoundEnabled={isSoundEnabled}
-                  onToggleSound={() => setIsSoundEnabled(!isSoundEnabled)}
                   canGoNext={currentBoardIndex < boards.length - 1}
                 />
                 
@@ -763,6 +768,13 @@ const FacilitatorControl = () => {
               [currentBoard.id]: analysis,
             });
           }}
+        />
+        
+        {/* QR Dialog */}
+        <WorkshopQRDialog 
+          code={workshop?.code || ""} 
+          open={showQRDialog} 
+          onOpenChange={setShowQRDialog}
         />
       </div>
     </div>

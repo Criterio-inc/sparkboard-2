@@ -5,9 +5,7 @@ import {
   Pause, 
   SkipForward, 
   Sparkles, 
-  FileText,
-  Volume2,
-  VolumeX
+  FileText
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -17,8 +15,6 @@ interface ControlPanelProps {
   onNextBoard: () => void;
   onAIAnalysis: () => void;
   onExportPDF: () => void;
-  isSoundEnabled: boolean;
-  onToggleSound: () => void;
   canGoNext: boolean;
 }
 
@@ -28,8 +24,6 @@ export const ControlPanel = ({
   onNextBoard,
   onAIAnalysis,
   onExportPDF,
-  isSoundEnabled,
-  onToggleSound,
   canGoNext,
 }: ControlPanelProps) => {
   const { t } = useLanguage();
@@ -37,7 +31,7 @@ export const ControlPanel = ({
   return (
     <Card className="shadow-[var(--shadow-card)]">
       <CardContent className="pt-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <Button
             onClick={onToggleTimer}
             variant={isTimerRunning ? "destructive" : "default"}
@@ -86,25 +80,6 @@ export const ControlPanel = ({
           >
             <FileText className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
             <span className="text-xs font-semibold">{t('control.exportPDF')}</span>
-          </Button>
-
-          <Button
-            onClick={onToggleSound}
-            variant="ghost"
-            size="sm"
-            className="h-auto py-3 flex-col gap-2 group"
-          >
-            {isSoundEnabled ? (
-              <>
-                <Volume2 className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
-                <span className="text-xs font-semibold">{t('control.soundOn')}</span>
-              </>
-            ) : (
-              <>
-                <VolumeX className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
-                <span className="text-xs font-semibold">{t('control.soundOff')}</span>
-              </>
-            )}
           </Button>
         </div>
       </CardContent>
