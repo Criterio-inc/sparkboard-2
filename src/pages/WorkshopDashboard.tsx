@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Calendar, Users, ArrowLeft, MoreVertical, Edit, Trash2, Copy, QrCode } from "lucide-react";
+import { Plus, Calendar, Users, ArrowLeft, MoreVertical, Edit, Trash2, Copy, QrCode, Settings } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,20 +12,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { getCurrentFacilitator, clearSession, updateSessionTimestamp, getAllFacilitators, deleteFacilitator, syncLocalFacilitatorsToBackend } from "@/utils/facilitatorStorage";
+import { getCurrentFacilitator, clearSession, updateSessionTimestamp, syncLocalFacilitatorsToBackend } from "@/utils/facilitatorStorage";
 import FacilitatorAuth from "@/components/FacilitatorAuth";
 import { LogOut, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { WorkshopQRDialog } from "@/components/WorkshopQRDialog";
 
 const WorkshopDashboard = () => {
@@ -35,9 +25,6 @@ const WorkshopDashboard = () => {
   const [workshops, setWorkshops] = useState<any[]>([]);
   const [showAuth, setShowAuth] = useState(false);
   const [facilitator, setFacilitator] = useState<any>(null);
-  const [allFacilitators, setAllFacilitators] = useState(getAllFacilitators());
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [facilitatorToDelete, setFacilitatorToDelete] = useState<string | null>(null);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [selectedWorkshopCode, setSelectedWorkshopCode] = useState<string>("");
 
@@ -129,7 +116,6 @@ const WorkshopDashboard = () => {
     const currentFacilitator = await getCurrentFacilitator();
     if (currentFacilitator) {
       setFacilitator(currentFacilitator);
-      setAllFacilitators(getAllFacilitators());
       loadWorkshops();
       setShowAuth(false);
     }
@@ -177,28 +163,6 @@ const WorkshopDashboard = () => {
     navigate(`/create-workshop/${id}`);
   };
 
-  const handleDeleteFacilitator = (facilitatorId: string) => {
-    setFacilitatorToDelete(facilitatorId);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (facilitatorToDelete) {
-      const success = await deleteFacilitator(facilitatorToDelete);
-      if (success) {
-        setAllFacilitators(getAllFacilitators());
-        const currentFacilitator = await getCurrentFacilitator();
-        setFacilitator(currentFacilitator);
-        toast({
-          title: "Facilitator borttagen",
-          description: "Kontot har raderats",
-        });
-      }
-    }
-    setDeleteDialogOpen(false);
-    setFacilitatorToDelete(null);
-  };
-
   const handleShowQR = (code: string) => {
     setSelectedWorkshopCode(code);
     setQrDialogOpen(true);
@@ -225,6 +189,10 @@ const WorkshopDashboard = () => {
                     <User className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm font-medium">{facilitator.name}</span>
                   </div>
+                  <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    Inställningar
+                  </Button>
                   <Button variant="outline" size="sm" onClick={handleLogout}>
                     <LogOut className="w-4 h-4 mr-2" />
                     {t('nav.logout')}
@@ -381,50 +349,6 @@ const WorkshopDashboard = () => {
         open={qrDialogOpen} 
         onOpenChange={setQrDialogOpen} 
       />
-
-      {/* Facilitator Management Section */}
-      {facilitator && allFacilitators.length > 0 && (
-        <div className="container mx-auto px-4 mt-8 border-t pt-8">
-          <h2 className="text-2xl font-semibold mb-4">Facilitatorkonton</h2>
-          <div className="grid gap-3 max-w-2xl">
-            {allFacilitators.map((f) => (
-              <Card key={f.id}>
-                <CardContent className="flex items-center justify-between p-4">
-                  <div>
-                    <p className="font-medium text-lg">{f.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Skapad: {new Date(f.createdAt).toLocaleDateString('sv-SE')}
-                    </p>
-                  </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDeleteFacilitator(f.id)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Radera
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Är du säker?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Detta kommer permanent radera facilitatorkontot. Denna åtgärd kan inte ångras.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Radera</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

@@ -12,6 +12,7 @@ import CreateWorkshop from "./pages/CreateWorkshop";
 import JoinWorkshop from "./pages/JoinWorkshop";
 import BoardView from "./pages/BoardView";
 import FacilitatorControl from "./pages/FacilitatorControl";
+import FacilitatorSettings from "./pages/FacilitatorSettings";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/join" element={<JoinWorkshop />} />
             <Route path="/board/:workshopId/:boardId" element={<BoardView />} />
             <Route path="/facilitator/:workshopId" element={<FacilitatorControl />} />
+            <Route path="/settings" element={<FacilitatorSettings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
