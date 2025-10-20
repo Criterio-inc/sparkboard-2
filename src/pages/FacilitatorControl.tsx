@@ -761,6 +761,7 @@ const FacilitatorControl = () => {
           open={showAIDialog}
           onOpenChange={setShowAIDialog}
           notes={getCurrentBoardNotes()}
+          boardId={currentBoard.id}
           boardTitle={currentBoard.title}
           onAnalysisComplete={(analysis) => {
             setAIAnalyses({

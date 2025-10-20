@@ -122,16 +122,14 @@ export const generateWorkshopPDF = (data: ExportData) => {
         doc.text("Inga svar", 25, yPosition);
         yPosition += 10;
       } else {
-        // Create table for notes
+        // Create table for notes (without participant names for anonymity)
         const tableData = questionNotes.map((note) => [
-          note.authorName,
-          note.timestamp,
           note.content,
         ]);
 
         autoTable(doc, {
           startY: yPosition,
-          head: [["Deltagare", "Tid", "Innehåll"]],
+          head: [["Innehåll"]],
           body: tableData,
           theme: "grid",
           headStyles: {
@@ -145,9 +143,7 @@ export const generateWorkshopPDF = (data: ExportData) => {
             cellPadding: 3,
           },
           columnStyles: {
-            0: { cellWidth: 35 },
-            1: { cellWidth: 25 },
-            2: { cellWidth: "auto" },
+            0: { cellWidth: "auto" },
           },
           margin: { left: 20, right: 15 },
         });
