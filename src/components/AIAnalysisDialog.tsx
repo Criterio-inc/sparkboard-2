@@ -56,19 +56,42 @@ export const AIAnalysisDialog = ({
   const { toast } = useToast();
   const { t, language } = useLanguage();
   const [customPrompt, setCustomPrompt] = useState("");
+  const [hasCustomPrompt, setHasCustomPrompt] = useState(false);
   const [analysis, setAnalysis] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [previousAnalyses, setPreviousAnalyses] = useState<SavedAnalysis[]>([]);
   const [loadingPrevious, setLoadingPrevious] = useState(false);
 
-  // Set default prompt based on language
+  // Load prompt from previous analysis or use default
   useEffect(() => {
-    const defaultPrompt = language === 'sv' 
-      ? "Sammanfatta huvudteman och insights från dessa workshop-svar. Gruppera liknande idéer och ge rekommendationer för nästa steg."
-      : "Summarize main themes and insights from these workshop responses. Group similar ideas and provide recommendations for next steps.";
-    setCustomPrompt(defaultPrompt);
-  }, [language]);
+    const loadPrompt = async () => {
+      if (!open || !boardId) return;
+
+      // Try to get the latest analysis for this board to retrieve custom prompt
+      const { data: latestAnalysis } = await supabase
+        .from('ai_analyses')
+        .select('*')
+        .eq('board_id', boardId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestAnalysis?.analysis) {
+        // Check if there's a custom prompt stored (we'll need to infer from analysis or store separately)
+        // For now, we'll use the default prompt from translations
+        const defaultPrompt = t('ai.defaultPrompt');
+        setCustomPrompt(defaultPrompt);
+        setHasCustomPrompt(false);
+      } else {
+        const defaultPrompt = t('ai.defaultPrompt');
+        setCustomPrompt(defaultPrompt);
+        setHasCustomPrompt(false);
+      }
+    };
+
+    loadPrompt();
+  }, [open, boardId, t]);
 
   // Load previous analyses when board changes and RESET current analysis
   useEffect(() => {
@@ -90,11 +113,25 @@ export const AIAnalysisDialog = ({
 
       if (error) throw error;
       setPreviousAnalyses(data || []);
+
+      // If there's a latest analysis, check if we should use its prompt
+      if (data && data.length > 0 && data[0].analysis) {
+        // We'll use the default prompt for now since we don't store custom_prompt separately yet
+        // This will be enhanced when we add custom_prompt column to the database
+        const defaultPrompt = t('ai.defaultPrompt');
+        setCustomPrompt(defaultPrompt);
+        setHasCustomPrompt(false);
+      }
     } catch (error) {
       console.error('Error loading previous analyses:', error);
     } finally {
       setLoadingPrevious(false);
     }
+  };
+
+  const resetToDefaultPrompt = () => {
+    setCustomPrompt(t('ai.defaultPrompt'));
+    setHasCustomPrompt(false);
   };
 
   const handleAnalyze = async () => {
@@ -243,15 +280,39 @@ export const AIAnalysisDialog = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="prompt">{t('ai.customPrompt')}</Label>
+              <div className="flex justify-between items-center">
+                <Label htmlFor="prompt">{t('ai.customPrompt')}</Label>
+                {hasCustomPrompt && (
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                    {t('ai.customPromptActive')}
+                  </span>
+                )}
+              </div>
               <Textarea
                 id="prompt"
                 value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                rows={3}
+                onChange={(e) => {
+                  setCustomPrompt(e.target.value);
+                  setHasCustomPrompt(e.target.value !== t('ai.defaultPrompt'));
+                }}
+                rows={8}
                 placeholder={t('ai.promptPlaceholder')}
-                className="resize-none"
+                className="resize-none font-mono text-sm"
               />
+              {hasCustomPrompt && (
+                <button
+                  onClick={resetToDefaultPrompt}
+                  className="text-sm text-primary hover:opacity-80 flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {t('ai.resetToDefault')}
+                </button>
+              )}
             </div>
 
             <Button
@@ -295,9 +356,11 @@ export const AIAnalysisDialog = ({
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs text-muted-foreground mb-1">
-                              {t('ai.createdAt')}: {format(new Date(saved.created_at), 'PPp')}
-                            </p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-xs text-muted-foreground">
+                                {t('ai.createdAt')}: {format(new Date(saved.created_at), 'PPp')}
+                              </p>
+                            </div>
                             <p className="text-sm line-clamp-2">
                               {saved.analysis.substring(0, 100)}...
                             </p>

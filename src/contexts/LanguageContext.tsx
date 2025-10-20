@@ -234,6 +234,19 @@ const translations: Record<Language, Record<string, string>> = {
     'ai.description': 'Analysera {count} anteckningar med AI',
     'ai.notesLabel': 'Anteckningar ({count})',
     'ai.customPrompt': 'Anpassad prompt',
+    'ai.defaultPrompt': `Analysera dessa workshop-svar och identifiera de 5-8 viktigaste insikterna.
+
+För varje insight:
+- Formulera ett tydligt tema/huvudbudskap
+- Ge konkreta exempel från svaren (referera med "Not X")
+- Gruppera liknande idéer tillsammans
+- Förklara varför detta är viktigt för organisationen
+
+Avsluta med:
+- 3-5 konkreta, actionable rekommendationer för nästa steg
+- Eventuella mönster, motsättningar eller gap du ser i svaren
+
+Struktur: Använd tydliga rubriker (##) och punktlistor för maximal läsbarhet.`,
     'ai.promptPlaceholder': 'Beskriv vad du vill att AI:n ska fokusera på...',
     'ai.analyzeButton': 'Analysera med AI',
     'ai.aiAnalysisLabel': 'AI-Analys',
@@ -255,6 +268,9 @@ const translations: Record<Language, Record<string, string>> = {
     'ai.createdAt': 'Skapad',
     'ai.deleteAnalysis': 'Ta bort analys',
     'ai.noNotesAvailable': 'Inga anteckningar tillgängliga för detta board',
+    'ai.customPromptActive': 'Anpassad prompt',
+    'ai.resetToDefault': 'Återställ till standard',
+    'ai.customized': 'Anpassad',
     'ai.analysisComplete': 'Analys klar!',
     'ai.analysisAvailable': 'AI-analysen är nu tillgänglig',
     'ai.analysisFailed': 'Kunde inte genomföra analysen. Försök igen.',
@@ -552,6 +568,19 @@ const translations: Record<Language, Record<string, string>> = {
     'ai.description': 'Analyze {count} notes with AI',
     'ai.notesLabel': 'Notes ({count})',
     'ai.customPrompt': 'Custom prompt',
+    'ai.defaultPrompt': `Analyze these workshop responses and identify the 5-8 most important insights.
+
+For each insight:
+- Formulate a clear theme/key message
+- Provide concrete examples from responses (reference as "Note X")
+- Group similar ideas together
+- Explain why this matters for the organization
+
+Conclude with:
+- 3-5 concrete, actionable recommendations for next steps
+- Any patterns, contradictions, or gaps you see in the responses
+
+Structure: Use clear headings (##) and bullet points for maximum readability.`,
     'ai.promptPlaceholder': 'Describe what you want the AI to focus on...',
     'ai.analyzeButton': 'Analyze with AI',
     'ai.aiAnalysisLabel': 'AI Analysis',
@@ -574,6 +603,9 @@ const translations: Record<Language, Record<string, string>> = {
     'ai.createdAt': 'Created',
     'ai.deleteAnalysis': 'Delete analysis',
     'ai.noNotesAvailable': 'No notes available for this board',
+    'ai.customPromptActive': 'Custom prompt',
+    'ai.resetToDefault': 'Reset to default',
+    'ai.customized': 'Customized',
     'ai.analysisComplete': 'Analysis complete!',
     'ai.analysisAvailable': 'AI analysis is now available',
     'ai.analysisFailed': 'Could not complete the analysis. Please try again.',
