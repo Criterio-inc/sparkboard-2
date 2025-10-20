@@ -184,6 +184,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.back': 'Tillbaka',
     'nav.login': 'Logga in',
     'nav.logout': 'Logga ut',
+    'nav.myWorkshops': 'Mina Workshops',
     
     // FACILITATOR CONTROL
     'facilitator.control': 'Facilitator Control',
@@ -518,6 +519,7 @@ Struktur: Använd tydliga rubriker (##) och punktlistor för maximal läsbarhet.
     'nav.back': 'Back',
     'nav.login': 'Log in',
     'nav.logout': 'Log out',
+    'nav.myWorkshops': 'My Workshops',
     
     // FACILITATOR CONTROL
     'facilitator.control': 'Facilitator Control',

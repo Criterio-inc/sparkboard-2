@@ -208,6 +208,51 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string | null
+          id: string
+          image_url: string | null
+          last_name: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_current_period_end: string | null
+          subscription_status: string
+          subscription_tier: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name?: string | null
+          id: string
+          image_url?: string | null
+          last_name?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_current_period_end?: string | null
+          subscription_status?: string
+          subscription_tier?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string | null
+          id?: string
+          image_url?: string | null
+          last_name?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_current_period_end?: string | null
+          subscription_status?: string
+          subscription_tier?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       questions: {
         Row: {
           board_id: string

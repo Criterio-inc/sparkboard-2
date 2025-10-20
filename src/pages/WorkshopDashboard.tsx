@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Calendar, Users, ArrowLeft, MoreVertical, Edit, Trash2, Copy, QrCode, Settings } from "lucide-react";
+import { Plus, Calendar, Users, MoreVertical, Edit, Trash2, Copy, QrCode } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,151 +12,83 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { getCurrentFacilitator, clearSession, updateSessionTimestamp, syncLocalFacilitatorsToBackend } from "@/utils/facilitatorStorage";
-import FacilitatorAuth from "@/components/FacilitatorAuth";
-import { LogOut, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { WorkshopQRDialog } from "@/components/WorkshopQRDialog";
+import { Navigation } from "@/components/Navigation";
+import { useProfile } from "@/hooks/useProfile";
+import { useMigrateWorkshops } from "@/hooks/useMigrateWorkshops";
 
 const WorkshopDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
   const [workshops, setWorkshops] = useState<any[]>([]);
-  const [showAuth, setShowAuth] = useState(false);
-  const [facilitator, setFacilitator] = useState<any>(null);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [selectedWorkshopCode, setSelectedWorkshopCode] = useState<string>("");
+  
+  const { profile, loading: profileLoading, user } = useProfile();
+  const { isChecking, isComplete, migratedCount, error } = useMigrateWorkshops();
 
   useEffect(() => {
-    const initializeFacilitator = async () => {
-      // One-time sync of local facilitators to backend
-      await syncLocalFacilitatorsToBackend();
-      
-      const currentFacilitator = await getCurrentFacilitator();
-      setFacilitator(currentFacilitator);
-      if (currentFacilitator) {
-        await updateSessionTimestamp();
-      }
-    };
-    
-    initializeFacilitator();
-    loadWorkshops(); // Ladda alltid workshops
-  }, []);
+    if (user?.id) {
+      loadWorkshops();
+    }
+  }, [user?.id, isComplete]);
 
   const loadWorkshops = async () => {
+    if (!user?.id) return;
+    
     try {
-      const currentFacilitator = await getCurrentFacilitator();
-      
-      if (!currentFacilitator) {
-        setWorkshops([]);
-        console.log("📦 Ingen inloggad facilitator - visar inga workshops");
-        return;
-      }
+      const { data, error } = await supabase
+        .from('workshops')
+        .select(`
+          *,
+          boards:boards(count)
+        `)
+        .eq('facilitator_id', user.id)
+        .order('created_at', { ascending: false });
 
-      // Hämta endast workshops för den inloggade facilitatorn
-      const { data: workshopsData, error } = await supabase
-        .from("workshops")
-        .select("*")
-        .eq("facilitator_id", currentFacilitator.id)
-        .order("created_at", { ascending: false });
+      if (error) throw error;
 
-      if (error) {
-        console.error("Fel vid hämtning av workshops:", error);
-        toast({
-          title: "Fel",
-          description: "Kunde inte hämta workshops",
-          variant: "destructive",
-        });
-        return;
-      }
+      const workshopsWithCounts = data?.map(workshop => ({
+        ...workshop,
+        boardCount: workshop.boards?.[0]?.count || 0
+      })) || [];
 
-      // Hämta boards separat för alla workshops
-      if (workshopsData && workshopsData.length > 0) {
-        const workshopIds = workshopsData.map(w => w.id);
-        const { data: boardsData, error: boardsError } = await supabase
-          .from('boards')
-          .select('id, workshop_id')
-          .in('workshop_id', workshopIds);
-
-        if (boardsError) {
-          console.error("Fel vid hämtning av boards:", boardsError);
-        }
-
-        // Bygg countMap
-        const countMap = new Map<string, number>();
-        (boardsData || []).forEach(board => {
-          const current = countMap.get(board.workshop_id) || 0;
-          countMap.set(board.workshop_id, current + 1);
-        });
-
-        // Sätt workshops med boards_count
-        const workshopsWithCounts = workshopsData.map(workshop => ({
-          ...workshop,
-          boards_count: countMap.get(workshop.id) || 0,
-        }));
-
-        setWorkshops(workshopsWithCounts);
-        console.log("📦 Workshops hämtade:", workshopsWithCounts.length);
-      } else {
-        setWorkshops([]);
-        console.log("📦 Inga workshops att visa");
-      }
+      setWorkshops(workshopsWithCounts);
     } catch (error) {
-      console.error("Fel vid laddning av workshops:", error);
+      console.error('Error loading workshops:', error);
       toast({
-        title: "Fel",
-        description: "Oväntat fel vid laddning",
+        title: "Kunde inte ladda workshops",
+        description: "Försök igen senare",
         variant: "destructive",
       });
     }
-  };
-
-  const handleAuthenticated = async () => {
-    const currentFacilitator = await getCurrentFacilitator();
-    if (currentFacilitator) {
-      setFacilitator(currentFacilitator);
-      loadWorkshops();
-      setShowAuth(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    await clearSession();
-    setFacilitator(null);
-    setWorkshops([]);
-    toast({
-      title: "Utloggad",
-      description: "Du har loggats ut",
-    });
-    navigate("/");
   };
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase.from("workshops").delete().eq("id", id);
+      const { error } = await supabase
+        .from('workshops')
+        .delete()
+        .eq('id', id);
+
       if (error) throw error;
 
-      loadWorkshops();
       toast({
-        title: "Workshop borttagen",
+        title: "Workshop raderad",
         description: "Workshopen har tagits bort",
       });
+
+      loadWorkshops();
     } catch (error) {
-      console.error("Fel vid borttagning:", error);
+      console.error('Error deleting workshop:', error);
       toast({
-        title: "Fel",
-        description: "Kunde inte ta bort workshop",
+        title: "Kunde inte radera workshop",
+        description: "Försök igen senare",
         variant: "destructive",
       });
     }
-  };
-
-  const handleDuplicate = async (id: string) => {
-    toast({
-      title: "Funktionen är inte tillgänglig än",
-      description: "Duplicering kommer snart",
-    });
   };
 
   const handleEdit = (id: string) => {
@@ -168,172 +100,251 @@ const WorkshopDashboard = () => {
     setQrDialogOpen(true);
   };
 
+  const handleDuplicate = async (workshop: any) => {
+    try {
+      const { data: newWorkshop, error: workshopError } = await supabase
+        .from('workshops')
+        .insert({
+          name: `${workshop.name} (kopia)`,
+          facilitator_id: user?.id,
+          code: Math.floor(100000 + Math.random() * 900000).toString(),
+          status: 'draft',
+        })
+        .select()
+        .single();
 
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <Link to="/">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                {t('nav.back')}
-              </Button>
-            </Link>
+      if (workshopError) throw workshopError;
 
-            <div className="flex items-center gap-4">
-              {facilitator ? (
-                <>
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">{facilitator.name}</span>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
-                    <Settings className="w-4 h-4 mr-2" />
-                    Inställningar
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleLogout}>
-                    <LogOut className="w-4 h-4 mr-2" />
-                    {t('nav.logout')}
-                  </Button>
-                </>
-              ) : (
-                <Button variant="outline" size="sm" onClick={() => setShowAuth(true)}>
-                  <User className="w-4 h-4 mr-2" />
-                  {t('nav.login')}
-                </Button>
-              )}
-            </div>
-          </div>
+      const { data: boards } = await supabase
+        .from('boards')
+        .select('*')
+        .eq('workshop_id', workshop.id);
 
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
-                {t('dashboard.title')}
-              </h1>
-              <p className="text-muted-foreground">
-                {workshops.length} {workshops.length === 1 ? t('dashboard.workshop') : t('dashboard.workshops')}
-              </p>
-            </div>
+      if (boards) {
+        for (const board of boards) {
+          const { data: newBoard, error: boardError } = await supabase
+            .from('boards')
+            .insert({
+              workshop_id: newWorkshop.id,
+              title: board.title,
+              color_index: board.color_index,
+              time_limit: board.time_limit,
+              order_index: board.order_index,
+            })
+            .select()
+            .single();
 
-            {facilitator ? (
-              <Link to="/create-workshop">
-                <Button variant="hero" size="lg">
-                  <Plus className="w-5 h-5 mr-2" />
-                  {t('dashboard.createNew')}
-                </Button>
-              </Link>
-            ) : (
-              <Button variant="hero" size="lg" onClick={() => setShowAuth(true)}>
-                <Plus className="w-5 h-5 mr-2" />
-                {t('dashboard.createNew')}
-              </Button>
-            )}
+          if (boardError) throw boardError;
+
+          const { data: questions } = await supabase
+            .from('questions')
+            .select('*')
+            .eq('board_id', board.id);
+
+          if (questions) {
+            const questionsToInsert = questions.map(q => ({
+              board_id: newBoard.id,
+              title: q.title,
+              order_index: q.order_index,
+            }));
+
+            const { error: questionsError } = await supabase
+              .from('questions')
+              .insert(questionsToInsert);
+
+            if (questionsError) throw questionsError;
+          }
+        }
+      }
+
+      toast({
+        title: "Workshop duplicerad!",
+        description: "En kopia av workshopen har skapats",
+      });
+
+      loadWorkshops();
+    } catch (error) {
+      console.error('Error duplicating workshop:', error);
+      toast({
+        title: "Kunde inte duplicera workshop",
+        description: "Försök igen senare",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Visa loading under migration
+  if (isChecking || profileLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[80vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#19305C] mx-auto mb-6"></div>
+            <h2 className="text-2xl font-semibold text-[#03122F] mb-2">
+              {isChecking ? '🔄 Kontrollerar dina workshops...' : 'Laddar...'}
+            </h2>
+            <p className="text-gray-600">
+              {isChecking ? 'Detta tar bara några sekunder' : 'Vänligen vänta'}
+            </p>
           </div>
         </div>
+      </div>
+    );
+  }
 
-        {/* Workshop Grid */}
-        {workshops.length === 0 ? (
-          <Card className="p-12">
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-                <Users className="w-8 h-8 text-muted-foreground" />
+  // Visa migration-fel om något gick fel
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[80vh]">
+          <div className="max-w-md bg-red-50 border-2 border-red-200 rounded-xl p-6">
+            <h2 className="text-xl font-semibold text-red-800 mb-2">
+              ⚠️ Migration Error
+            </h2>
+            <p className="text-red-700 mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+            >
+              Försök igen
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Visa success-meddelande om workshops migrerades
+  const showMigrationSuccess = isComplete && migratedCount > 0;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
+      <Navigation />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Migration success banner */}
+        {showMigrationSuccess && (
+          <div className="bg-green-50 border-l-4 border-green-500 p-6 mb-8 rounded-r-lg">
+            <div className="flex items-start gap-3">
+              <svg className="w-6 h-6 text-green-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <h3 className="font-semibold text-green-900 mb-1">
+                  ✅ Dina workshops är nu kopplade till ditt konto!
+                </h3>
+                <p className="text-green-700 text-sm">
+                  {migratedCount} workshop{migratedCount > 1 ? 's' : ''} har automatiskt kopplats till din nya inloggning.
+                </p>
               </div>
-              <h3 className="text-xl font-semibold mb-2">{t('dashboard.noWorkshops')}</h3>
-              <p className="text-muted-foreground mb-6">{t('dashboard.comeBack')}</p>
-              {facilitator ? (
-                <Link to="/create-workshop">
-                  <Button variant="hero">
-                    <Plus className="w-5 h-5 mr-2" />
-                    {t('dashboard.createWorkshop')}
-                  </Button>
-                </Link>
-              ) : (
-                <Button variant="hero" onClick={() => setShowAuth(true)}>
-                  <Plus className="w-5 h-5 mr-2" />
-                  {t('dashboard.createWorkshop')}
-                </Button>
-              )}
             </div>
-          </Card>
+          </div>
+        )}
+
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-[#03122F]">
+              {t('dashboard.title')}
+            </h1>
+            <p className="text-gray-600 mt-2">
+              {workshops.length} {workshops.length === 1 ? 'workshop' : 'workshops'}
+            </p>
+          </div>
+          
+          <Link to="/create-workshop">
+            <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+              <Plus className="w-5 h-5 mr-2" />
+              {t('dashboard.createNew')}
+            </Button>
+          </Link>
+        </div>
+
+        {/* Workshops Grid */}
+        {workshops.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="text-6xl mb-4">📋</div>
+            <h2 className="text-2xl font-semibold text-gray-700 mb-2">
+              {t('dashboard.noWorkshops')}
+            </h2>
+            <p className="text-gray-500 mb-6">
+              {t('dashboard.comeBack')}
+            </p>
+            <Link to="/create-workshop">
+              <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white">
+                <Plus className="w-4 h-4 mr-2" />
+                {t('dashboard.createWorkshop')}
+              </Button>
+            </Link>
+          </div>
         ) : (
-          <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {workshops.map((workshop) => (
-              <Card
-                key={workshop.id}
-                className="hover:shadow-[var(--shadow-glow)] transition-all duration-300 hover:scale-105 bg-gradient-to-br from-card to-muted/20"
-              >
+              <Card key={workshop.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
-                  <div className="flex items-start justify-between">
+                  <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CardTitle className="text-xl">{workshop.name}</CardTitle>
-                        <Badge variant={(workshop as any).status === 'draft' ? 'outline' : 'default'}>
-                          {(workshop as any).status === 'draft' ? t('dashboard.status.draft') : t('dashboard.status.active')}
-                        </Badge>
-                      </div>
+                      <CardTitle className="text-xl mb-2">{workshop.name}</CardTitle>
                       <CardDescription className="flex items-center gap-2">
-                        {workshop.code && (
-                          <span className="font-mono text-lg font-semibold text-primary">{workshop.code}</span>
-                        )}
+                        <Calendar className="w-4 h-4" />
+                        {new Date(workshop.date).toLocaleDateString('sv-SE')}
                       </CardDescription>
                     </div>
-
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="sm">
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEdit(workshop.id)}>
                           <Edit className="w-4 h-4 mr-2" />
-                          Redigera
+                          {t('dashboard.edit')}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicate(workshop.id)}>
+                        <DropdownMenuItem onClick={() => handleDuplicate(workshop)}>
                           <Copy className="w-4 h-4 mr-2" />
                           Duplicera
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(workshop.id)}>
+                        <DropdownMenuItem onClick={() => handleShowQR(workshop.code)}>
+                          <QrCode className="w-4 h-4 mr-2" />
+                          Visa QR
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleDelete(workshop.id)}
+                          className="text-red-600"
+                        >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          Ta bort
+                          {t('dashboard.delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
                 </CardHeader>
-
                 <CardContent>
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="w-4 h-4" />
-                      <span>{new Date(workshop.created_at).toLocaleDateString("sv-SE")}</span>
+                    <div className="flex items-center justify-between">
+                      <Badge variant={workshop.status === 'active' ? 'default' : 'secondary'}>
+                        {workshop.status === 'active' ? t('dashboard.status.active') : t('dashboard.status.draft')}
+                      </Badge>
+                      <span className="text-sm text-gray-500">
+                        {workshop.code}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <Users className="w-4 h-4" />
+                        <span>{workshop.boardCount} {t('dashboard.boards')}</span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Users className="w-4 h-4" />
-                      <span>{workshop.boards_count || 0} {t('dashboard.boards')}</span>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <Link to={`/facilitator/${workshop.id}`} className="w-full">
-                        <Button className="w-full mt-4" variant="default">
-                          {t('dashboard.openWorkshop')}
-                        </Button>
-                      </Link>
-                      
-                      {(workshop as any).status === 'active' && workshop.code && (
-                        <Button 
-                          variant="outline" 
-                          className="w-full"
-                          onClick={() => handleShowQR(workshop.code)}
-                        >
-                          <QrCode className="w-4 h-4 mr-2" />
-                          Visa QR-kod
-                        </Button>
-                      )}
-                    </div>
+                    <Link to={`/facilitator/${workshop.id}`}>
+                      <Button className="w-full mt-4" variant="outline">
+                        {t('dashboard.openWorkshop')}
+                      </Button>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>
@@ -341,13 +352,11 @@ const WorkshopDashboard = () => {
           </div>
         )}
       </div>
-      
-      {showAuth && <FacilitatorAuth open={showAuth} onAuthenticated={handleAuthenticated} />}
-      
-      <WorkshopQRDialog 
-        code={selectedWorkshopCode} 
-        open={qrDialogOpen} 
-        onOpenChange={setQrDialogOpen} 
+
+      <WorkshopQRDialog
+        open={qrDialogOpen}
+        onOpenChange={setQrDialogOpen}
+        code={selectedWorkshopCode}
       />
     </div>
   );
