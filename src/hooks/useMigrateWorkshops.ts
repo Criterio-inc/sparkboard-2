@@ -44,90 +44,69 @@ export const useMigrateWorkshops = () => {
       console.log('User Email:', user.primaryEmailAddress?.emailAddress);
 
       try {
-        let totalMigrated = 0;
-
-        // Steg 1: Hitta workshops utan facilitator_id
-        const { data: orphanedWorkshops, error: fetchError } = await supabase
+        // Hitta ALLA workshops som inte ägs av en Clerk-användare
+        // (dvs. facilitator_id är NULL ELLER börjar inte med "user_")
+        const { data: allWorkshops, error: fetchError } = await supabase
           .from('workshops')
-          .select('id, name, code, created_at')
-          .is('facilitator_id', null);
+          .select('id, name, code, facilitator_id, created_at');
 
         if (fetchError) {
           throw fetchError;
         }
 
-        if (orphanedWorkshops && orphanedWorkshops.length > 0) {
-          console.log(`📦 Hittade ${orphanedWorkshops.length} workshop(s) utan ägare:`);
-          orphanedWorkshops.forEach(ws => {
-            console.log(`  - ${ws.name} (${ws.code})`);
+        // Filtrera: behåll bara de som inte ägs av Clerk-användare
+        const workshopsToMigrate = (allWorkshops || []).filter(ws => {
+          return !ws.facilitator_id || !ws.facilitator_id.startsWith('user_');
+        });
+
+        if (workshopsToMigrate.length === 0) {
+          console.log('✅ Inga workshops behöver migreras');
+          setMigrationStatus({
+            isChecking: false,
+            isComplete: true,
+            migratedCount: 0,
+            error: null,
           });
-
-          const { error: updateError } = await supabase
-            .from('workshops')
-            .update({ facilitator_id: user.id })
-            .is('facilitator_id', null);
-
-          if (updateError) {
-            throw updateError;
-          }
-
-          totalMigrated += orphanedWorkshops.length;
-          console.log(`✅ Migrerade ${orphanedWorkshops.length} orphaned workshop(s)`);
+          localStorage.setItem(migrationKey, 'true');
+          console.groupEnd();
+          return;
         }
 
-        // Steg 2: Migrera workshops från legacy facilitator (denna browser)
-        const legacySession = await getCurrentSession();
-        if (legacySession?.facilitatorId) {
-          console.log(`🔍 Letar efter workshops från legacy facilitator: ${legacySession.facilitatorId}`);
-          
-          const { data: legacyWorkshops, error: legacyFetchError } = await supabase
-            .from('workshops')
-            .select('id, name, code')
-            .eq('facilitator_id', legacySession.facilitatorId);
+        console.log(`📦 Hittade ${workshopsToMigrate.length} workshop(s) att migrera:`);
+        workshopsToMigrate.forEach(ws => {
+          console.log(`  - ${ws.name} (${ws.code}) | facilitator_id: ${ws.facilitator_id || 'NULL'}`);
+        });
 
-          if (legacyFetchError) {
-            throw legacyFetchError;
-          }
+        // Uppdatera ALLA dessa workshops till att ägas av denna Clerk-användare
+        const workshopIds = workshopsToMigrate.map(ws => ws.id);
+        
+        const { error: updateError } = await supabase
+          .from('workshops')
+          .update({ facilitator_id: user.id })
+          .in('id', workshopIds);
 
-          if (legacyWorkshops && legacyWorkshops.length > 0) {
-            console.log(`📦 Hittade ${legacyWorkshops.length} legacy workshop(s):`);
-            legacyWorkshops.forEach(ws => {
-              console.log(`  - ${ws.name} (${ws.code})`);
-            });
-
-            const { error: legacyUpdateError } = await supabase
-              .from('workshops')
-              .update({ facilitator_id: user.id })
-              .eq('facilitator_id', legacySession.facilitatorId);
-
-            if (legacyUpdateError) {
-              throw legacyUpdateError;
-            }
-
-            totalMigrated += legacyWorkshops.length;
-            console.log(`✅ Migrerade ${legacyWorkshops.length} legacy workshop(s)`);
-          }
+        if (updateError) {
+          throw updateError;
         }
 
-        console.log(`✅ Total migration: ${totalMigrated} workshop(s) till användare ${user.id}`);
+        console.log(`✅ Framgångsrikt migrerade ${workshopsToMigrate.length} workshop(s) till användare ${user.id}`);
         console.groupEnd();
 
         setMigrationStatus({
           isChecking: false,
           isComplete: true,
-          migratedCount: totalMigrated,
+          migratedCount: workshopsToMigrate.length,
           error: null,
         });
 
-        // Markera som klar
         localStorage.setItem(migrationKey, 'true');
 
-        // Visa bekräftelse till användaren
-        if (totalMigrated > 0) {
+        // Visa bekräftelse
+        if (workshopsToMigrate.length > 0) {
           setTimeout(() => {
             alert(
               `✅ Välkommen till Sparkboard!\n\n` +
-              `${totalMigrated} befintlig(a) workshop(s) har automatiskt kopplats till ditt nya konto.\n\n` +
+              `${workshopsToMigrate.length} befintlig(a) workshop(s) har automatiskt kopplats till ditt nya konto.\n\n` +
               `Du kan nu se dem i din dashboard.`
             );
           }, 1000);
