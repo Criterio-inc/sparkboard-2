@@ -1,7 +1,7 @@
 import { useUser } from '@clerk/clerk-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { getCurrentSession } from '@/utils/facilitatorStorage';
+
 
 export const useMigrateWorkshops = () => {
   const { user, isLoaded } = useUser();
@@ -23,20 +23,8 @@ export const useMigrateWorkshops = () => {
       return;
     }
 
-    // Kolla om migration redan är gjord för denna användare
+    // Idempotent: always check DB for legacy workshops; do not exit early on localStorage flag
     const migrationKey = `migration_complete_${user.id}`;
-    const alreadyMigrated = localStorage.getItem(migrationKey);
-
-    if (alreadyMigrated === 'true') {
-      console.log('✅ Migration redan genomförd för denna användare');
-      setMigrationStatus({
-        isChecking: false,
-        isComplete: true,
-        migratedCount: 0,
-        error: null,
-      });
-      return;
-    }
 
     const migrateOrphanedWorkshops = async () => {
       console.group('🔄 Workshop Migration');

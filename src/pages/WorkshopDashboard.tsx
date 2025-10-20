@@ -79,6 +79,48 @@ const WorkshopDashboard = () => {
     }
   };
 
+  const claimLegacy = async () => {
+    try {
+      if (!user?.id) {
+        toast({ title: 'Inte inloggad', description: 'Logga in och försök igen', variant: 'destructive' });
+        return;
+      }
+      const { data: all, error: fetchError } = await supabase
+        .from('workshops')
+        .select('id, facilitator_id, name, code');
+
+      if (fetchError) throw fetchError;
+
+      const ids = (all || [])
+        .filter((w) => !w.facilitator_id || !w.facilitator_id.startsWith('user_'))
+        .map((w) => w.id);
+
+      if (ids.length === 0) {
+        toast({ title: 'Inget att koppla', description: 'Inga legacy-workshops hittades.' });
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('workshops')
+        .update({ facilitator_id: user.id })
+        .in('id', ids);
+
+      if (updateError) throw updateError;
+
+      localStorage.setItem(`migration_complete_${user.id}`, 'true');
+
+      toast({ title: 'Klart!', description: 'Dina workshops är kopplade.' });
+      await loadWorkshops();
+    } catch (e) {
+      console.error('claimLegacy error:', e);
+      toast({
+        title: 'Kunde inte koppla workshops',
+        description: 'Försök igen senare',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
       const { error } = await supabase
@@ -285,12 +327,17 @@ const WorkshopDashboard = () => {
             <p className="text-gray-500 mb-6">
               {t('dashboard.comeBack')}
             </p>
-            <Link to="/create-workshop">
-              <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white">
-                <Plus className="w-4 h-4 mr-2" />
-                {t('dashboard.createWorkshop')}
+            <div className="flex items-center justify-center gap-3">
+              <Link to="/create-workshop">
+                <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white">
+                  <Plus className="w-4 h-4 mr-2" />
+                  {t('dashboard.createWorkshop')}
+                </Button>
+              </Link>
+              <Button variant="outline" onClick={claimLegacy}>
+                🔁 Koppla mina workshops
               </Button>
-            </Link>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
