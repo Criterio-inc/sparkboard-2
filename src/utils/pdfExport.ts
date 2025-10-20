@@ -40,6 +40,124 @@ const boardColorsRGB = [
   { r: 231, g: 76, b: 60 },   // Red
 ];
 
+// Markdown element types for PDF rendering
+interface MarkdownElement {
+  type: 'h1' | 'h2' | 'h3' | 'paragraph' | 'list-item' | 'empty';
+  content: string;
+  indent?: number;
+}
+
+// Helper: Remove bold markdown syntax but keep text
+const cleanBoldMarkdown = (text: string): string => {
+  return text.replace(/\*\*(.*?)\*\*/g, '$1');
+};
+
+// Parse markdown text into structured elements for PDF rendering
+const parseMarkdownForPDF = (markdown: string): MarkdownElement[] => {
+  const lines = markdown.split('\n');
+  const elements: MarkdownElement[] = [];
+  
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    
+    if (trimmed === '') {
+      elements.push({ type: 'empty', content: '' });
+    } else if (trimmed.startsWith('### ')) {
+      elements.push({ type: 'h3', content: trimmed.replace('### ', '') });
+    } else if (trimmed.startsWith('## ')) {
+      elements.push({ type: 'h2', content: trimmed.replace('## ', '') });
+    } else if (trimmed.startsWith('# ')) {
+      elements.push({ type: 'h1', content: trimmed.replace('# ', '') });
+    } else if (trimmed.startsWith('• ') || trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      const content = trimmed.replace(/^[•\-*]\s/, '');
+      elements.push({ type: 'list-item', content: cleanBoldMarkdown(content), indent: 25 });
+    } else {
+      elements.push({ type: 'paragraph', content: cleanBoldMarkdown(trimmed) });
+    }
+  });
+  
+  return elements;
+};
+
+// Render a markdown element with appropriate styling
+const renderMarkdownElement = (
+  doc: jsPDF,
+  element: MarkdownElement,
+  currentY: number,
+  maxWidth: number,
+  pageWidth: number,
+  checkPageBreak: (space: number) => number
+): number => {
+  let y = currentY;
+  
+  switch (element.type) {
+    case 'h1':
+      y = checkPageBreak(12);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(25, 48, 92); // Primary color
+      doc.text(element.content, 20, y);
+      y += 10;
+      break;
+      
+    case 'h2':
+      y = checkPageBreak(10);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(65, 59, 97); // Secondary color
+      doc.text(element.content, 20, y);
+      y += 8;
+      break;
+      
+    case 'h3':
+      y = checkPageBreak(8);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(174, 125, 172); // Accent color
+      doc.text(element.content, 20, y);
+      y += 7;
+      break;
+      
+    case 'paragraph':
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      
+      const paragraphLines = doc.splitTextToSize(element.content, maxWidth - 5);
+      paragraphLines.forEach((line: string) => {
+        y = checkPageBreak(6);
+        doc.text(line, 20, y);
+        y += 5;
+      });
+      y += 3; // Extra space after paragraph
+      break;
+      
+    case 'list-item':
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      
+      // Bullet symbol
+      doc.text('•', element.indent || 25, y);
+      
+      // Wrapped text with indent
+      const listLines = doc.splitTextToSize(element.content, maxWidth - 15);
+      listLines.forEach((line: string, index: number) => {
+        y = checkPageBreak(6);
+        doc.text(line, (element.indent || 25) + 5, y);
+        if (index < listLines.length - 1) y += 5;
+      });
+      y += 5;
+      break;
+      
+    case 'empty':
+      y += 4; // Extra spacing for empty lines
+      break;
+  }
+  
+  return y;
+};
+
 export const generateWorkshopPDF = (data: ExportData) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -187,18 +305,19 @@ export const generateWorkshopPDF = (data: ExportData) => {
       doc.text("🤖 AI-Analys", 20, yPosition + 4);
       yPosition += 15;
 
-      // AI Analysis content with text wrapping
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(50, 50, 50);
-
+      // AI Analysis content with markdown parsing
       const analysisText = data.aiAnalyses[board.id];
-      const lines = doc.splitTextToSize(analysisText, maxWidth);
-      
-      lines.forEach((line: string) => {
-        yPosition = checkPageBreak(20);
-        doc.text(line, 20, yPosition);
-        yPosition += 5;
+      const markdownElements = parseMarkdownForPDF(analysisText);
+
+      markdownElements.forEach(element => {
+        yPosition = renderMarkdownElement(
+          doc,
+          element,
+          yPosition,
+          maxWidth,
+          pageWidth,
+          checkPageBreak
+        );
       });
 
       yPosition += 5;
