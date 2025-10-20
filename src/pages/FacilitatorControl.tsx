@@ -431,7 +431,7 @@ const FacilitatorControl = () => {
     setShowAIDialog(true);
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     try {
       // Prepare notes grouped by board
       const notesByBoard: Record<string, Note[]> = {};
@@ -469,7 +469,7 @@ const FacilitatorControl = () => {
         participantCount: participants.length,
       };
 
-      generateWorkshopPDF(exportData);
+      await generateWorkshopPDF(exportData);
 
       toast({
         title: "PDF genererad!",
