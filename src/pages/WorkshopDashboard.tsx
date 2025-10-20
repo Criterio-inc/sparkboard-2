@@ -39,21 +39,34 @@ const WorkshopDashboard = () => {
     if (!user?.id) return;
     
     try {
-      const { data, error } = await supabase
+      const { data: ws, error } = await supabase
         .from('workshops')
-        .select(`
-          *,
-          boards:boards(count)
-        `)
+        .select('*')
         .eq('facilitator_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const workshopsWithCounts = data?.map(workshop => ({
+      // Hämta boards separat och räkna per workshop
+      const workshopIds = ws?.map(w => w.id) || [];
+      let countsByWorkshop: Record<string, number> = {};
+      
+      if (workshopIds.length > 0) {
+        const { data: allBoards } = await supabase
+          .from('boards')
+          .select('id, workshop_id')
+          .in('workshop_id', workshopIds);
+        
+        countsByWorkshop = (allBoards || []).reduce((acc, b) => {
+          acc[b.workshop_id] = (acc[b.workshop_id] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+      }
+
+      const workshopsWithCounts = (ws || []).map(workshop => ({
         ...workshop,
-        boardCount: workshop.boards?.[0]?.count || 0
-      })) || [];
+        boardCount: countsByWorkshop[workshop.id] || 0
+      }));
 
       setWorkshops(workshopsWithCounts);
     } catch (error) {
