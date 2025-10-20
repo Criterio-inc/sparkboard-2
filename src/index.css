@@ -68,12 +68,15 @@ All colors MUST be HSL.
     --board-4: 17 80% 69%;   /* Persika */
     --board-5: 347 44% 75%;  /* Rosa */
 
-    /* Sticky note colors - pastellversioner */
+    /* Sticky note colors - pastellversioner för light mode */
     --note-1: 347 44% 90%;  /* Ljus rosa #F3DADF */
     --note-2: 267 35% 82%;  /* Ljus lila #D4C5E2 */
     --note-3: 25 100% 87%;  /* Ljus persika #FFD9C0 */
     --note-4: 214 42% 84%;  /* Ljus blå #C8D5E8 */
     --note-5: 277 33% 88%;  /* Ljus lavendel #E8DCED */
+    
+    /* Sticky note text color - light mode */
+    --note-text: 220 82% 10%;  /* Mörk text för light mode */
 
     /* Participant colors - roterande färger */
     --participant-1: 17 80% 69%;   /* Persika */
@@ -123,6 +126,16 @@ All colors MUST be HSL.
     --shadow-accent: 0 8px 32px hsl(17 80% 69% / 0.35);
     --shadow-card: 0 2px 8px hsl(220 82% 10% / 0.3);
     --shadow-button-hover: 0 4px 12px hsl(250 25% 31% / 0.5);
+    
+    /* Sticky note colors - mörkare för dark mode med bättre kontrast */
+    --note-1: 347 50% 35%;  /* Mörkare rosa */
+    --note-2: 267 40% 30%;  /* Mörkare lila */
+    --note-3: 25 80% 35%;   /* Mörkare persika */
+    --note-4: 214 45% 30%;  /* Mörkare blå */
+    --note-5: 277 38% 32%;  /* Mörkare lavendel */
+    
+    /* Sticky note text color - dark mode */
+    --note-text: 0 0% 95%;  /* Ljus text för dark mode */
   }
 }
 

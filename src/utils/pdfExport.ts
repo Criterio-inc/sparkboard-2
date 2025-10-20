@@ -44,33 +44,45 @@ export const generateWorkshopPDF = (data: ExportData) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+  const maxWidth = pageWidth - 40; // 20px margin on each side
   let yPosition = 20;
+
+  // Helper function to check and handle page breaks
+  const checkPageBreak = (requiredSpace: number): number => {
+    if (yPosition + requiredSpace > pageHeight - 20) {
+      doc.addPage();
+      return 20; // New Y position on new page
+    }
+    return yPosition;
+  };
 
   // Header with gradient effect (simulated with rectangles)
   doc.setFillColor(103, 58, 183); // Primary purple
   doc.rect(0, 0, pageWidth, 40, "F");
   
-  // Workshop Title
+  // Workshop Title with text wrapping
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
-  doc.text(data.workshopTitle, pageWidth / 2, 20, { align: "center" });
+  const titleLines = doc.splitTextToSize(data.workshopTitle, maxWidth);
+  let titleY = 20;
+  titleLines.forEach((line: string) => {
+    doc.text(line, pageWidth / 2, titleY, { align: "center" });
+    titleY += 8;
+  });
 
   // Date and participant count
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
-  doc.text(`Datum: ${data.date}`, pageWidth / 2, 28, { align: "center" });
-  doc.text(`Deltagare: ${data.participantCount}`, pageWidth / 2, 35, { align: "center" });
+  doc.text(`Datum: ${data.date}`, pageWidth / 2, titleY + 3, { align: "center" });
+  doc.text(`Deltagare: ${data.participantCount}`, pageWidth / 2, titleY + 10, { align: "center" });
 
-  yPosition = 50;
+  yPosition = Math.max(50, titleY + 20);
 
   // Process each board
   data.boards.forEach((board, boardIndex) => {
     // Check if we need a new page
-    if (yPosition > pageHeight - 60) {
-      doc.addPage();
-      yPosition = 20;
-    }
+    yPosition = checkPageBreak(60);
 
     const boardColor = boardColorsRGB[board.colorIndex % boardColorsRGB.length];
 
@@ -79,11 +91,16 @@ export const generateWorkshopPDF = (data: ExportData) => {
     doc.rect(10, yPosition - 5, 5, 15, "F");
 
     doc.setTextColor(0, 0, 0);
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text(`Board ${boardIndex + 1}: ${board.title}`, 20, yPosition + 5);
     
-    yPosition += 15;
+    // Board title with text wrapping
+    const boardTitleLines = doc.splitTextToSize(`Board ${boardIndex + 1}: ${board.title}`, maxWidth - 20);
+    boardTitleLines.forEach((line: string, index: number) => {
+      doc.text(line, 20, yPosition + 5 + (index * 7));
+    });
+    
+    yPosition += 5 + (boardTitleLines.length * 7) + 5;
 
     // Board info
     doc.setFontSize(10);
@@ -97,20 +114,23 @@ export const generateWorkshopPDF = (data: ExportData) => {
     // Process each question
     board.questions.forEach((question, qIndex) => {
       // Check if we need a new page
-      if (yPosition > pageHeight - 80) {
-        doc.addPage();
-        yPosition = 20;
-      }
+      yPosition = checkPageBreak(80);
 
-      // Question header
+      // Question header with text wrapping
       doc.setFillColor(240, 240, 240);
-      doc.rect(15, yPosition - 3, pageWidth - 30, 10, "F");
+      const questionLines = doc.splitTextToSize(`Fråga ${qIndex + 1}: ${question.title}`, maxWidth - 30);
+      const questionHeight = (questionLines.length * 6) + 6;
+      doc.rect(15, yPosition - 3, pageWidth - 30, questionHeight, "F");
       
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text(`Fråga ${qIndex + 1}: ${question.title}`, 20, yPosition + 4);
-      yPosition += 15;
+      
+      questionLines.forEach((line: string, index: number) => {
+        doc.text(line, 20, yPosition + 4 + (index * 6));
+      });
+      
+      yPosition += questionHeight + 5;
 
       // Get notes for this question
       const questionNotes = boardNotes.filter((n) => n.questionId === question.id);
@@ -155,10 +175,7 @@ export const generateWorkshopPDF = (data: ExportData) => {
     // Add AI Analysis if available
     if (data.aiAnalyses && data.aiAnalyses[board.id]) {
       // Check if we need a new page
-      if (yPosition > pageHeight - 60) {
-        doc.addPage();
-        yPosition = 20;
-      }
+      yPosition = checkPageBreak(60);
 
       // AI Analysis header
       doc.setFillColor(255, 235, 59); // Yellow highlight
@@ -170,19 +187,16 @@ export const generateWorkshopPDF = (data: ExportData) => {
       doc.text("🤖 AI-Analys", 20, yPosition + 4);
       yPosition += 15;
 
-      // AI Analysis content
+      // AI Analysis content with text wrapping
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(50, 50, 50);
 
       const analysisText = data.aiAnalyses[board.id];
-      const lines = doc.splitTextToSize(analysisText, pageWidth - 40);
+      const lines = doc.splitTextToSize(analysisText, maxWidth);
       
       lines.forEach((line: string) => {
-        if (yPosition > pageHeight - 20) {
-          doc.addPage();
-          yPosition = 20;
-        }
+        yPosition = checkPageBreak(20);
         doc.text(line, 20, yPosition);
         yPosition += 5;
       });

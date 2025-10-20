@@ -70,9 +70,11 @@ export const AIAnalysisDialog = ({
     setCustomPrompt(defaultPrompt);
   }, [language]);
 
-  // Load previous analyses when board changes
+  // Load previous analyses when board changes and RESET current analysis
   useEffect(() => {
     if (open && boardId) {
+      // CRITICAL: Reset analysis when switching boards
+      setAnalysis("");
       loadPreviousAnalyses();
     }
   }, [open, boardId]);
@@ -346,23 +348,25 @@ export const AIAnalysisDialog = ({
               )}
             </div>
 
-            <ScrollArea className="flex-1 rounded-lg border p-6 bg-muted/20">
-              {isAnalyzing ? (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <Loader2 className="w-12 h-12 animate-spin mb-4" />
-                  <p>{t('ai.analyzingStatus')}</p>
-                  <p className="text-sm mt-2">{t('ai.analyzingWait')}</p>
-                </div>
-              ) : analysis ? (
-                <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <ReactMarkdown>{analysis}</ReactMarkdown>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <p>{t('ai.noAnalysisYet')}</p>
-                  <p className="text-sm mt-2">{t('ai.clickToStart')}</p>
-                </div>
-              )}
+            <ScrollArea className="flex-1 h-[600px] rounded-lg border bg-muted/20">
+              <div className="p-6">
+                {isAnalyzing ? (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground min-h-[500px]">
+                    <Loader2 className="w-12 h-12 animate-spin mb-4" />
+                    <p>{t('ai.analyzingStatus')}</p>
+                    <p className="text-sm mt-2">{t('ai.analyzingWait')}</p>
+                  </div>
+                ) : analysis ? (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <ReactMarkdown>{analysis}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground min-h-[500px]">
+                    <p>{t('ai.noAnalysisYet')}</p>
+                    <p className="text-sm mt-2">{t('ai.clickToStart')}</p>
+                  </div>
+                )}
+              </div>
             </ScrollArea>
           </div>
         </div>

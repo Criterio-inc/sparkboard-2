@@ -47,12 +47,12 @@ export const StickyNote = ({
       } as React.CSSProperties}
     >
       <div className="flex-1 mb-3">
-        <p className="text-sm text-foreground break-words whitespace-pre-wrap">
+        <p className="text-sm text-[hsl(var(--note-text))] break-words whitespace-pre-wrap">
           {content}
         </p>
       </div>
 
-      <div className="flex items-center justify-end text-xs text-muted-foreground pt-2 border-t border-muted">
+      <div className="flex items-center justify-end text-xs text-[hsl(var(--note-text))] opacity-75 pt-2 border-t border-[hsl(var(--note-text))]/20">
         <div className="flex items-center gap-2">
           <span className="opacity-75">{timestamp}</span>
           {isOwn && onDelete && (
