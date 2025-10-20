@@ -105,7 +105,7 @@ const WorkshopDashboard = () => {
       const { data: newWorkshop, error: workshopError } = await supabase
         .from('workshops')
         .insert({
-          name: `${workshop.name} (kopia)`,
+          name: `${workshop.name || 'Workshop'} (kopia)`,
           facilitator_id: user?.id,
           code: Math.floor(100000 + Math.random() * 900000).toString(),
           status: 'draft',
