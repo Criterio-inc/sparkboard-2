@@ -267,6 +267,70 @@ const FacilitatorControl = () => {
     };
   }, [workshop?.id, boards]);
 
+  // Ladda AI-analyser från databasen
+  useEffect(() => {
+    const loadAIAnalyses = async () => {
+      if (!workshop?.id || boards.length === 0) return;
+
+      console.log('🤖 Laddar AI-analyser från databas...');
+
+      // Hämta senaste analys för varje board
+      const analysesPromises = boards.map(async (board) => {
+        const { data } = await supabase
+          .from('ai_analyses')
+          .select('*')
+          .eq('board_id', board.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        return data ? { boardId: board.id, analysis: data.analysis } : null;
+      });
+
+      const results = await Promise.all(analysesPromises);
+      
+      // Bygg aiAnalyses objekt med board.id som key
+      const loadedAnalyses: Record<string, string> = {};
+      results.forEach(result => {
+        if (result) {
+          loadedAnalyses[result.boardId] = result.analysis;
+        }
+      });
+
+      setAIAnalyses(loadedAnalyses);
+      console.log(`✅ Laddade ${Object.keys(loadedAnalyses).length} AI-analyser`);
+    };
+
+    loadAIAnalyses();
+
+    // Lyssna på nya AI-analyser i realtid
+    const channel = supabase
+      .channel(`ai-analyses-workshop-${workshop?.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'ai_analyses',
+        },
+        (payload) => {
+          console.log('🔔 Ny AI-analys skapad', payload);
+          
+          // Uppdatera state med ny analys
+          const newAnalysis = payload.new as any;
+          setAIAnalyses(prev => ({
+            ...prev,
+            [newAnalysis.board_id]: newAnalysis.analysis
+          }));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [workshop?.id, boards]);
+
   const currentBoard = boards[currentBoardIndex] || { id: "empty", title: "Ingen övning", timeLimit: 0, questions: [], colorIndex: 0 };
   const boardColor = `hsl(var(--board-${(currentBoard.colorIndex % 5) + 1}))`;
   const isLowTime = timeRemaining <= 120 && timeRemaining > 0;
@@ -376,6 +440,21 @@ const FacilitatorControl = () => {
           board.questions.some((q) => q.id === note.questionId)
         );
       });
+
+      // DEBUG: Visa vilka AI-analyser som inkluderas
+      console.group('📊 PDF Export Data');
+      console.log('Workshop:', workshop?.name);
+      console.log('Boards:', boards.length);
+      console.log('Total notes:', notes.length);
+      console.log('AI Analyses included:', Object.keys(aiAnalyses).length);
+      boards.forEach((board, i) => {
+        const hasAnalysis = !!aiAnalyses[board.id];
+        console.log(`Board ${i + 1} (${board.title}):`, 
+          `${notesByBoard[board.id]?.length || 0} notes,`,
+          hasAnalysis ? '✅ AI-analys' : '❌ Ingen AI-analys'
+        );
+      });
+      console.groupEnd();
 
       const exportData = {
         workshopTitle: workshop?.name || "Workshop",
