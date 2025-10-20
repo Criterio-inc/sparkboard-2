@@ -493,13 +493,18 @@ const FacilitatorControl = () => {
 
   // Get all notes from current board with question titles
   const getCurrentBoardNotes = () => {
-    return notes.map((note) => {
-      const question = currentBoard.questions.find((q) => q.id === note.questionId);
-      return {
-        ...note,
-        question: question?.title || "Unknown question",
-      };
-    });
+    // KRITISK FIX: Filtrera endast notes som tillhör current board's frågor
+    const currentBoardQuestionIds = currentBoard.questions.map(q => q.id);
+    
+    return notes
+      .filter((note) => currentBoardQuestionIds.includes(note.questionId))
+      .map((note) => {
+        const question = currentBoard.questions.find((q) => q.id === note.questionId);
+        return {
+          ...note,
+          question: question?.title || "Unknown question",
+        };
+      });
   };
 
   return (
