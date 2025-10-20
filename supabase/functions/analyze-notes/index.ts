@@ -15,6 +15,7 @@ serve(async (req) => {
     const { notes, customPrompt } = await req.json();
     
     console.log("Received analysis request for", notes.length, "notes");
+    console.log("Custom prompt provided:", !!customPrompt);
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -24,30 +25,32 @@ serve(async (req) => {
     // Format notes for AI context
     const notesContext = notes
       .map((note: any, index: number) => 
-        `Note ${index + 1} (by ${note.authorName} on ${note.question}):\n${note.content}`
+        `Note ${index + 1} (Question: ${note.question}):\n${note.content}`
       )
       .join("\n\n");
 
-    const systemPrompt = `Du är en workshop-analysassistent. Din uppgift är att analysera sticky-notes från workshop-övningar och ge strukturerade insikter. 
+    // System prompt that ensures good Markdown formatting
+    const systemPrompt = `Du är en expert på att analysera workshop-resultat.
 
-Presentera din analys i följande format:
+KRITISKT: Formatera ALLTID ditt svar med Markdown:
+- Använd ## för huvudrubriker
+- Använd ### för underrubriker  
+- Använd - eller • för punktlistor
+- Använd **fetstil** för viktiga koncept
+- Lämna en tom rad mellan stycken
+- Strukturera tydligt med sektioner
 
-## Huvudteman
-Lista 3-5 huvudteman med underrubriker och exempel från notes.
+Skriv på samma språk som användarens prompt.`;
 
-## Key Insights
-Beskriv de viktigaste insikterna och mönstren.
+    // Use the custom prompt directly - no fallback
+    if (!customPrompt) {
+      throw new Error("Custom prompt is required");
+    }
 
-## Rekommendationer
-Ge konkreta, handlingsbara rekommendationer för nästa steg.
-
-Använd svenska och håll en professionell men tillgänglig ton.`;
-
-    const userPrompt = customPrompt || "Sammanfatta huvudteman och insights från dessa workshop-svar. Gruppera liknande idéer och ge rekommendationer för nästa steg.";
-
-    const fullPrompt = `${userPrompt}\n\n--- WORKSHOP NOTES ---\n${notesContext}`;
+    const fullPrompt = `${customPrompt}\n\n--- WORKSHOP NOTES ---\n${notesContext}`;
 
     console.log("Calling AI with prompt length:", fullPrompt.length);
+    console.log("User prompt preview:", customPrompt.substring(0, 100) + "...");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

@@ -420,8 +420,35 @@ export const AIAnalysisDialog = ({
                     <p className="text-sm mt-2">{t('ai.analyzingWait')}</p>
                   </div>
                 ) : analysis ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown>{analysis}</ReactMarkdown>
+                  <div className="prose prose-lg dark:prose-invert max-w-none">
+                    <ReactMarkdown
+                      components={{
+                        h1: ({node, ...props}) => <h1 className="text-3xl font-bold mb-4 mt-6" {...props} />,
+                        h2: ({node, ...props}) => <h2 className="text-2xl font-bold mb-3 mt-5" {...props} />,
+                        h3: ({node, ...props}) => <h3 className="text-xl font-semibold mb-2 mt-4" {...props} />,
+                        p: ({node, ...props}) => <p className="mb-4 leading-relaxed" {...props} />,
+                        ul: ({node, ...props}) => <ul className="mb-4 space-y-2 list-disc pl-6" {...props} />,
+                        ol: ({node, ...props}) => <ol className="mb-4 space-y-2 list-decimal pl-6" {...props} />,
+                        li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
+                        strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                        em: ({node, ...props}) => <em className="italic" {...props} />,
+                        blockquote: ({node, ...props}) => (
+                          <blockquote className="border-l-4 border-primary pl-4 italic my-4" {...props} />
+                        ),
+                        code: ({node, inline, className, children, ...props}: any) => 
+                          inline ? (
+                            <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
+                              {children}
+                            </code>
+                          ) : (
+                            <code className="block bg-muted p-4 rounded-lg text-sm font-mono overflow-x-auto" {...props}>
+                              {children}
+                            </code>
+                          ),
+                      }}
+                    >
+                      {analysis}
+                    </ReactMarkdown>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground min-h-[500px]">
