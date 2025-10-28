@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useWorkshopLimit } from "@/hooks/useWorkshopLimit";
+import { UpgradeRequiredDialog } from "@/components/UpgradeRequiredDialog";
 
 interface Question {
   id: string;
@@ -43,7 +45,9 @@ const CreateWorkshop = () => {
   const { id } = useParams();
   const { user } = useProfile();
   const { isFree, isPro } = useSubscription();
+  const { canCreateMore, activeWorkshops, limit } = useWorkshopLimit();
   const [showQRDialog, setShowQRDialog] = useState(false);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
   const [workshopId, setWorkshopId] = useState<string | undefined>(id);
   const [hasResponses, setHasResponses] = useState(false);
@@ -57,28 +61,7 @@ const CreateWorkshop = () => {
     status: "draft",
   });
 
-  // Check workshop limit for free users
-  useEffect(() => {
-    const checkWorkshopLimit = async () => {
-      if (!user?.id || isPro || workshopId) return; // Skip if Pro or edit mode
-      
-      const { data: userWorkshops } = await supabase
-        .from('workshops')
-        .select('id')
-        .eq('facilitator_id', user.id);
-      
-      if (isFree && (userWorkshops?.length || 0) >= 1) {
-        toast({
-          title: "Begränsning nådd",
-          description: "Free-planen tillåter max 1 workshop. Uppgradera till Pro för obegränsat!",
-          variant: "destructive",
-        });
-        navigate('/upgrade');
-      }
-    };
-    
-    checkWorkshopLimit();
-  }, [user?.id, isFree, isPro, workshopId, navigate, toast]);
+  // Workshop limit check is handled in handleActivate and handleSaveDraft
 
   useEffect(() => {
     const loadWorkshop = async () => {
@@ -281,6 +264,12 @@ const CreateWorkshop = () => {
       return;
     }
 
+    // Check workshop limit before creating new draft
+    if (!workshopId && !canCreateMore) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+
     console.log("=== SPARAR WORKSHOP SOM DRAFT (SUPABASE) ===");
     
     try {
@@ -382,6 +371,12 @@ const CreateWorkshop = () => {
         description: "Du måste vara inloggad",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Check workshop limit before creating new workshop
+    if (!workshopId && !canCreateMore) {
+      setShowUpgradeDialog(true);
       return;
     }
 
@@ -809,6 +804,19 @@ const CreateWorkshop = () => {
         code={generatedCode} 
         open={showQRDialog} 
         onOpenChange={setShowQRDialog}
+      />
+
+      {/* Workshop limit status for Free users */}
+      {!workshopId && limit !== Infinity && (
+        <p className="text-sm text-muted-foreground text-center mt-4">
+          {activeWorkshops} av {limit} workshop använd
+        </p>
+      )}
+
+      {/* Upgrade Required Dialog */}
+      <UpgradeRequiredDialog 
+        open={showUpgradeDialog} 
+        onOpenChange={setShowUpgradeDialog}
       />
     </div>
   );

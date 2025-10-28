@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, X, Loader2 } from 'lucide-react';
 import { STRIPE_PRICES } from '@/lib/stripe';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useSubscription } from '@/hooks/useSubscription';
 
 export const UpgradeToPro = () => {
   const { user } = useUser();
+  const { plan } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
 
@@ -44,14 +46,50 @@ export const UpgradeToPro = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-2">Uppgradera till Pro</h2>
-        <p className="text-muted-foreground">Skapa obegränsat med workshops</p>
+        <h2 className="text-3xl font-bold mb-2">Välj din plan</h2>
+        <p className="text-muted-foreground">Skapa workshops som passar dina behov</p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Månadsvis */}
+      <div className="grid md:grid-cols-3 gap-6">
+        {/* FREE PLAN */}
+        <Card className={plan === 'free' ? 'ring-2 ring-primary/50' : 'opacity-75'}>
+          <CardHeader>
+            <CardTitle>Free</CardTitle>
+            <CardDescription>
+              <span className="text-3xl font-bold text-foreground">0 SEK</span>
+              <span className="text-muted-foreground">/alltid</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              <li className="flex items-center gap-2">
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <span>1 aktiv workshop</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <span>Obegränsat deltagare</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <X className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <span className="text-muted-foreground">AI-analys</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <X className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <span className="text-muted-foreground">Prioriterad support</span>
+              </li>
+            </ul>
+            {plan === 'free' && (
+              <div className="mt-4 text-center text-sm text-muted-foreground font-medium">
+                Din nuvarande plan
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* MÅNADSVIS */}
         <Card 
           className={`cursor-pointer transition-all ${
             selectedPlan === 'monthly' ? 'ring-2 ring-primary' : ''
@@ -68,22 +106,26 @@ export const UpgradeToPro = () => {
           <CardContent>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-600" />
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
                 <span>Obegränsat workshops</span>
               </li>
               <li className="flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-600" />
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
                 <span>Obegränsat deltagare</span>
               </li>
               <li className="flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-600" />
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
                 <span>AI-analys</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <span>Prioriterad support</span>
               </li>
             </ul>
           </CardContent>
         </Card>
 
-        {/* Årlig */}
+        {/* ÅRLIG */}
         <Card 
           className={`cursor-pointer transition-all relative ${
             selectedPlan === 'yearly' ? 'ring-2 ring-primary' : ''
@@ -103,19 +145,23 @@ export const UpgradeToPro = () => {
           <CardContent>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-600" />
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
                 <span>Obegränsat workshops</span>
               </li>
               <li className="flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-600" />
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
                 <span>Obegränsat deltagare</span>
               </li>
               <li className="flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-600" />
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
                 <span>AI-analys</span>
               </li>
               <li className="flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-600" />
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <span>Prioriterad support</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
                 <span className="font-bold">1 månad gratis!</span>
               </li>
             </ul>
@@ -123,23 +169,25 @@ export const UpgradeToPro = () => {
         </Card>
       </div>
 
-      <div className="mt-8 text-center">
-        <Button 
-          size="lg" 
-          onClick={handleUpgrade}
-          disabled={loading}
-          className="min-w-[200px]"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Laddar...
-            </>
-          ) : (
-            `Uppgradera nu - ${selectedPlan === 'monthly' ? '99 SEK/mån' : '1089 SEK/år'}`
-          )}
-        </Button>
-      </div>
+      {plan !== 'pro' && plan !== 'curago' && (
+        <div className="mt-8 text-center">
+          <Button 
+            size="lg" 
+            onClick={handleUpgrade}
+            disabled={loading}
+            className="min-w-[200px]"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Laddar...
+              </>
+            ) : (
+              `Uppgradera nu - ${selectedPlan === 'monthly' ? '99 SEK/mån' : '1089 SEK/år'}`
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
