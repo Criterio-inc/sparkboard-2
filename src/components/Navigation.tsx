@@ -12,11 +12,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/hooks/useSubscription';
 import curagoLogo from '@/assets/curago-logo.png';
+import { Sparkles } from 'lucide-react';
 
 export const Navigation = () => {
   const { t } = useLanguage();
   const { isSignedIn, user } = useUser();
-  const { isCuragoUser, isPro } = useSubscription();
+  const { isCuragoUser, isPro, isFree } = useSubscription();
 
   return (
     <header className="bg-gradient-to-r from-[#03122F] to-[#19305C] text-white shadow-lg">
@@ -32,12 +33,26 @@ export const Navigation = () => {
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-6">
             {isSignedIn && (
-              <Link 
-                to="/dashboard" 
-                className="hover:text-[#F1916D] transition-colors"
-              >
-                {t('nav.myWorkshops')}
-              </Link>
+              <>
+                <Link 
+                  to="/dashboard" 
+                  className="hover:text-[#F1916D] transition-colors"
+                >
+                  {t('nav.myWorkshops')}
+                </Link>
+                
+                {isFree && (
+                  <Link to="/upgrade">
+                    <Button 
+                      size="sm"
+                      className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] hover:opacity-90 text-white font-semibold"
+                    >
+                      <Sparkles className="w-4 h-4 mr-1.5" />
+                      Uppgradera
+                    </Button>
+                  </Link>
+                )}
+              </>
             )}
           </nav>
 

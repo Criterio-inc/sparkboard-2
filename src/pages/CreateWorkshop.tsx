@@ -13,6 +13,7 @@ import { WorkshopQRDialog } from "@/components/WorkshopQRDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useProfile } from "@/hooks/useProfile";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface Question {
   id: string;
@@ -41,6 +42,7 @@ const CreateWorkshop = () => {
   const { t } = useLanguage();
   const { id } = useParams();
   const { user } = useProfile();
+  const { isFree, isPro } = useSubscription();
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
   const [workshopId, setWorkshopId] = useState<string | undefined>(id);
@@ -54,6 +56,29 @@ const CreateWorkshop = () => {
     boards: [],
     status: "draft",
   });
+
+  // Check workshop limit for free users
+  useEffect(() => {
+    const checkWorkshopLimit = async () => {
+      if (!user?.id || isPro || workshopId) return; // Skip if Pro or edit mode
+      
+      const { data: userWorkshops } = await supabase
+        .from('workshops')
+        .select('id')
+        .eq('facilitator_id', user.id);
+      
+      if (isFree && (userWorkshops?.length || 0) >= 1) {
+        toast({
+          title: "Begränsning nådd",
+          description: "Free-planen tillåter max 1 workshop. Uppgradera till Pro för obegränsat!",
+          variant: "destructive",
+        });
+        navigate('/upgrade');
+      }
+    };
+    
+    checkWorkshopLimit();
+  }, [user?.id, isFree, isPro, workshopId, navigate, toast]);
 
   useEffect(() => {
     const loadWorkshop = async () => {

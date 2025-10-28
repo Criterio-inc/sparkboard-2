@@ -17,6 +17,8 @@ import { WorkshopQRDialog } from "@/components/WorkshopQRDialog";
 import { Navigation } from "@/components/Navigation";
 import { useProfile } from "@/hooks/useProfile";
 import { useMigrateWorkshops } from "@/hooks/useMigrateWorkshops";
+import { useSubscription } from "@/hooks/useSubscription";
+import { Sparkles } from "lucide-react";
 
 const WorkshopDashboard = () => {
   const navigate = useNavigate();
@@ -28,6 +30,7 @@ const WorkshopDashboard = () => {
   
   const { profile, loading: profileLoading, user } = useProfile();
   const { isChecking, isComplete, migratedCount, error } = useMigrateWorkshops();
+  const { isFree, isPro, loading: subscriptionLoading } = useSubscription();
 
   useEffect(() => {
     if (user?.id) {
@@ -268,13 +271,34 @@ const WorkshopDashboard = () => {
             </p>
           </div>
           
-          <Link to="/create-workshop">
-            <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90">
-              <Plus className="w-5 h-5 mr-2" />
-              {t('dashboard.createNew')}
-            </Button>
-          </Link>
+          {isFree && workshops.length >= 1 ? (
+            <Link to="/upgrade">
+              <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+                <Sparkles className="w-5 h-5 mr-2" />
+                Uppgradera till Pro
+              </Button>
+            </Link>
+          ) : (
+            <Link to="/create-workshop">
+              <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+                <Plus className="w-5 h-5 mr-2" />
+                {t('dashboard.createNew')}
+              </Button>
+            </Link>
+          )}
         </div>
+
+        {/* Workshop limit warning for free users */}
+        {isFree && workshops.length >= 1 && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
+            <p className="text-yellow-800">
+              <strong>📊 Free-plan:</strong> Du har nått gränsen på 1 workshop. 
+              <Link to="/upgrade" className="underline ml-1 font-semibold hover:text-yellow-900">
+                Uppgradera till Pro
+              </Link> för obegränsat antal workshops!
+            </p>
+          </div>
+        )}
 
         {/* Workshops Grid */}
         {workshops.length === 0 ? (
