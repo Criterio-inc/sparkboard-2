@@ -143,24 +143,26 @@ const AccountSettings = () => {
                   </AlertDescription>
                 </Alert>
 
-                <Button 
-                  onClick={handleManageSubscription}
-                  disabled={loading}
-                  className="w-full"
-                  variant="outline"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Öppnar...
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Hantera prenumeration i Stripe
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleManageSubscription}
+                    disabled={loading}
+                    className="flex-1"
+                    variant="outline"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Öppnar...
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Hantera prenumeration i Stripe
+                      </>
+                    )}
+                  </Button>
+                </div>
               </>
             )}
 
@@ -189,7 +191,7 @@ const AccountSettings = () => {
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${isPro || isCuragoUser ? 'bg-green-500' : 'bg-gray-400'}`} />
                 <span className={isPro || isCuragoUser ? '' : 'text-muted-foreground'}>
-                  {isPro || isCuragoUser ? 'Obegränsat' : 'Max 1'} aktiv workshop
+                  {isPro || isCuragoUser ? 'Obegränsat' : 'Max 1'} aktiva workshops
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -199,13 +201,13 @@ const AccountSettings = () => {
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${isPro || isCuragoUser ? 'bg-green-500' : 'bg-gray-400'}`} />
                 <span className={isPro || isCuragoUser ? '' : 'text-muted-foreground'}>
-                  AI-analys av resultat
+                  AI-analys av resultat {!isPro && !isCuragoUser && '(endast Pro)'}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${isPro || isCuragoUser ? 'bg-green-500' : 'bg-gray-400'}`} />
                 <span className={isPro || isCuragoUser ? '' : 'text-muted-foreground'}>
-                  Prioriterad support
+                  Prioriterad support {!isPro && !isCuragoUser && '(endast Pro)'}
                 </span>
               </div>
             </div>

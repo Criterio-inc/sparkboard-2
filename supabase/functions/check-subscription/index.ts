@@ -75,8 +75,10 @@ serve(async (req) => {
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
-      const subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
+      // Stripe timestamps are in seconds, convert to milliseconds for JavaScript Date
+      const subscriptionEndTimestamp = subscription.current_period_end * 1000;
+      const subscriptionEnd = new Date(subscriptionEndTimestamp).toISOString();
+      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd, timestamp: subscriptionEndTimestamp });
       
       // Update user profile to pro
       const { error: updateError } = await supabaseClient
