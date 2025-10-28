@@ -10,9 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { BoardCard } from "@/components/BoardCard";
 import { generateUniqueWorkshopCode } from "@/utils/workshopStorage";
 import { WorkshopQRDialog } from "@/components/WorkshopQRDialog";
-import { getCurrentFacilitator } from "@/utils/facilitatorStorage";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useProfile } from "@/hooks/useProfile";
 
 interface Question {
   id: string;
@@ -40,6 +40,7 @@ const CreateWorkshop = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
   const { id } = useParams();
+  const { user } = useProfile();
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
   const [workshopId, setWorkshopId] = useState<string | undefined>(id);
@@ -246,11 +247,10 @@ const CreateWorkshop = () => {
   const handleSaveDraft = async () => {
     if (!validateWorkshop()) return;
 
-    const currentFacilitator = await getCurrentFacilitator();
-    if (!currentFacilitator) {
+    if (!user?.id) {
       toast({
         title: "Fel",
-        description: "Du måste vara inloggad som facilitator",
+        description: "Du måste vara inloggad",
         variant: "destructive",
       });
       return;
@@ -266,7 +266,7 @@ const CreateWorkshop = () => {
         code: codeToUse,
         date: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        facilitator_id: currentFacilitator.id,
+        facilitator_id: user.id,
         status: 'draft',
       };
 
@@ -351,11 +351,10 @@ const CreateWorkshop = () => {
     console.log("🚀 [CreateWorkshop] Aktiverar workshop...");
     if (!validateWorkshop()) return;
 
-    const currentFacilitator = await getCurrentFacilitator();
-    if (!currentFacilitator) {
+    if (!user?.id) {
       toast({
         title: "Fel",
-        description: "Du måste vara inloggad som facilitator",
+        description: "Du måste vara inloggad",
         variant: "destructive",
       });
       return;
@@ -369,24 +368,13 @@ const CreateWorkshop = () => {
       const codeToUse = normalized.length === 6 ? normalized : await generateUniqueWorkshopCodeFromSupabase();
       console.log("🔑 Kod att använda:", codeToUse);
 
-      // Hämta facilitator
-      const facilitator = await getCurrentFacilitator();
-      if (!facilitator) {
-        toast({
-          title: "Fel",
-          description: "Du måste vara inloggad som facilitator",
-          variant: "destructive",
-        });
-        return;
-      }
-
       // Spara eller uppdatera workshop
       const workshopData = {
         name: workshop.title,
         code: codeToUse,
         date: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        facilitator_id: facilitator.id,
+        facilitator_id: user.id,
         status: 'active',
       };
 
