@@ -80,6 +80,32 @@ export const useProfile = () => {
     syncProfile();
   }, [user, isUserLoaded]);
 
+  // Listen to real-time updates on profile
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('✅ Profile updated (realtime):', payload.new);
+          setProfile(payload.new as UserProfile);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   return { 
     profile, 
     loading, 

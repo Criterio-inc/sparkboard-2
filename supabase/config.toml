@@ -70,4 +70,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.check-subscription]
-verify_jwt = true
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = false

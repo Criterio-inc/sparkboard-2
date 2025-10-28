@@ -41,6 +41,13 @@ export const Navigation = () => {
                   {t('nav.myWorkshops')}
                 </Link>
                 
+                <Link 
+                  to="/account" 
+                  className="hover:text-[#F1916D] transition-colors"
+                >
+                  Konto
+                </Link>
+                
                 {isFree && (
                   <Link to="/upgrade">
                     <Button 

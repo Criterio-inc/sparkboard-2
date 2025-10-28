@@ -6,17 +6,25 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle2, Sparkles, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@clerk/clerk-react';
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useUser();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     const checkSubscription = async () => {
+      if (!user) return;
+      
       try {
-        // Anropa check-subscription edge function
-        const { data, error } = await supabase.functions.invoke('check-subscription');
+        const { data, error } = await supabase.functions.invoke('check-subscription', {
+          body: { 
+            userEmail: user.primaryEmailAddress?.emailAddress,
+            userId: user.id
+          }
+        });
 
         if (error) {
           console.error('Subscription check error:', error);
@@ -24,7 +32,6 @@ const PaymentSuccess = () => {
           console.log('Subscription check result:', data);
         }
 
-        // Vänta 2 sekunder innan redirect för att användaren ska se meddelandet
         setTimeout(() => {
           toast({
             title: '🎉 Välkommen till Pro!',
@@ -39,7 +46,7 @@ const PaymentSuccess = () => {
     };
 
     checkSubscription();
-  }, [navigate, toast]);
+  }, [navigate, toast, user]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">

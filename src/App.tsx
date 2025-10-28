@@ -17,6 +17,7 @@ import FacilitatorSettings from "./pages/FacilitatorSettings";
 import Upgrade from "./pages/Upgrade";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
+import AccountSettings from "./pages/AccountSettings";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/facilitator/:workshopId" element={<AuthWrapper><FacilitatorControl /></AuthWrapper>} />
             <Route path="/settings" element={<AuthWrapper><FacilitatorSettings /></AuthWrapper>} />
             <Route path="/upgrade" element={<AuthWrapper><Upgrade /></AuthWrapper>} />
+            <Route path="/account" element={<AuthWrapper><AccountSettings /></AuthWrapper>} />
             <Route path="/payment-success" element={<AuthWrapper><PaymentSuccess /></AuthWrapper>} />
             <Route path="/payment-cancelled" element={<AuthWrapper><PaymentCancelled /></AuthWrapper>} />
             
