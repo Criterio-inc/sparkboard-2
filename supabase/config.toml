@@ -65,3 +65,6 @@ enabled = false
 
 [functions.analyze-notes]
 verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = true
