@@ -25,7 +25,10 @@ export const UpgradeToPro = () => {
         : STRIPE_PRICES.yearly;
 
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId }
+        body: { 
+          priceId,
+          userEmail: user.primaryEmailAddress?.emailAddress
+        }
       });
 
       if (error) throw error;
