@@ -9,10 +9,14 @@ import {
   useUser 
 } from '@clerk/clerk-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useSubscription } from '@/hooks/useSubscription';
+import curagoLogo from '@/assets/curago-logo.png';
 
 export const Navigation = () => {
   const { t } = useLanguage();
   const { isSignedIn, user } = useUser();
+  const { isCuragoUser, isPro } = useSubscription();
 
   return (
     <header className="bg-gradient-to-r from-[#03122F] to-[#19305C] text-white shadow-lg">
@@ -44,9 +48,31 @@ export const Navigation = () => {
 
             {isSignedIn ? (
               <div className="flex items-center gap-3">
-                <span className="text-sm hidden sm:block">
-                  {user.firstName || user.emailAddresses[0].emailAddress.split('@')[0]}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm hidden sm:block">
+                    {user.firstName || user.emailAddresses[0].emailAddress.split('@')[0]}
+                  </span>
+                  
+                  {isCuragoUser && (
+                    <Badge 
+                      variant="secondary" 
+                      className="bg-[#5A9BD5] text-white hover:bg-[#4A8BC5] flex items-center gap-1.5 px-2 py-0.5"
+                    >
+                      <img src={curagoLogo} alt="Curago" className="h-3 w-auto" />
+                      <span className="text-xs font-semibold">Enterprise</span>
+                    </Badge>
+                  )}
+                  
+                  {isPro && !isCuragoUser && (
+                    <Badge 
+                      variant="default" 
+                      className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white"
+                    >
+                      Pro
+                    </Badge>
+                  )}
+                </div>
+                
                 <UserButton 
                   afterSignOutUrl="/"
                   appearance={{
