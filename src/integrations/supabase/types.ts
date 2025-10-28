@@ -216,6 +216,8 @@ export type Database = {
           id: string
           image_url: string | null
           last_name: string | null
+          plan: string | null
+          plan_source: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_current_period_end: string | null
@@ -230,6 +232,8 @@ export type Database = {
           id: string
           image_url?: string | null
           last_name?: string | null
+          plan?: string | null
+          plan_source?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_current_period_end?: string | null
@@ -244,6 +248,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           last_name?: string | null
+          plan?: string | null
+          plan_source?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_current_period_end?: string | null
@@ -343,10 +349,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      cleanup_expired_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_expired_sessions: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
