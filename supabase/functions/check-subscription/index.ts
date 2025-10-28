@@ -66,36 +66,66 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
+    // List all subscriptions (not just active) and filter for eligible ones
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      status: "active",
-      limit: 1,
+      status: "all",
+      limit: 10,
     });
-    const hasActiveSub = subscriptions.data.length > 0;
-
-    if (hasActiveSub) {
-      const subscription = subscriptions.data[0];
-      // Stripe timestamps are in seconds, convert to milliseconds for JavaScript Date
-      const subscriptionEndTimestamp = subscription.current_period_end * 1000;
-      const subscriptionEnd = new Date(subscriptionEndTimestamp).toISOString();
-      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd, timestamp: subscriptionEndTimestamp });
+    
+    // Find first subscription that's active or trialing
+    const eligibleSub = subscriptions.data.find((sub: any) => 
+      sub.status === 'active' || sub.status === 'trialing'
+    );
+    
+    if (eligibleSub) {
+      logStep("Eligible subscription found", { 
+        subscriptionId: eligibleSub.id, 
+        status: eligibleSub.status 
+      });
       
-      // Update user profile to pro
-      const { error: updateError } = await supabaseClient
-        .from('profiles')
-        .update({ 
-          plan: 'pro',
-          plan_source: 'stripe',
-          subscription_current_period_end: subscriptionEnd,
-          stripe_customer_id: customerId,
-          stripe_subscription_id: subscription.id
-        })
-        .eq('id', userId);
+      // Safely get end date - use current_period_end or trial_end, validate it exists
+      const endSeconds = eligibleSub.current_period_end ?? eligibleSub.trial_end;
+      let subscriptionEnd: string | null = null;
       
-      if (updateError) {
-        logStep("Error updating profile", { error: updateError.message });
+      if (endSeconds && typeof endSeconds === 'number' && endSeconds > 0) {
+        try {
+          const subscriptionEndTimestamp = endSeconds * 1000;
+          subscriptionEnd = new Date(subscriptionEndTimestamp).toISOString();
+          logStep("Subscription end date calculated", { 
+            endSeconds, 
+            timestamp: subscriptionEndTimestamp, 
+            isoDate: subscriptionEnd 
+          });
+        } catch (dateError) {
+          logStep("Warning: Could not parse end date", { endSeconds, error: String(dateError) });
+        }
       } else {
-        logStep("Profile updated to pro");
+        logStep("Warning: No valid end date found", { 
+          current_period_end: eligibleSub.current_period_end,
+          trial_end: eligibleSub.trial_end 
+        });
+      }
+      
+      // Use upsert to ensure profile exists and is updated
+      const profileData = {
+        id: userId,
+        email: userEmail,
+        plan: 'pro',
+        plan_source: 'stripe',
+        subscription_current_period_end: subscriptionEnd,
+        stripe_customer_id: customerId,
+        stripe_subscription_id: eligibleSub.id
+      };
+      
+      const { error: upsertError } = await supabaseClient
+        .from('profiles')
+        .upsert(profileData, { onConflict: 'id' });
+      
+      if (upsertError) {
+        logStep("Error upserting profile to pro", { error: upsertError.message });
+      } else {
+        logStep("Profile upserted to pro successfully");
       }
       
       return new Response(JSON.stringify({
@@ -106,21 +136,30 @@ serve(async (req) => {
         status: 200,
       });
     } else {
-      logStep("No active subscription found");
+      logStep("No eligible subscription found", { 
+        totalSubscriptions: subscriptions.data.length,
+        statuses: subscriptions.data.map((s: any) => s.status)
+      });
       
-      // Update user profile to free
-      const { error: updateError } = await supabaseClient
+      // Use upsert to set profile to free
+      const profileData = {
+        id: userId,
+        email: userEmail,
+        plan: 'free',
+        plan_source: null,
+        subscription_current_period_end: null,
+        stripe_customer_id: customerId,
+        stripe_subscription_id: null
+      };
+      
+      const { error: upsertError } = await supabaseClient
         .from('profiles')
-        .update({ 
-          plan: 'free',
-          plan_source: null 
-        })
-        .eq('id', userId);
+        .upsert(profileData, { onConflict: 'id' });
       
-      if (updateError) {
-        logStep("Error updating profile", { error: updateError.message });
+      if (upsertError) {
+        logStep("Error upserting profile to free", { error: upsertError.message });
       } else {
-        logStep("Profile updated to free");
+        logStep("Profile upserted to free successfully");
       }
       
       return new Response(JSON.stringify({

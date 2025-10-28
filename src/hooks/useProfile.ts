@@ -1,5 +1,5 @@
 import { useUser } from '@clerk/clerk-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface UserProfile {
@@ -22,6 +22,7 @@ export const useProfile = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasCheckedSubscription = useRef(false);
 
   useEffect(() => {
     if (!isUserLoaded) return;
@@ -79,6 +80,41 @@ export const useProfile = () => {
 
     syncProfile();
   }, [user, isUserLoaded]);
+
+  // Auto-check subscription status once after profile loads
+  useEffect(() => {
+    if (!user?.id || !user?.primaryEmailAddress?.emailAddress || hasCheckedSubscription.current) {
+      return;
+    }
+    
+    if (!profile || loading) {
+      return; // Wait for profile to load first
+    }
+
+    hasCheckedSubscription.current = true;
+    
+    const checkSubscription = async () => {
+      try {
+        console.log('🔄 Auto-checking subscription status...');
+        const { data, error } = await supabase.functions.invoke('check-subscription', {
+          body: { 
+            userEmail: user.primaryEmailAddress!.emailAddress,
+            userId: user.id
+          }
+        });
+
+        if (error) {
+          console.error('❌ Auto subscription check error:', error);
+        } else {
+          console.log('✅ Auto subscription check completed:', data);
+        }
+      } catch (err) {
+        console.error('❌ Auto subscription check failed:', err);
+      }
+    };
+
+    checkSubscription();
+  }, [user, profile, loading]);
 
   // Listen to real-time updates on profile
   useEffect(() => {

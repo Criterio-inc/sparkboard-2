@@ -7,15 +7,18 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useUser } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Sparkles, CreditCard, AlertCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { Sparkles, CreditCard, AlertCircle, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
 const AccountSettings = () => {
   const { profile, isPro, isFree, isCuragoUser } = useSubscription();
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const { toast } = useToast();
 
   const handleManageSubscription = async () => {
     if (!user?.primaryEmailAddress?.emailAddress) return;
@@ -35,9 +38,43 @@ const AccountSettings = () => {
       }
     } catch (error) {
       console.error('Error opening customer portal:', error);
-      alert('Något gick fel. Försök igen.');
+      toast({
+        title: 'Ett fel uppstod',
+        description: 'Kunde inte öppna Stripe-portalen. Försök igen.',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefreshStatus = async () => {
+    if (!user?.primaryEmailAddress?.emailAddress) return;
+    
+    setRefreshing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription', {
+        body: { 
+          userEmail: user.primaryEmailAddress.emailAddress,
+          userId: user.id
+        }
+      });
+
+      if (error) throw error;
+      
+      toast({
+        title: '✅ Status uppdaterad',
+        description: 'Din prenumerationsstatus är nu synkroniserad.',
+      });
+    } catch (error) {
+      console.error('Error refreshing subscription:', error);
+      toast({
+        title: 'Kunde inte uppdatera',
+        description: 'Försök igen om en stund.',
+        variant: 'destructive'
+      });
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -146,7 +183,7 @@ const AccountSettings = () => {
                 <div className="flex gap-2">
                   <Button 
                     onClick={handleManageSubscription}
-                    disabled={loading}
+                    disabled={loading || refreshing}
                     className="flex-1"
                     variant="outline"
                   >
@@ -161,6 +198,15 @@ const AccountSettings = () => {
                         Hantera prenumeration i Stripe
                       </>
                     )}
+                  </Button>
+                  <Button 
+                    onClick={handleRefreshStatus}
+                    disabled={loading || refreshing}
+                    variant="outline"
+                    size="icon"
+                    title="Uppdatera prenumerationsstatus"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                   </Button>
                 </div>
               </>

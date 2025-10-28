@@ -13,12 +13,15 @@ const PaymentSuccess = () => {
   const { toast } = useToast();
   const { user } = useUser();
   const [checking, setChecking] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    const checkSubscription = async () => {
+    const checkSubscription = async (attempt = 1) => {
       if (!user) return;
       
       try {
+        console.log(`🔄 Checking subscription (attempt ${attempt})...`);
         const { data, error } = await supabase.functions.invoke('check-subscription', {
           body: { 
             userEmail: user.primaryEmailAddress?.emailAddress,
@@ -28,25 +31,42 @@ const PaymentSuccess = () => {
 
         if (error) {
           console.error('Subscription check error:', error);
-        } else {
-          console.log('Subscription check result:', data);
+          throw error;
         }
+        
+        console.log('✅ Subscription check result:', data);
+        setChecking(false);
 
+        // Wait a moment before redirecting to ensure profile updated
         setTimeout(() => {
           toast({
             title: '🎉 Välkommen till Pro!',
             description: 'Du kan nu skapa obegränsat med workshops',
           });
           navigate('/dashboard');
-        }, 2000);
-      } catch (error) {
-        console.error('Error checking subscription:', error);
-        setChecking(false);
+        }, 1500);
+      } catch (err) {
+        console.error('Error checking subscription:', err);
+        
+        // Retry once after 2 seconds if first attempt fails
+        if (attempt === 1 && retryCount === 0) {
+          setRetryCount(1);
+          setTimeout(() => {
+            checkSubscription(2);
+          }, 2000);
+        } else {
+          setError('Kunde inte verifiera prenumerationen. Försöker igen...');
+          setChecking(false);
+          // Still redirect after error, profile may have updated
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 3000);
+        }
       }
     };
 
     checkSubscription();
-  }, [navigate, toast, user]);
+  }, [navigate, toast, user, retryCount]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
@@ -93,9 +113,15 @@ const PaymentSuccess = () => {
               </p>
             </div>
 
+            {error && (
+              <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded text-sm text-yellow-800">
+                {error}
+              </div>
+            )}
+
             {checking ? (
               <p className="text-gray-600 text-sm animate-pulse">
-                Uppdaterar ditt konto...
+                Uppdaterar ditt konto{retryCount > 0 && ' (försöker igen)'}...
               </p>
             ) : (
               <Button 
