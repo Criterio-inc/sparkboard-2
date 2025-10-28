@@ -13,6 +13,8 @@ export interface UserProfile {
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   subscription_current_period_end: string | null;
+  plan: string | null;
+  plan_source: string | null;
 }
 
 export const useProfile = () => {
