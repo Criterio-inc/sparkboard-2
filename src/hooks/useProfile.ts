@@ -46,14 +46,19 @@ export const useProfile = () => {
 
         if (!existingProfile) {
           // Skapa ny profil
+          const userEmail = user.primaryEmailAddress?.emailAddress || '';
+          const isCuragoEmail = userEmail.toLowerCase().endsWith('@curago.se');
+          
           const newProfile = {
             id: user.id,
-            email: user.primaryEmailAddress?.emailAddress || '',
+            email: userEmail,
             first_name: user.firstName,
             last_name: user.lastName,
             image_url: user.imageUrl,
             subscription_tier: 'free',
             subscription_status: 'active',
+            plan: isCuragoEmail ? 'curago' : 'free',
+            plan_source: isCuragoEmail ? 'curago' : null,
           };
 
           const { data, error: insertError } = await supabase

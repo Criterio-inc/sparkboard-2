@@ -36,6 +36,39 @@ serve(async (req) => {
     
     logStep("Request data", { email: userEmail, userId });
 
+    // Check if user has @curago.se domain - they get automatic executive-PRO access
+    const isCuragoEmail = userEmail.toLowerCase().endsWith('@curago.se');
+    if (isCuragoEmail) {
+      logStep("Curago executive email detected, granting executive-PRO access");
+      
+      const { error: upsertError } = await supabaseClient
+        .from('profiles')
+        .upsert({ 
+          id: userId,
+          email: userEmail,
+          plan: 'curago',
+          plan_source: 'curago',
+          subscription_current_period_end: null,
+          stripe_customer_id: null,
+          stripe_subscription_id: null
+        }, { onConflict: 'id' });
+      
+      if (upsertError) {
+        logStep("Error upserting Curago profile", { error: upsertError.message });
+      } else {
+        logStep("Curago executive profile upserted successfully");
+      }
+      
+      return new Response(JSON.stringify({ 
+        subscribed: true, 
+        plan: 'curago',
+        plan_source: 'curago'
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
     
