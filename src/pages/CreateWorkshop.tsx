@@ -297,7 +297,23 @@ const CreateWorkshop = () => {
         if (error) throw error;
         savedWorkshop = data;
 
-        // Delete old boards
+        // Delete in correct order to avoid foreign key issues
+        const { data: oldBoards } = await supabase
+          .from('boards')
+          .select('id')
+          .eq('workshop_id', workshopId);
+
+        if (oldBoards && oldBoards.length > 0) {
+          const boardIds = oldBoards.map(b => b.id);
+
+          // 1. Delete questions first (they reference boards)
+          await supabase
+            .from('questions')
+            .delete()
+            .in('board_id', boardIds);
+        }
+
+        // 2. Now safely delete boards
         await supabase.from('boards').delete().eq('workshop_id', workshopId);
       } else {
         // Create new draft
