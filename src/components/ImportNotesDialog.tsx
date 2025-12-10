@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,8 @@ import {
   Import,
   Loader2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  FolderOpen
 } from "lucide-react";
 
 interface Note {
@@ -51,6 +52,14 @@ interface ClusterResult {
   confidence: number;
 }
 
+// New interface for category items
+interface CategoryItem {
+  id?: string;         // question_id if existing, undefined if new
+  title: string;       // category name
+  isExisting: boolean; // true = existing question, false = new
+  enabled: boolean;    // whether to use this category for clustering
+}
+
 export function ImportNotesDialog({
   open,
   onOpenChange,
@@ -64,12 +73,34 @@ export function ImportNotesDialog({
   const { toast } = useToast();
   
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
-  const [categories, setCategories] = useState<string[]>(["", ""]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [context, setContext] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [clusterPreview, setClusterPreview] = useState<Record<string, ClusterResult[]> | null>(null);
   const [editedCategories, setEditedCategories] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<"select" | "cluster" | "preview">("select");
+
+  // Initialize categories from current board's questions when dialog opens
+  useEffect(() => {
+    if (open) {
+      if (currentBoard.questions.length > 0) {
+        // Load existing categories from current board
+        const existingCategories: CategoryItem[] = currentBoard.questions.map(q => ({
+          id: q.id,
+          title: q.title,
+          isExisting: true,
+          enabled: true,
+        }));
+        setCategories(existingCategories);
+      } else {
+        // Fallback: two empty categories if none exist
+        setCategories([
+          { title: "", isExisting: false, enabled: true },
+          { title: "", isExisting: false, enabled: true },
+        ]);
+      }
+    }
+  }, [open, currentBoard.questions]);
 
   // Get notes from OTHER boards (not current board)
   const otherBoardNotes = useMemo(() => {
@@ -128,20 +159,28 @@ export function ImportNotesDialog({
   };
 
   const handleAddCategory = () => {
-    if (categories.length < 8) {
-      setCategories([...categories, ""]);
+    if (categories.length < 10) {
+      setCategories([...categories, { title: "", isExisting: false, enabled: true }]);
     }
   };
 
   const handleRemoveCategory = (index: number) => {
-    if (categories.length > 2) {
+    // Only allow removing NEW categories, not existing ones
+    const category = categories[index];
+    if (!category.isExisting) {
       setCategories(categories.filter((_, i) => i !== index));
     }
   };
 
   const handleCategoryChange = (index: number, value: string) => {
     const newCategories = [...categories];
-    newCategories[index] = value;
+    newCategories[index] = { ...newCategories[index], title: value };
+    setCategories(newCategories);
+  };
+
+  const handleToggleCategoryEnabled = (index: number) => {
+    const newCategories = [...categories];
+    newCategories[index] = { ...newCategories[index], enabled: !newCategories[index].enabled };
     setCategories(newCategories);
   };
 
@@ -152,7 +191,8 @@ export function ImportNotesDialog({
     }));
   };
 
-  const validCategories = categories.filter(c => c.trim().length > 0);
+  // Get enabled categories with valid titles
+  const enabledCategories = categories.filter(c => c.enabled && c.title.trim().length > 0);
 
   const handlePreviewClustering = async () => {
     if (selectedNotes.length === 0) {
@@ -164,7 +204,7 @@ export function ImportNotesDialog({
       return;
     }
 
-    if (validCategories.length < 2) {
+    if (enabledCategories.length < 2) {
       toast({
         title: t('import.needCategories'),
         description: t('import.addAtLeastTwoCategories'),
@@ -184,7 +224,7 @@ export function ImportNotesDialog({
             content: n.content,
             authorName: n.authorName,
           })),
-          categories: validCategories,
+          categories: enabledCategories.map(c => c.title),
           context: context.trim() || undefined,
         },
       });
@@ -238,20 +278,38 @@ export function ImportNotesDialog({
         // Use edited name if available, otherwise use original
         const finalCategoryName = (editedCategories[categoryName] ?? categoryName).trim() || categoryName;
 
-        // Create new question for this category
-        const { data: newQuestion, error: questionError } = await supabase
-          .from('questions')
-          .insert({
-            board_id: currentBoard.id,
-            title: finalCategoryName,
-            order_index: nextOrderIndex++,
-          })
-          .select()
-          .single();
+        // Find matching category from our categories list
+        const matchingCategory = categories.find(c => 
+          c.enabled && (
+            c.title.trim().toLowerCase() === categoryName.trim().toLowerCase() ||
+            c.title.trim().toLowerCase() === finalCategoryName.trim().toLowerCase()
+          )
+        );
 
-        if (questionError) {
-          console.error("Error creating question:", questionError);
-          continue;
+        let questionId: string;
+
+        if (matchingCategory?.isExisting && matchingCategory.id) {
+          // REUSE existing question
+          questionId = matchingCategory.id;
+          console.log(`📂 Använder befintlig kategori: ${finalCategoryName} (${questionId})`);
+        } else {
+          // CREATE new question
+          const { data: newQuestion, error: questionError } = await supabase
+            .from('questions')
+            .insert({
+              board_id: currentBoard.id,
+              title: finalCategoryName,
+              order_index: nextOrderIndex++,
+            })
+            .select()
+            .single();
+
+          if (questionError) {
+            console.error("Error creating question:", questionError);
+            continue;
+          }
+          questionId = newQuestion.id;
+          console.log(`➕ Skapade ny kategori: ${finalCategoryName} (${questionId})`);
         }
 
         // Find original notes to get full data
@@ -260,7 +318,7 @@ export function ImportNotesDialog({
           if (!originalNote) return null;
           
           return {
-            question_id: newQuestion.id,
+            question_id: questionId,
             content: originalNote.content,
             author_name: originalNote.authorName,
             author_id: originalNote.authorId,
@@ -285,13 +343,7 @@ export function ImportNotesDialog({
       });
 
       // Reset and close
-      setSelectedNoteIds(new Set());
-      setCategories(["", ""]);
-      setContext("");
-      setClusterPreview(null);
-      setEditedCategories({});
-      setActiveTab("select");
-      onOpenChange(false);
+      handleClose();
       onImportComplete();
 
     } catch (error) {
@@ -308,12 +360,27 @@ export function ImportNotesDialog({
 
   const handleClose = () => {
     setSelectedNoteIds(new Set());
-    setCategories(["", ""]);
+    setCategories([]);
     setContext("");
     setClusterPreview(null);
     setEditedCategories({});
     setActiveTab("select");
     onOpenChange(false);
+  };
+
+  // Helper to check if a category in preview is existing
+  const getCategoryInfo = (categoryName: string) => {
+    const finalName = editedCategories[categoryName] ?? categoryName;
+    const matchingCategory = categories.find(c => 
+      c.enabled && (
+        c.title.trim().toLowerCase() === categoryName.trim().toLowerCase() ||
+        c.title.trim().toLowerCase() === finalName.trim().toLowerCase()
+      )
+    );
+    return {
+      isExisting: matchingCategory?.isExisting ?? false,
+      id: matchingCategory?.id,
+    };
   };
 
   return (
@@ -427,31 +494,82 @@ export function ImportNotesDialog({
                   <p className="text-sm text-muted-foreground mb-3">
                     {t('import.categoriesDescription')}
                   </p>
-                  <div className="space-y-2">
-                    {categories.map((category, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-semibold">
-                          {index + 1}
-                        </span>
-                        <Input
-                          value={category}
-                          onChange={(e) => handleCategoryChange(index, e.target.value)}
-                          placeholder={t('import.categoryPlaceholder', { index: String(index + 1) })}
-                          className="flex-1"
-                        />
-                        {categories.length > 2 && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveCategory(index)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
+                  
+                  {/* Existing categories section */}
+                  {categories.some(c => c.isExisting) && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FolderOpen className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium text-primary">Befintliga kategorier</span>
                       </div>
-                    ))}
-                  </div>
-                  {categories.length < 8 && (
+                      <div className="space-y-2">
+                        {categories.filter(c => c.isExisting).map((category, idx) => {
+                          const originalIndex = categories.findIndex(c => c.id === category.id);
+                          return (
+                            <div key={category.id} className="flex items-center gap-2">
+                              <Checkbox
+                                checked={category.enabled}
+                                onCheckedChange={() => handleToggleCategoryEnabled(originalIndex)}
+                              />
+                              <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-semibold">
+                                {idx + 1}
+                              </span>
+                              <div className={`flex-1 px-3 py-2 rounded-md border ${category.enabled ? 'bg-primary/5 border-primary/30' : 'bg-muted/50 border-border text-muted-foreground'}`}>
+                                {category.title}
+                              </div>
+                              <Badge variant="outline" className="shrink-0 text-xs">
+                                Befintlig
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* New categories section */}
+                  {categories.some(c => !c.isExisting) && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Plus className="w-4 h-4 text-green-600" />
+                        <span className="text-sm font-medium text-green-600">Nya kategorier</span>
+                      </div>
+                      <div className="space-y-2">
+                        {categories.filter(c => !c.isExisting).map((category) => {
+                          const originalIndex = categories.indexOf(category);
+                          const newCategoryIndex = categories.filter(c => !c.isExisting).indexOf(category);
+                          const existingCount = categories.filter(c => c.isExisting).length;
+                          return (
+                            <div key={originalIndex} className="flex items-center gap-2">
+                              <Checkbox
+                                checked={category.enabled}
+                                onCheckedChange={() => handleToggleCategoryEnabled(originalIndex)}
+                              />
+                              <span className="w-6 h-6 rounded-full bg-green-600/20 text-green-600 text-xs flex items-center justify-center font-semibold">
+                                {existingCount + newCategoryIndex + 1}
+                              </span>
+                              <Input
+                                value={category.title}
+                                onChange={(e) => handleCategoryChange(originalIndex, e.target.value)}
+                                placeholder={t('import.categoryPlaceholder', { index: String(existingCount + newCategoryIndex + 1) })}
+                                className={`flex-1 ${!category.enabled ? 'opacity-50' : ''}`}
+                                disabled={!category.enabled}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveCategory(originalIndex)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {categories.length < 10 && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -485,7 +603,7 @@ export function ImportNotesDialog({
               </Button>
               <Button
                 onClick={handlePreviewClustering}
-                disabled={isLoading || validCategories.length < 2}
+                disabled={isLoading || enabledCategories.length < 2}
                 className="gap-2"
               >
                 {isLoading ? (
@@ -511,38 +629,51 @@ export function ImportNotesDialog({
             <ScrollArea className="h-[380px] pr-4">
               {clusterPreview && (
                 <div className="space-y-4">
-                  {Object.entries(clusterPreview).map(([category, notes]) => (
-                    <div key={category} className="border rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
-                        <Input
-                          value={editedCategories[category] ?? category}
-                          onChange={(e) => handleRenameCategory(category, e.target.value)}
-                          className="font-semibold h-8 text-base"
-                          placeholder={t('import.categoryNamePlaceholder')}
-                        />
-                        <Badge variant="secondary" className="shrink-0">{notes.length}</Badge>
-                      </div>
-                      <div className="space-y-2">
-                        {notes.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-start gap-3 p-2 rounded bg-muted/50"
+                  {Object.entries(clusterPreview).map(([category, notes]) => {
+                    const categoryInfo = getCategoryInfo(category);
+                    return (
+                      <div key={category} className={`border rounded-lg p-4 ${categoryInfo.isExisting ? 'border-primary/30 bg-primary/5' : 'border-green-600/30 bg-green-600/5'}`}>
+                        <div className="flex items-center gap-2 mb-3">
+                          {categoryInfo.isExisting ? (
+                            <FolderOpen className="w-5 h-5 text-primary shrink-0" />
+                          ) : (
+                            <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                          )}
+                          <Input
+                            value={editedCategories[category] ?? category}
+                            onChange={(e) => handleRenameCategory(category, e.target.value)}
+                            className="font-semibold h-8 text-base"
+                            placeholder={t('import.categoryNamePlaceholder')}
+                          />
+                          <Badge 
+                            variant={categoryInfo.isExisting ? "outline" : "secondary"} 
+                            className={`shrink-0 ${categoryInfo.isExisting ? 'border-primary text-primary' : 'bg-green-600/20 text-green-600 border-green-600'}`}
                           >
-                            <div className="flex-1">
-                              <p className="text-sm">{item.note.content}</p>
-                              <p className="text-xs text-muted-foreground">
-                                — {item.note.authorName}
-                              </p>
+                            {categoryInfo.isExisting ? 'Läggs till' : 'Ny'}
+                          </Badge>
+                          <Badge variant="secondary" className="shrink-0">{notes.length}</Badge>
+                        </div>
+                        <div className="space-y-2">
+                          {notes.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-start gap-3 p-2 rounded bg-background/80"
+                            >
+                              <div className="flex-1">
+                                <p className="text-sm">{item.note.content}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  — {item.note.authorName}
+                                </p>
+                              </div>
+                              <Badge variant="outline" className="shrink-0">
+                                {Math.round(item.confidence * 100)}%
+                              </Badge>
                             </div>
-                            <Badge variant="outline" className="shrink-0">
-                              {Math.round(item.confidence * 100)}%
-                            </Badge>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </ScrollArea>
