@@ -255,6 +255,58 @@ export function ImportNotesDialog({
     }
   };
 
+  // Fuzzy matching function to find the best category match
+  const findMatchingCategory = (categoryName: string): CategoryItem | undefined => {
+    const normalizedName = categoryName.toLowerCase().trim();
+    
+    // 1. Exact match on title
+    let match = categories.find(c => 
+      c.enabled && c.title.toLowerCase().trim() === normalizedName
+    );
+    if (match) return match;
+    
+    // 2. Match against edited name
+    const editedName = editedCategories[categoryName]?.toLowerCase().trim();
+    if (editedName) {
+      match = categories.find(c => 
+        c.enabled && c.title.toLowerCase().trim() === editedName
+      );
+      if (match) return match;
+    }
+    
+    // 3. Match by main part (before first •)
+    const mainPart = normalizedName.split('•')[0].trim();
+    match = categories.find(c => {
+      if (!c.enabled) return false;
+      const catMainPart = c.title.toLowerCase().split('•')[0].trim();
+      return catMainPart === mainPart || mainPart.includes(catMainPart) || catMainPart.includes(mainPart);
+    });
+    if (match) return match;
+    
+    // 4. Keyword overlap - extract words and find best match
+    const extractKeywords = (text: string) => 
+      text.toLowerCase()
+        .split(/[•&,\-–—\s]+/)
+        .filter(w => w.length > 2)
+        .filter(w => !['och', 'för', 'med', 'att', 'som'].includes(w));
+    
+    const inputKeywords = extractKeywords(categoryName);
+    let bestMatch: { category: CategoryItem; overlap: number } | null = null;
+    
+    for (const cat of categories) {
+      if (!cat.enabled) continue;
+      const catKeywords = extractKeywords(cat.title);
+      const overlap = inputKeywords.filter(k => catKeywords.some(ck => ck.includes(k) || k.includes(ck))).length;
+      if (overlap > 0 && (!bestMatch || overlap > bestMatch.overlap)) {
+        bestMatch = { category: cat, overlap };
+      }
+    }
+    
+    if (bestMatch) return bestMatch.category;
+    
+    return undefined;
+  };
+
   const handleImport = async () => {
     if (!clusterPreview) return;
 
@@ -278,22 +330,17 @@ export function ImportNotesDialog({
         // Use edited name if available, otherwise use original
         const finalCategoryName = (editedCategories[categoryName] ?? categoryName).trim() || categoryName;
 
-        // Find matching category from our categories list
-        const matchingCategory = categories.find(c => 
-          c.enabled && (
-            c.title.trim().toLowerCase() === categoryName.trim().toLowerCase() ||
-            c.title.trim().toLowerCase() === finalCategoryName.trim().toLowerCase()
-          )
-        );
+        // Find matching category using fuzzy matching
+        const matchingCategory = findMatchingCategory(categoryName);
 
         let questionId: string;
 
         if (matchingCategory?.isExisting && matchingCategory.id) {
           // REUSE existing question
           questionId = matchingCategory.id;
-          console.log(`📂 Använder befintlig kategori: ${finalCategoryName} (${questionId})`);
+          console.log(`📂 Använder befintlig kategori: ${matchingCategory.title} (${questionId})`);
         } else {
-          // CREATE new question
+          // CREATE new question (either new category or no match found)
           const { data: newQuestion, error: questionError } = await supabase
             .from('questions')
             .insert({
@@ -368,15 +415,9 @@ export function ImportNotesDialog({
     onOpenChange(false);
   };
 
-  // Helper to check if a category in preview is existing
+  // Helper to check if a category in preview is existing (uses fuzzy matching)
   const getCategoryInfo = (categoryName: string) => {
-    const finalName = editedCategories[categoryName] ?? categoryName;
-    const matchingCategory = categories.find(c => 
-      c.enabled && (
-        c.title.trim().toLowerCase() === categoryName.trim().toLowerCase() ||
-        c.title.trim().toLowerCase() === finalName.trim().toLowerCase()
-      )
-    );
+    const matchingCategory = findMatchingCategory(categoryName);
     return {
       isExisting: matchingCategory?.isExisting ?? false,
       id: matchingCategory?.id,
