@@ -68,6 +68,7 @@ export function ImportNotesDialog({
   const [context, setContext] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [clusterPreview, setClusterPreview] = useState<Record<string, ClusterResult[]> | null>(null);
+  const [editedCategories, setEditedCategories] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<"select" | "cluster" | "preview">("select");
 
   // Get notes from OTHER boards (not current board)
@@ -142,6 +143,13 @@ export function ImportNotesDialog({
     const newCategories = [...categories];
     newCategories[index] = value;
     setCategories(newCategories);
+  };
+
+  const handleRenameCategory = (originalName: string, newName: string) => {
+    setEditedCategories(prev => ({
+      ...prev,
+      [originalName]: newName,
+    }));
   };
 
   const validCategories = categories.filter(c => c.trim().length > 0);
@@ -227,12 +235,15 @@ export function ImportNotesDialog({
       for (const [categoryName, clusteredNotes] of Object.entries(clusterPreview)) {
         if (clusteredNotes.length === 0) continue;
 
+        // Use edited name if available, otherwise use original
+        const finalCategoryName = (editedCategories[categoryName] ?? categoryName).trim() || categoryName;
+
         // Create new question for this category
         const { data: newQuestion, error: questionError } = await supabase
           .from('questions')
           .insert({
             board_id: currentBoard.id,
-            title: categoryName,
+            title: finalCategoryName,
             order_index: nextOrderIndex++,
           })
           .select()
@@ -278,6 +289,7 @@ export function ImportNotesDialog({
       setCategories(["", ""]);
       setContext("");
       setClusterPreview(null);
+      setEditedCategories({});
       setActiveTab("select");
       onOpenChange(false);
       onImportComplete();
@@ -299,6 +311,7 @@ export function ImportNotesDialog({
     setCategories(["", ""]);
     setContext("");
     setClusterPreview(null);
+    setEditedCategories({});
     setActiveTab("select");
     onOpenChange(false);
   };
@@ -492,15 +505,23 @@ export function ImportNotesDialog({
 
           {/* Step 3: Preview Results */}
           <TabsContent value="preview" className="flex-1 min-h-0 mt-4">
-            <ScrollArea className="h-[400px] pr-4">
+            <p className="text-sm text-muted-foreground mb-3">
+              {t('import.editCategoriesHint')}
+            </p>
+            <ScrollArea className="h-[380px] pr-4">
               {clusterPreview && (
                 <div className="space-y-4">
                   {Object.entries(clusterPreview).map(([category, notes]) => (
                     <div key={category} className="border rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-3">
-                        <CheckCircle2 className="w-5 h-5 text-primary" />
-                        <h3 className="font-semibold">{category}</h3>
-                        <Badge variant="secondary">{notes.length}</Badge>
+                        <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+                        <Input
+                          value={editedCategories[category] ?? category}
+                          onChange={(e) => handleRenameCategory(category, e.target.value)}
+                          className="font-semibold h-8 text-base"
+                          placeholder={t('import.categoryNamePlaceholder')}
+                        />
+                        <Badge variant="secondary" className="shrink-0">{notes.length}</Badge>
                       </div>
                       <div className="space-y-2">
                         {notes.map((item, idx) => (

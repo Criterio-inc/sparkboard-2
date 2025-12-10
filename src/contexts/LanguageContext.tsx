@@ -379,6 +379,8 @@ Struktur: Använd tydliga rubriker (##) och punktlistor för maximal läsbarhet.
     'import.importSuccess': 'Import klar!',
     'import.notesImported': '{count} notes har importerats',
     'import.importFailed': 'Import misslyckades',
+    'import.editCategoriesHint': 'Du kan redigera kategorinamnen genom att klicka på dem',
+    'import.categoryNamePlaceholder': 'Kategorinamn',
   },
   
   en: {
@@ -749,6 +751,8 @@ Structure: Use clear headings (##) and bullet points for maximum readability.`,
     'import.importSuccess': 'Import complete!',
     'import.notesImported': '{count} notes have been imported',
     'import.importFailed': 'Import failed',
+    'import.editCategoriesHint': 'You can edit category names by clicking on them',
+    'import.categoryNamePlaceholder': 'Category name',
   }
 };
 
