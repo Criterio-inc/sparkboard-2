@@ -257,8 +257,8 @@ const CreateWorkshop = () => {
 
     if (!user?.id) {
       toast({
-        title: "Fel",
-        description: "Du måste vara inloggad",
+        title: t('common.error'),
+        description: t('createWorkshop.loginRequired'),
         variant: "destructive",
       });
       return;
@@ -346,16 +346,16 @@ const CreateWorkshop = () => {
       }
 
       toast({
-        title: "Utkast sparat",
-        description: "Din workshop har sparats som utkast",
+        title: t('createWorkshop.draftSaved'),
+        description: t('createWorkshop.draftSavedDesc'),
       });
 
       navigate('/dashboard');
     } catch (error) {
       console.error("Fel vid sparning av draft:", error);
       toast({
-        title: "Fel",
-        description: "Kunde inte spara utkast",
+        title: t('common.error'),
+        description: t('createWorkshop.draftSaveFailed'),
         variant: "destructive",
       });
     }
@@ -367,8 +367,8 @@ const CreateWorkshop = () => {
 
     if (!user?.id) {
       toast({
-        title: "Fel",
-        description: "Du måste vara inloggad",
+        title: t('common.error'),
+        description: t('createWorkshop.loginRequired'),
         variant: "destructive",
       });
       return;
@@ -549,21 +549,18 @@ const CreateWorkshop = () => {
 
       setGeneratedCode(savedWorkshop.code);
 
-      // STEG 8: Visa alert med bekräftelse och kod
-      alert(`✅ Workshop sparad!\n\nKod: ${savedWorkshop.code}\n\nDenna kod behöver deltagarna för att ansluta.`);
-
       // Öppna QR-dialog
       setShowQRDialog(true);
 
       toast({
-        title: "Workshop aktiverad!",
-        description: `Din workshop-kod är: ${savedWorkshop.code}`,
+        title: t('createWorkshop.activated'),
+        description: t('createWorkshop.activatedDesc', { code: savedWorkshop.code }),
       });
     } catch (error) {
       console.error("Fel vid sparning av workshop:", error);
       toast({
-        title: "Fel",
-        description: "Kunde inte spara workshop. Försök igen.",
+        title: t('common.error'),
+        description: t('createWorkshop.saveFailed'),
         variant: "destructive",
       });
     }
