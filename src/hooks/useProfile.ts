@@ -58,7 +58,7 @@ export const useProfile = () => {
             subscription_tier: 'free',
             subscription_status: 'active',
             plan: isCuragoEmail ? 'curago' : 'free',
-            plan_source: isCuragoEmail ? 'curago' : null,
+            plan_source: isCuragoEmail ? 'curago_domain' : null,
           };
 
           const { data, error: insertError } = await supabase

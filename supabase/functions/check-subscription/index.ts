@@ -47,7 +47,7 @@ serve(async (req) => {
           id: userId,
           email: userEmail,
           plan: 'curago',
-          plan_source: 'curago',
+          plan_source: 'curago_domain',
           subscription_current_period_end: null,
           stripe_customer_id: null,
           stripe_subscription_id: null
@@ -55,14 +55,21 @@ serve(async (req) => {
       
       if (upsertError) {
         logStep("Error upserting Curago profile", { error: upsertError.message });
-      } else {
-        logStep("Curago executive profile upserted successfully");
+        return new Response(JSON.stringify({ 
+          error: upsertError.message,
+          subscribed: false 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        });
       }
+      
+      logStep("Curago executive profile upserted successfully");
       
       return new Response(JSON.stringify({ 
         subscribed: true, 
         plan: 'curago',
-        plan_source: 'curago'
+        plan_source: 'curago_domain'
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
