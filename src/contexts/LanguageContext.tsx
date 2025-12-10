@@ -381,6 +381,26 @@ Struktur: Använd tydliga rubriker (##) och punktlistor för maximal läsbarhet.
     'import.importFailed': 'Import misslyckades',
     'import.editCategoriesHint': 'Du kan redigera kategorinamnen genom att klicka på dem',
     'import.categoryNamePlaceholder': 'Kategorinamn',
+
+    // CREATE WORKSHOP
+    'createWorkshop.titleMissing': 'Titel saknas',
+    'createWorkshop.titleMissingDesc': 'Ange en titel för din workshop',
+    'createWorkshop.noBoards': 'Inga boards',
+    'createWorkshop.noBoardsDesc': 'Lägg till minst ett board',
+    'createWorkshop.boardTitleMissing': 'Board-titel saknas',
+    'createWorkshop.boardTitleMissingDesc': 'Alla boards måste ha en titel',
+    'createWorkshop.noQuestions': 'Inga frågor',
+    'createWorkshop.noQuestionsDesc': 'Board "{title}" måste ha minst en fråga',
+    'createWorkshop.questionMissing': 'Fråga saknas',
+    'createWorkshop.questionMissingDesc': 'Alla frågor i "{title}" måste ha text',
+    'createWorkshop.draftSaved': 'Utkast sparat',
+    'createWorkshop.draftSavedDesc': 'Din workshop har sparats som utkast',
+    'createWorkshop.draftSaveFailed': 'Kunde inte spara utkast',
+    'createWorkshop.activated': 'Workshop aktiverad!',
+    'createWorkshop.activatedDesc': 'Din workshop-kod är: {code}',
+    'createWorkshop.saveFailed': 'Kunde inte spara workshop',
+    'createWorkshop.saveFailedDesc': 'Försök igen',
+    'createWorkshop.loginRequired': 'Du måste vara inloggad',
   },
   
   en: {
@@ -753,6 +773,26 @@ Structure: Use clear headings (##) and bullet points for maximum readability.`,
     'import.importFailed': 'Import failed',
     'import.editCategoriesHint': 'You can edit category names by clicking on them',
     'import.categoryNamePlaceholder': 'Category name',
+
+    // CREATE WORKSHOP
+    'createWorkshop.titleMissing': 'Title missing',
+    'createWorkshop.titleMissingDesc': 'Enter a title for your workshop',
+    'createWorkshop.noBoards': 'No boards',
+    'createWorkshop.noBoardsDesc': 'Add at least one board',
+    'createWorkshop.boardTitleMissing': 'Board title missing',
+    'createWorkshop.boardTitleMissingDesc': 'All boards must have a title',
+    'createWorkshop.noQuestions': 'No questions',
+    'createWorkshop.noQuestionsDesc': 'Board "{title}" must have at least one question',
+    'createWorkshop.questionMissing': 'Question missing',
+    'createWorkshop.questionMissingDesc': 'All questions in "{title}" must have text',
+    'createWorkshop.draftSaved': 'Draft saved',
+    'createWorkshop.draftSavedDesc': 'Your workshop has been saved as a draft',
+    'createWorkshop.draftSaveFailed': 'Could not save draft',
+    'createWorkshop.activated': 'Workshop activated!',
+    'createWorkshop.activatedDesc': 'Your workshop code is: {code}',
+    'createWorkshop.saveFailed': 'Could not save workshop',
+    'createWorkshop.saveFailedDesc': 'Please try again',
+    'createWorkshop.loginRequired': 'You must be logged in',
   }
 };
 
