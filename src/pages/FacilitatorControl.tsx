@@ -66,6 +66,7 @@ const FacilitatorControl = () => {
   const [aiAnalyses, setAIAnalyses] = useState<Record<string, string>>({});
   const [isControlPanelVisible, setIsControlPanelVisible] = useState(true);
   const [isParticipantListVisible, setIsParticipantListVisible] = useState(true);
+  const [draggedNoteId, setDraggedNoteId] = useState<string | null>(null);
 
   // Ladda workshop och boards från Supabase
   useEffect(() => {
@@ -523,6 +524,38 @@ const FacilitatorControl = () => {
     }
   };
 
+  const handleMoveNote = async (noteId: string, targetQuestionId: string) => {
+    try {
+      console.log("🔄 [Facilitator] Flyttar note:", noteId, "till question:", targetQuestionId);
+
+      const { error } = await supabase
+        .from('notes')
+        .update({ question_id: targetQuestionId })
+        .eq('id', noteId);
+
+      if (error) {
+        console.error("Kunde inte flytta note:", error);
+        toast({
+          title: "Fel",
+          description: "Kunde inte flytta note",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("✅ [Facilitator] Note flyttad");
+      
+      toast({
+        title: "Note flyttad",
+        description: "Sticky note har flyttats till ny kategori",
+      });
+    } catch (error) {
+      console.error("Fel vid flyttning av note:", error);
+    } finally {
+      setDraggedNoteId(null);
+    }
+  };
+
   const handleDeleteParticipant = async (participantId: string) => {
     try {
       console.log("🗑️ [Facilitator] Tar bort deltagare:", participantId);
@@ -761,7 +794,33 @@ const FacilitatorControl = () => {
                       const qBoardColor = `hsl(var(--board-${(board.colorIndex % 5) + 1}))`;
 
                       return (
-                        <Card key={question.id} className="p-4 space-y-3 hover:shadow-[var(--shadow-button-hover)] transition-all duration-200">
+                        <Card 
+                          key={question.id} 
+                          className={`p-4 space-y-3 hover:shadow-[var(--shadow-button-hover)] transition-all duration-200 ${
+                            draggedNoteId ? 'ring-2 ring-primary/30 ring-dashed' : ''
+                          }`}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.add('bg-primary/10');
+                          }}
+                          onDragLeave={(e) => {
+                            e.currentTarget.classList.remove('bg-primary/10');
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.remove('bg-primary/10');
+                            const noteId = e.dataTransfer.getData('text/plain');
+                            if (noteId && draggedNoteId) {
+                              // Kontrollera att noten inte redan är i denna fråga
+                              const note = notes.find(n => n.id === noteId);
+                              if (note && note.questionId !== question.id) {
+                                handleMoveNote(noteId, question.id);
+                              } else {
+                                setDraggedNoteId(null);
+                              }
+                            }
+                          }}
+                        >
                           <div>
                             <h2 className="text-[0.95rem] font-semibold mb-1 leading-tight tracking-tight" style={{ color: qBoardColor }}>
                               {question.title}
@@ -782,7 +841,11 @@ const FacilitatorControl = () => {
                                   key={note.id} 
                                   {...note} 
                                   isOwn={false}
+                                  canDelete={true}
+                                  draggable={true}
                                   onDelete={() => handleDeleteNote(note.id)}
+                                  onDragStart={(id) => setDraggedNoteId(id)}
+                                  onDragEnd={() => setDraggedNoteId(null)}
                                 />
                               ))
                             )}

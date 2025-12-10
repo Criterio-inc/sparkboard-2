@@ -179,11 +179,18 @@ INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin
       jsonStr = jsonMatch[1].trim();
     }
     
+    // KRITISKT: Normalisera JSON-strängen för att hantera tabs och extra whitespace
+    // AI returnerar ibland tabs (\t) i kategorinamn som orsakar parsningsfel
+    jsonStr = jsonStr
+      .replace(/\t/g, ' ')           // Ersätt tabs med mellanslag
+      .replace(/  +/g, ' ')          // Ta bort dubbla mellanslag
+      .replace(/\n\s*\n/g, '\n');    // Ta bort tomma rader
+    
     let parsed;
     try {
       parsed = JSON.parse(jsonStr);
     } catch (parseError) {
-      console.error("Failed to parse AI response:", jsonStr);
+      console.error("Failed to parse AI response after normalization:", jsonStr);
       return new Response(JSON.stringify({ error: "Invalid AI response format" }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
