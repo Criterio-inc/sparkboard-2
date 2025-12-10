@@ -152,6 +152,18 @@ const CreateWorkshop = () => {
   const deleteWorkshopBoards = async (wid: string): Promise<void> => {
     console.log("🗑️ Raderar workshop data för:", wid);
     
+    // STEG 0: Nollställ active_board_id för att bryta cirkulärt beroende
+    const { error: clearActiveError } = await supabase
+      .from('workshops')
+      .update({ active_board_id: null })
+      .eq('id', wid);
+    
+    if (clearActiveError) {
+      console.error("Kunde inte nollställa active_board_id:", clearActiveError);
+      throw clearActiveError;
+    }
+    console.log("✅ active_board_id nollställd");
+    
     // 1. Get all boards for this workshop
     const { data: oldBoards, error: boardsFetchError } = await supabase
       .from('boards')
@@ -169,6 +181,7 @@ const CreateWorkshop = () => {
     }
     
     const boardIds = oldBoards.map(b => b.id);
+    console.log("📋 Boards att radera:", boardIds);
     
     // 2. Get all questions for these boards
     const { data: oldQuestions, error: questionsFetchError } = await supabase
@@ -197,7 +210,19 @@ const CreateWorkshop = () => {
       console.log("✅ Notes raderade");
     }
     
-    // 4. Delete questions (foreign key to boards)
+    // 4. Delete AI analyses (foreign key to boards)
+    const { error: deleteAiError } = await supabase
+      .from('ai_analyses')
+      .delete()
+      .in('board_id', boardIds);
+    
+    if (deleteAiError) {
+      console.error("Kunde inte radera ai_analyses:", deleteAiError);
+      throw deleteAiError;
+    }
+    console.log("✅ AI-analyser raderade");
+    
+    // 5. Delete questions (foreign key to boards)
     const { error: deleteQuestionsError } = await supabase
       .from('questions')
       .delete()
@@ -209,7 +234,7 @@ const CreateWorkshop = () => {
     }
     console.log("✅ Questions raderade");
     
-    // 5. Delete boards
+    // 6. Delete boards
     const { error: deleteBoardsError } = await supabase
       .from('boards')
       .delete()
