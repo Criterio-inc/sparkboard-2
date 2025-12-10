@@ -5,7 +5,8 @@ import {
   Pause, 
   SkipForward, 
   Sparkles, 
-  FileText
+  FileText,
+  Import
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -15,6 +16,7 @@ interface ControlPanelProps {
   onNextBoard: () => void;
   onAIAnalysis: () => void;
   onExportPDF: () => void;
+  onImportNotes: () => void;
   canGoNext: boolean;
 }
 
@@ -24,6 +26,7 @@ export const ControlPanel = ({
   onNextBoard,
   onAIAnalysis,
   onExportPDF,
+  onImportNotes,
   canGoNext,
 }: ControlPanelProps) => {
   const { t } = useLanguage();
@@ -31,7 +34,7 @@ export const ControlPanel = ({
   return (
     <Card className="shadow-[var(--shadow-card)]">
       <CardContent className="pt-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           <Button
             onClick={onToggleTimer}
             variant={isTimerRunning ? "destructive" : "default"}
@@ -60,6 +63,16 @@ export const ControlPanel = ({
           >
             <SkipForward className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
             <span className="text-xs font-semibold">{t('control.nextBoard')}</span>
+          </Button>
+
+          <Button
+            onClick={onImportNotes}
+            variant="secondary"
+            size="sm"
+            className="h-auto py-3 flex-col gap-2 group"
+          >
+            <Import className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+            <span className="text-xs font-semibold">{t('control.importNotes')}</span>
           </Button>
 
           <Button

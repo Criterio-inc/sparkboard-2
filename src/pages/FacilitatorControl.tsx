@@ -6,6 +6,7 @@ import { StickyNote } from "@/components/StickyNote";
 import { ParticipantList } from "@/components/ParticipantList";
 import { ControlPanel } from "@/components/ControlPanel";
 import { AIAnalysisDialog } from "@/components/AIAnalysisDialog";
+import { ImportNotesDialog } from "@/components/ImportNotesDialog";
 import { ArrowLeft, Clock, AlertCircle, Eye, EyeOff, QrCode } from "lucide-react";
 import { WorkshopQRDialog } from "@/components/WorkshopQRDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -61,6 +62,7 @@ const FacilitatorControl = () => {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [showQRDialog, setShowQRDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [aiAnalyses, setAIAnalyses] = useState<Record<string, string>>({});
   const [isControlPanelVisible, setIsControlPanelVisible] = useState(true);
   const [isParticipantListVisible, setIsParticipantListVisible] = useState(true);
@@ -689,6 +691,7 @@ const FacilitatorControl = () => {
                   onNextBoard={handleNextBoard}
                   onAIAnalysis={handleAIAnalysis}
                   onExportPDF={handleExportPDF}
+                  onImportNotes={() => setShowImportDialog(true)}
                   canGoNext={currentBoardIndex < boards.length - 1}
                 />
                 
@@ -860,6 +863,19 @@ const FacilitatorControl = () => {
           code={workshop?.code || ""} 
           open={showQRDialog} 
           onOpenChange={setShowQRDialog}
+        />
+
+        {/* Import Notes Dialog */}
+        <ImportNotesDialog
+          open={showImportDialog}
+          onOpenChange={setShowImportDialog}
+          currentBoard={currentBoard}
+          allBoards={boards}
+          allNotes={notes}
+          workshopId={workshop?.id || ""}
+          onImportComplete={() => {
+            // Notes will refresh via realtime subscription
+          }}
         />
       </div>
     </div>
