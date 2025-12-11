@@ -381,6 +381,13 @@ Struktur: Använd tydliga rubriker (##) och punktlistor för maximal läsbarhet.
     'import.importFailed': 'Import misslyckades',
     'import.editCategoriesHint': 'Du kan redigera kategorinamnen genom att klicka på dem',
     'import.categoryNamePlaceholder': 'Kategorinamn',
+    'import.method': 'Metod',
+    'import.selectMethod': 'Hur vill du importera?',
+    'import.manualImport': 'Manuell import',
+    'import.manualDescription': 'Importera alla valda notes direkt till "Importerade svar"',
+    'import.aiClustering': 'AI-klustring',
+    'import.aiDescription': 'Låt AI sortera notes i kategorier automatiskt',
+    'import.manualImportComplete': '{count} notes importerades till "Importerade svar"',
 
     // CREATE WORKSHOP
     'createWorkshop.titleMissing': 'Titel saknas',
@@ -773,6 +780,13 @@ Structure: Use clear headings (##) and bullet points for maximum readability.`,
     'import.importFailed': 'Import failed',
     'import.editCategoriesHint': 'You can edit category names by clicking on them',
     'import.categoryNamePlaceholder': 'Category name',
+    'import.method': 'Method',
+    'import.selectMethod': 'How do you want to import?',
+    'import.manualImport': 'Manual import',
+    'import.manualDescription': 'Import all selected notes directly to "Imported answers"',
+    'import.aiClustering': 'AI clustering',
+    'import.aiDescription': 'Let AI sort notes into categories automatically',
+    'import.manualImportComplete': '{count} notes were imported to "Imported answers"',
 
     // CREATE WORKSHOP
     'createWorkshop.titleMissing': 'Title missing',

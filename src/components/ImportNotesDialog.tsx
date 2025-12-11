@@ -78,7 +78,7 @@ export function ImportNotesDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [clusterPreview, setClusterPreview] = useState<Record<string, ClusterResult[]> | null>(null);
   const [editedCategories, setEditedCategories] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<"select" | "cluster" | "preview">("select");
+  const [activeTab, setActiveTab] = useState<"select" | "method" | "cluster" | "preview">("select");
 
   // Initialize categories from current board's questions when dialog opens
   useEffect(() => {
@@ -405,6 +405,82 @@ export function ImportNotesDialog({
     }
   };
 
+  const handleManualImport = async () => {
+    if (selectedNotes.length === 0) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Get max order_index for questions in current board
+      const { data: existingQuestions } = await supabase
+        .from('questions')
+        .select('id, title, order_index')
+        .eq('board_id', currentBoard.id)
+        .order('order_index', { ascending: false });
+      
+      let questionId: string;
+      
+      // Check if "Importerade svar" already exists
+      const importedQuestion = existingQuestions?.find(
+        q => q.title === "Importerade svar"
+      );
+      
+      if (importedQuestion) {
+        // Use existing "Importerade svar" category
+        questionId = importedQuestion.id;
+      } else {
+        // Create new "Importerade svar" category
+        const nextOrderIndex = (existingQuestions?.[0]?.order_index ?? -1) + 1;
+        
+        const { data: newQuestion, error: questionError } = await supabase
+          .from('questions')
+          .insert({
+            board_id: currentBoard.id,
+            title: "Importerade svar",
+            order_index: nextOrderIndex,
+          })
+          .select()
+          .single();
+        
+        if (questionError) throw questionError;
+        questionId = newQuestion.id;
+      }
+      
+      // Import all selected notes to "Importerade svar"
+      const notesToInsert = selectedNotes.map(note => ({
+        question_id: questionId,
+        content: note.content,
+        author_name: note.authorName,
+        author_id: note.authorId,
+        color_index: note.colorIndex,
+      }));
+      
+      const { error: notesError } = await supabase
+        .from('notes')
+        .insert(notesToInsert);
+      
+      if (notesError) throw notesError;
+      
+      toast({
+        title: t('import.importSuccess'),
+        description: t('import.manualImportComplete', { count: String(selectedNotes.length) }),
+      });
+      
+      handleClose();
+      onImportComplete();
+      
+    } catch (error) {
+      console.error("Manual import error:", error);
+      toast({
+        title: t('import.importFailed'),
+        description: error instanceof Error ? error.message : t('common.error'),
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleClose = () => {
     setSelectedNoteIds(new Set());
     setCategories([]);
@@ -438,18 +514,26 @@ export function ImportNotesDialog({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="select" className="gap-2">
-              <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-semibold">1</span>
-              {t('import.selectNotes')}
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="select" className="gap-1 text-xs sm:text-sm">
+              <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-semibold shrink-0">1</span>
+              <span className="hidden sm:inline">{t('import.selectNotes')}</span>
+              <span className="sm:hidden">Välj</span>
             </TabsTrigger>
-            <TabsTrigger value="cluster" className="gap-2" disabled={selectedNotes.length === 0}>
-              <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-semibold">2</span>
-              {t('import.defineCategories')}
+            <TabsTrigger value="method" className="gap-1 text-xs sm:text-sm" disabled={selectedNotes.length === 0}>
+              <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-semibold shrink-0">2</span>
+              <span className="hidden sm:inline">{t('import.method')}</span>
+              <span className="sm:hidden">Metod</span>
             </TabsTrigger>
-            <TabsTrigger value="preview" className="gap-2" disabled={!clusterPreview}>
-              <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-semibold">3</span>
-              {t('import.preview')}
+            <TabsTrigger value="cluster" className="gap-1 text-xs sm:text-sm" disabled={activeTab !== "cluster" && activeTab !== "preview"}>
+              <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-semibold shrink-0">3</span>
+              <span className="hidden sm:inline">{t('import.defineCategories')}</span>
+              <span className="sm:hidden">AI</span>
+            </TabsTrigger>
+            <TabsTrigger value="preview" className="gap-1 text-xs sm:text-sm" disabled={!clusterPreview}>
+              <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-semibold shrink-0">4</span>
+              <span className="hidden sm:inline">{t('import.preview')}</span>
+              <span className="sm:hidden">Granska</span>
             </TabsTrigger>
           </TabsList>
 
@@ -518,10 +602,60 @@ export function ImportNotesDialog({
                 {t('import.selectedCount', { count: String(selectedNotes.length) })}
               </Badge>
               <Button
-                onClick={() => setActiveTab("cluster")}
+                onClick={() => setActiveTab("method")}
                 disabled={selectedNotes.length === 0}
               >
                 {t('common.next')}
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* Step 2: Select Method */}
+          <TabsContent value="method" className="flex-1 min-h-0 mt-4">
+            <div className="flex flex-col items-center justify-center h-[400px] gap-8">
+              <div className="text-center">
+                <h3 className="text-xl font-semibold mb-2">{t('import.selectMethod')}</h3>
+                <p className="text-muted-foreground">
+                  {t('import.selectedCount', { count: String(selectedNotes.length) })}
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl w-full px-4">
+                {/* Manual import */}
+                <button 
+                  onClick={handleManualImport}
+                  disabled={isLoading}
+                  className="flex flex-col items-center p-6 border-2 rounded-xl hover:border-primary hover:bg-primary/5 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-12 h-12 mb-4 text-primary animate-spin" />
+                  ) : (
+                    <Import className="w-12 h-12 mb-4 text-primary" />
+                  )}
+                  <span className="font-semibold text-lg">{t('import.manualImport')}</span>
+                  <span className="text-sm text-muted-foreground text-center mt-2">
+                    {t('import.manualDescription')}
+                  </span>
+                </button>
+                
+                {/* AI clustering */}
+                <button 
+                  onClick={() => setActiveTab("cluster")}
+                  disabled={isLoading}
+                  className="flex flex-col items-center p-6 border-2 rounded-xl hover:border-amber-500 hover:bg-amber-500/5 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Sparkles className="w-12 h-12 mb-4 text-amber-500" />
+                  <span className="font-semibold text-lg">{t('import.aiClustering')}</span>
+                  <span className="text-sm text-muted-foreground text-center mt-2">
+                    {t('import.aiDescription')}
+                  </span>
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-start mt-4 pt-4 border-t">
+              <Button variant="outline" onClick={() => setActiveTab("select")}>
+                {t('common.back')}
               </Button>
             </div>
           </TabsContent>
@@ -639,7 +773,7 @@ export function ImportNotesDialog({
             </ScrollArea>
 
             <div className="flex items-center justify-between mt-4 pt-4 border-t">
-              <Button variant="outline" onClick={() => setActiveTab("select")}>
+              <Button variant="outline" onClick={() => setActiveTab("method")}>
                 {t('common.back')}
               </Button>
               <Button
