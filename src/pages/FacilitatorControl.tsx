@@ -755,9 +755,32 @@ const FacilitatorControl = () => {
             {/* Board Navigation Tabs */}
             <Tabs
               value={currentBoard.id}
-              onValueChange={(value) => {
+              onValueChange={async (value) => {
                 const index = boards.findIndex((b) => b.id === value);
                 if (index !== -1) {
+                  // Update active_board_id in Supabase to sync participants
+                  if (workshop?.id) {
+                    const { error } = await supabase
+                      .from('workshops')
+                      .update({ 
+                        active_board_id: value,
+                        timer_running: false,
+                        timer_started_at: null,
+                        time_remaining: null
+                      })
+                      .eq('id', workshop.id);
+                    
+                    if (error) {
+                      console.error("Could not update active board:", error);
+                      toast({
+                        title: t('common.error'),
+                        description: "Kunde inte byta board för deltagare",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                  }
+                  
                   setCurrentBoardIndex(index);
                   setTimeRemaining(boards[index].timeLimit * 60);
                   setIsTimerRunning(false);
