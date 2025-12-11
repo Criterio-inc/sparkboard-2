@@ -617,46 +617,69 @@ const BoardView = () => {
 
       {/* Questions Grid */}
       <div className="container mx-auto px-4 py-6 md:py-8">
-        <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {board.questions.map((question) => {
-            const questionNotes = getNotesForQuestion(question.id);
-            
-            return (
-              <Card key={question.id} className="p-6 space-y-4">
-                <div>
-                  <h2 
-                    className="text-lg font-semibold mb-1"
-                    style={{ color: boardColor }}
-                  >
-                    {question.title}
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    {questionNotes.length} {questionNotes.length === 1 ? "note" : "notes"}
-                  </p>
-                </div>
+        {(() => {
+          // Dynamisk grid baserat på antal frågor
+          const questionCount = board.questions.length;
+          const questionGridClass = questionCount === 1
+            ? "grid-cols-1"
+            : questionCount === 2
+            ? "grid-cols-1 md:grid-cols-2"
+            : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
+          
+          // Dynamisk notes-grid baserat på antal frågor
+          const getNotesGridClass = () => {
+            if (questionCount === 1) {
+              return "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3";
+            }
+            if (questionCount === 2) {
+              return "grid grid-cols-2 md:grid-cols-3 gap-3";
+            }
+            return "flex flex-wrap gap-3";
+          };
 
-                <div className="space-y-3 min-h-[200px]">
-                  {questionNotes.length === 0 ? (
-                    <div className="flex items-center justify-center h-40 border-2 border-dashed border-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground">
-                        Inga notes än
+          return (
+            <div className={`grid ${questionGridClass} gap-4 md:gap-6`}>
+              {board.questions.map((question) => {
+                const questionNotes = getNotesForQuestion(question.id);
+                
+                return (
+                  <Card key={question.id} className="p-6 space-y-4">
+                    <div>
+                      <h2 
+                        className="text-lg font-semibold mb-1"
+                        style={{ color: boardColor }}
+                      >
+                        {question.title}
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {questionNotes.length} {questionNotes.length === 1 ? "note" : "notes"}
                       </p>
                     </div>
-                  ) : (
-                    questionNotes.map((note) => (
-                      <StickyNote
-                        key={note.id}
-                        {...note}
-                        isOwn={note.authorId === participantId}
-                        onDelete={() => handleDeleteNote(note.id)}
-                      />
-                    ))
-                  )}
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+
+                    <div className={`${getNotesGridClass()} min-h-[200px]`}>
+                      {questionNotes.length === 0 ? (
+                        <div className="flex items-center justify-center h-40 border-2 border-dashed border-muted rounded-lg col-span-full">
+                          <p className="text-sm text-muted-foreground">
+                            Inga notes än
+                          </p>
+                        </div>
+                      ) : (
+                        questionNotes.map((note) => (
+                          <StickyNote
+                            key={note.id}
+                            {...note}
+                            isOwn={note.authorId === participantId}
+                            onDelete={() => handleDeleteNote(note.id)}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Empty state */}
         {notes.length === 0 && (

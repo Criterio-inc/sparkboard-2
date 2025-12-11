@@ -786,76 +786,97 @@ const FacilitatorControl = () => {
                 })}
               </TabsList>
 
-              {boards.map((board) => (
-                <TabsContent key={board.id} value={board.id} className="mt-6">
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {board.questions.map((question) => {
-                      const questionNotes = getNotesForQuestion(question.id);
-                      const qBoardColor = `hsl(var(--board-${(board.colorIndex % 5) + 1}))`;
+              {boards.map((board) => {
+                // Dynamisk grid baserat på antal frågor
+                const questionCount = board.questions.length;
+                const questionGridClass = questionCount === 1
+                  ? "grid-cols-1"
+                  : questionCount === 2
+                  ? "grid-cols-1 md:grid-cols-2"
+                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
+                
+                // Dynamisk notes-grid baserat på antal frågor
+                const getNotesGridClass = (noteCount: number) => {
+                  if (questionCount === 1) {
+                    return "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3";
+                  }
+                  if (questionCount === 2) {
+                    return "grid grid-cols-2 md:grid-cols-3 gap-3";
+                  }
+                  return "flex flex-wrap gap-3";
+                };
 
-                      return (
-                        <Card 
-                          key={question.id} 
-                          className={`p-4 space-y-3 hover:shadow-[var(--shadow-button-hover)] transition-all duration-200 ${
-                            draggedNoteId ? 'ring-2 ring-primary/30 ring-dashed' : ''
-                          }`}
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            e.currentTarget.classList.add('bg-primary/10');
-                          }}
-                          onDragLeave={(e) => {
-                            e.currentTarget.classList.remove('bg-primary/10');
-                          }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            e.currentTarget.classList.remove('bg-primary/10');
-                            const noteId = e.dataTransfer.getData('text/plain');
-                            if (noteId && draggedNoteId) {
-                              // Kontrollera att noten inte redan är i denna fråga
-                              const note = notes.find(n => n.id === noteId);
-                              if (note && note.questionId !== question.id) {
-                                handleMoveNote(noteId, question.id);
-                              } else {
-                                setDraggedNoteId(null);
+                return (
+                  <TabsContent key={board.id} value={board.id} className="mt-6">
+                    <div className={`grid ${questionGridClass} gap-6`}>
+                      {board.questions.map((question) => {
+                        const questionNotes = getNotesForQuestion(question.id);
+                        const qBoardColor = `hsl(var(--board-${(board.colorIndex % 5) + 1}))`;
+
+                        return (
+                          <Card 
+                            key={question.id} 
+                            className={`p-4 space-y-3 hover:shadow-[var(--shadow-button-hover)] transition-all duration-200 ${
+                              draggedNoteId ? 'ring-2 ring-primary/30 ring-dashed' : ''
+                            }`}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.currentTarget.classList.add('bg-primary/10');
+                            }}
+                            onDragLeave={(e) => {
+                              e.currentTarget.classList.remove('bg-primary/10');
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              e.currentTarget.classList.remove('bg-primary/10');
+                              const noteId = e.dataTransfer.getData('text/plain');
+                              if (noteId && draggedNoteId) {
+                                // Kontrollera att noten inte redan är i denna fråga
+                                const note = notes.find(n => n.id === noteId);
+                                if (note && note.questionId !== question.id) {
+                                  handleMoveNote(noteId, question.id);
+                                } else {
+                                  setDraggedNoteId(null);
+                                }
                               }
-                            }
-                          }}
-                        >
-                          <div>
-                            <h2 className="text-[0.95rem] font-semibold mb-1 leading-tight tracking-tight" style={{ color: qBoardColor }}>
-                              {question.title}
-                            </h2>
-                            <p className="text-xs text-muted-foreground">
-                              {questionNotes.length} {t('board.notes')}
-                            </p>
-                          </div>
+                            }}
+                          >
+                            <div>
+                              <h2 className="text-[0.95rem] font-semibold mb-1 leading-tight tracking-tight" style={{ color: qBoardColor }}>
+                                {question.title}
+                              </h2>
+                              <p className="text-xs text-muted-foreground">
+                                {questionNotes.length} {t('board.notes')}
+                              </p>
+                            </div>
 
-                          <div className="space-y-3 min-h-[200px]">
-                            {questionNotes.length === 0 ? (
-                              <div className="flex items-center justify-center h-40 border-2 border-dashed border-muted rounded-lg">
-                                <p className="text-sm text-muted-foreground">{t('board.noNotesYet')}</p>
-                              </div>
-                            ) : (
-                              questionNotes.map((note) => (
-                                <StickyNote 
-                                  key={note.id} 
-                                  {...note} 
-                                  isOwn={false}
-                                  canDelete={true}
-                                  draggable={true}
-                                  onDelete={() => handleDeleteNote(note.id)}
-                                  onDragStart={(id) => setDraggedNoteId(id)}
-                                  onDragEnd={() => setDraggedNoteId(null)}
-                                />
-                              ))
-                            )}
-                          </div>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </TabsContent>
-              ))}
+                            <div className={`${getNotesGridClass(questionNotes.length)} min-h-[200px]`}>
+                              {questionNotes.length === 0 ? (
+                                <div className="flex items-center justify-center h-40 border-2 border-dashed border-muted rounded-lg col-span-full">
+                                  <p className="text-sm text-muted-foreground">{t('board.noNotesYet')}</p>
+                                </div>
+                              ) : (
+                                questionNotes.map((note) => (
+                                  <StickyNote 
+                                    key={note.id} 
+                                    {...note} 
+                                    isOwn={false}
+                                    canDelete={true}
+                                    draggable={true}
+                                    onDelete={() => handleDeleteNote(note.id)}
+                                    onDragStart={(id) => setDraggedNoteId(id)}
+                                    onDragEnd={() => setDraggedNoteId(null)}
+                                  />
+                                ))
+                              )}
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </TabsContent>
+                );
+              })}
             </Tabs>
           </div>
 
