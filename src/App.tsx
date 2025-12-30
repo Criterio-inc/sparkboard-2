@@ -13,12 +13,10 @@ import CreateWorkshop from "./pages/CreateWorkshop";
 import JoinWorkshop from "./pages/JoinWorkshop";
 import BoardView from "./pages/BoardView";
 import FacilitatorControl from "./pages/FacilitatorControl";
-import FacilitatorSettings from "./pages/FacilitatorSettings";
 import Upgrade from "./pages/Upgrade";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import AccountSettings from "./pages/AccountSettings";
-
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -38,7 +36,7 @@ const App = () => (
             <Route path="/create-workshop" element={<AuthWrapper><CreateWorkshop /></AuthWrapper>} />
             <Route path="/create-workshop/:id" element={<AuthWrapper><CreateWorkshop /></AuthWrapper>} />
             <Route path="/facilitator/:workshopId" element={<AuthWrapper><FacilitatorControl /></AuthWrapper>} />
-            <Route path="/settings" element={<AuthWrapper><FacilitatorSettings /></AuthWrapper>} />
+            <Route path="/settings" element={<AuthWrapper><AccountSettings /></AuthWrapper>} />
             <Route path="/upgrade" element={<AuthWrapper><Upgrade /></AuthWrapper>} />
             <Route path="/account" element={<AuthWrapper><AccountSettings /></AuthWrapper>} />
             <Route path="/payment-success" element={<AuthWrapper><PaymentSuccess /></AuthWrapper>} />
