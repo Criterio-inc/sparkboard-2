@@ -81,60 +81,6 @@ export type Database = {
           },
         ]
       }
-      facilitator_sessions: {
-        Row: {
-          created_at: string
-          expires_at: string
-          facilitator_id: string
-          id: string
-          last_active_at: string
-          session_token: string
-        }
-        Insert: {
-          created_at?: string
-          expires_at: string
-          facilitator_id: string
-          id?: string
-          last_active_at?: string
-          session_token: string
-        }
-        Update: {
-          created_at?: string
-          expires_at?: string
-          facilitator_id?: string
-          id?: string
-          last_active_at?: string
-          session_token?: string
-        }
-        Relationships: []
-      }
-      facilitators: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          pin_hash: string
-          security_answer_hash: string | null
-          security_question: string | null
-        }
-        Insert: {
-          created_at?: string
-          id: string
-          name: string
-          pin_hash: string
-          security_answer_hash?: string | null
-          security_question?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          pin_hash?: string
-          security_answer_hash?: string | null
-          security_question?: string | null
-        }
-        Relationships: []
-      }
       notes: {
         Row: {
           author_id: string
@@ -349,7 +295,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      cleanup_expired_sessions: { Args: never; Returns: undefined }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
