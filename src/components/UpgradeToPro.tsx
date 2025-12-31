@@ -59,13 +59,16 @@ export const UpgradeToPro = () => {
         {/* FREE PLAN */}
         <Card className={plan === 'free' ? 'ring-2 ring-primary/50' : 'opacity-75'}>
           <CardHeader>
-            <CardTitle>Free</CardTitle>
+            <CardTitle>Sparkboard Free</CardTitle>
             <CardDescription>
               <span className="text-3xl font-bold text-foreground">0 SEK</span>
               <span className="text-muted-foreground">/alltid</span>
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Perfekt för att testa Sparkboard och köra enstaka workshops
+            </p>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
@@ -73,11 +76,15 @@ export const UpgradeToPro = () => {
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>Obegränsat deltagare</span>
+                <span>5 deltagare per workshop</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <span>Grundläggande funktioner</span>
               </li>
               <li className="flex items-center gap-2">
                 <X className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <span className="text-muted-foreground">AI-analys</span>
+                <span className="text-muted-foreground">AI-analys av resultat</span>
               </li>
               <li className="flex items-center gap-2">
                 <X className="w-5 h-5 text-red-500 flex-shrink-0" />
@@ -93,32 +100,39 @@ export const UpgradeToPro = () => {
         </Card>
 
         {/* MÅNADSVIS */}
-        <Card 
+        <Card
           className={`cursor-pointer transition-all ${
             selectedPlan === 'monthly' ? 'ring-2 ring-primary' : ''
           }`}
           onClick={() => setSelectedPlan('monthly')}
         >
           <CardHeader>
-            <CardTitle>Månadsvis</CardTitle>
+            <CardTitle>Sparkboard Pro - månad</CardTitle>
             <CardDescription>
               <span className="text-3xl font-bold text-foreground">99 SEK</span>
               <span className="text-muted-foreground">/månad</span>
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Full tillgång till alla funktioner - flexibelt månadsabonnemang
+            </p>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>Obegränsat workshops</span>
+                <span>Obegränsat antal workshops</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>Obegränsat deltagare</span>
+                <span>Obegränsat antal deltagare</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>AI-analys</span>
+                <span>AI-analys av resultat</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <span>Export till Excel och PDF</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
@@ -129,35 +143,42 @@ export const UpgradeToPro = () => {
         </Card>
 
         {/* ÅRLIG */}
-        <Card 
+        <Card
           className={`cursor-pointer transition-all relative ${
             selectedPlan === 'yearly' ? 'ring-2 ring-primary' : ''
           }`}
           onClick={() => setSelectedPlan('yearly')}
         >
           <div className="absolute -top-3 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-            Spara 99 SEK
+            Spara ca 20%
           </div>
           <CardHeader>
-            <CardTitle>Årlig</CardTitle>
+            <CardTitle>Sparkboard Pro årligen</CardTitle>
             <CardDescription>
-              <span className="text-3xl font-bold text-foreground">1089 SEK</span>
+              <span className="text-3xl font-bold text-foreground">950 SEK</span>
               <span className="text-muted-foreground">/år</span>
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Bästa priset - full tillgång hela året för professionella facilitatorer
+            </p>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>Obegränsat workshops</span>
+                <span>Obegränsat antal workshops</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>Obegränsat deltagare</span>
+                <span>Obegränsat antal deltagare</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>AI-analys</span>
+                <span>AI-analys av resultat</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <span>Export till Excel och PDF</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
@@ -165,7 +186,7 @@ export const UpgradeToPro = () => {
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span className="font-bold">1 månad gratis!</span>
+                <span className="font-bold text-green-600">Spara 238 SEK per år</span>
               </li>
             </ul>
           </CardContent>
@@ -174,8 +195,8 @@ export const UpgradeToPro = () => {
 
       {plan !== 'pro' && plan !== 'curago' && (
         <div className="mt-8 text-center">
-          <Button 
-            size="lg" 
+          <Button
+            size="lg"
             onClick={handleUpgrade}
             disabled={loading}
             className="min-w-[200px]"
@@ -186,7 +207,7 @@ export const UpgradeToPro = () => {
                 Laddar...
               </>
             ) : (
-              `Uppgradera nu - ${selectedPlan === 'monthly' ? '99 SEK/mån' : '1089 SEK/år'}`
+              `Uppgradera nu - ${selectedPlan === 'monthly' ? '99 SEK/mån' : '950 SEK/år'}`
             )}
           </Button>
         </div>
