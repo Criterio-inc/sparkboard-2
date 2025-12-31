@@ -40,7 +40,7 @@ const Privacy = () => {
                 Kontakt:{' '}
                 <a 
                   href="mailto:kontakt@criteroconsulting.se" 
-                  className="text-[#F1916D] hover:underline"
+                  className="text-accent hover:underline"
                 >
                   kontakt@criteroconsulting.se
                 </a>
@@ -127,7 +127,7 @@ const Privacy = () => {
                 För att utöva dina rättigheter, kontakta oss på{' '}
                 <a 
                   href="mailto:kontakt@criteroconsulting.se" 
-                  className="text-[#F1916D] hover:underline"
+                  className="text-accent hover:underline"
                 >
                   kontakt@criteroconsulting.se
                 </a>
@@ -143,7 +143,7 @@ const Privacy = () => {
                   href="https://www.imy.se" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-[#F1916D] hover:underline"
+                  className="text-accent hover:underline"
                 >
                   www.imy.se
                 </a>

@@ -123,7 +123,7 @@ const Cookies = () => {
               Vid frågor om vår användning av cookies, kontakta oss på:{' '}
               <a 
                 href="mailto:kontakt@criteroconsulting.se" 
-                className="text-[#F1916D] hover:underline"
+                className="text-accent hover:underline"
               >
                 kontakt@criteroconsulting.se
               </a>

@@ -22,6 +22,7 @@ All colors MUST be HSL.
     --primary: 220 56% 23%;  /* Medium blå #19305C */
     --primary-foreground: 0 0% 100%;
     --primary-glow: 250 25% 31%;  /* Djup lila för glow #413B61 */
+    --primary-dark: 220 82% 10%;  /* Mörkaste blå #03122F */
 
     /* Secondary - Mjuk lila */
     --secondary: 302 31% 58%;  /* Mjuk lila #AE7DAC */
@@ -47,12 +48,20 @@ All colors MUST be HSL.
     --radius-button: 0.5rem;  /* 8px for buttons */
     --radius-note: 1rem;  /* 16px for sticky notes */
 
+    /* Header/Footer specific */
+    --header-bg: 220 82% 10%;  /* Dark navy for header */
+    --header-foreground: 0 0% 100%;  /* White text */
+    
+    /* Curago brand color */
+    --curago: 207 60% 59%;  /* #5A9BD5 */
+
     /* Gradients - moderna gradient combinations */
     --gradient-hero: linear-gradient(135deg, hsl(220 56% 23%), hsl(250 25% 31%), hsl(302 31% 58%));
     --gradient-primary: linear-gradient(135deg, hsl(220 56% 23%), hsl(250 25% 31%));
     --gradient-cta: linear-gradient(135deg, hsl(17 80% 69%), hsl(302 31% 58%));
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(347 44% 98%));
     --gradient-subtle-bg: linear-gradient(180deg, hsl(0 0% 98%), hsl(347 44% 95%));
+    --gradient-header: linear-gradient(to right, hsl(220 82% 10%), hsl(220 56% 23%));
     
     /* Shadows med nya färger */
     --shadow-glow: 0 8px 32px hsl(250 25% 31% / 0.3);
@@ -99,6 +108,7 @@ All colors MUST be HSL.
     --primary: 220 56% 30%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 250 25% 40%;
+    --primary-dark: 220 82% 6%;
 
     --secondary: 302 31% 55%;
     --secondary-foreground: 0 0% 100%;
@@ -117,11 +127,19 @@ All colors MUST be HSL.
     --input: 220 40% 20%;
     --ring: 220 56% 30%;
 
+    /* Header/Footer specific - dark mode */
+    --header-bg: 220 60% 10%;
+    --header-foreground: 0 0% 100%;
+    
+    /* Curago brand color - dark mode */
+    --curago: 207 60% 55%;
+
     --gradient-hero: linear-gradient(135deg, hsl(220 56% 20%), hsl(250 25% 25%), hsl(302 31% 45%));
     --gradient-primary: linear-gradient(135deg, hsl(220 56% 20%), hsl(250 25% 25%));
     --gradient-cta: linear-gradient(135deg, hsl(17 80% 60%), hsl(302 31% 50%));
     --gradient-card: linear-gradient(145deg, hsl(220 60% 12%), hsl(220 50% 15%));
     --gradient-subtle-bg: linear-gradient(180deg, hsl(220 60% 10%), hsl(220 70% 8%));
+    --gradient-header: linear-gradient(to right, hsl(220 60% 8%), hsl(220 56% 15%));
     --shadow-glow: 0 8px 32px hsl(250 25% 31% / 0.5);
     --shadow-accent: 0 8px 32px hsl(17 80% 69% / 0.35);
     --shadow-card: 0 2px 8px hsl(220 82% 10% / 0.3);

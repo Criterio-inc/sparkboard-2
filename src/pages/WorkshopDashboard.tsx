@@ -52,7 +52,6 @@ const WorkshopDashboard = () => {
 
       if (error) throw error;
 
-      // Hämta boards separat och räkna per workshop
       const workshopIds = ws?.map(w => w.id) || [];
       let countsByWorkshop: Record<string, number> = {};
       
@@ -83,7 +82,6 @@ const WorkshopDashboard = () => {
       });
     }
   };
-
 
   const handleDelete = async (id: string) => {
     try {
@@ -192,18 +190,17 @@ const WorkshopDashboard = () => {
     }
   };
 
-  // Visa loading under migration
   if (isChecking || profileLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex items-center justify-center min-h-[80vh]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#19305C] mx-auto mb-6"></div>
-            <h2 className="text-2xl font-semibold text-[#03122F] mb-2">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-6"></div>
+            <h2 className="text-2xl font-semibold text-foreground mb-2">
               {isChecking ? `🔄 ${t('dashboard.checking')}` : t('common.loading')}
             </h2>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               {isChecking ? t('dashboard.takesSeconds') : t('dashboard.pleaseWait')}
             </p>
           </div>
@@ -212,20 +209,19 @@ const WorkshopDashboard = () => {
     );
   }
 
-  // Visa migration-fel om något gick fel
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex items-center justify-center min-h-[80vh]">
-          <div className="max-w-md bg-red-50 border-2 border-red-200 rounded-xl p-6">
-            <h2 className="text-xl font-semibold text-red-800 mb-2">
+          <div className="max-w-md bg-destructive/10 border-2 border-destructive/20 rounded-xl p-6">
+            <h2 className="text-xl font-semibold text-destructive mb-2">
               ⚠️ {t('dashboard.migrationError')}
             </h2>
-            <p className="text-red-700 mb-4">{error}</p>
+            <p className="text-destructive/80 mb-4">{error}</p>
             <button 
               onClick={() => window.location.reload()}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+              className="bg-destructive text-destructive-foreground px-4 py-2 rounded-lg hover:opacity-90"
             >
               {t('dashboard.tryAgain')}
             </button>
@@ -235,26 +231,24 @@ const WorkshopDashboard = () => {
     );
   }
 
-  // Visa success-meddelande om workshops migrerades
   const showMigrationSuccess = isComplete && migratedCount > 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Migration success banner */}
         {showMigrationSuccess && (
-          <div className="bg-green-50 border-l-4 border-green-500 p-6 mb-8 rounded-r-lg">
+          <div className="bg-green-50 dark:bg-green-950/30 border-l-4 border-green-500 p-6 mb-8 rounded-r-lg">
             <div className="flex items-start gap-3">
               <svg className="w-6 h-6 text-green-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               <div>
-                <h3 className="font-semibold text-green-900 mb-1">
+                <h3 className="font-semibold text-green-900 dark:text-green-100 mb-1">
                   ✅ {t('dashboard.workshopsMigrated')}
                 </h3>
-                <p className="text-green-700 text-sm">
+                <p className="text-green-700 dark:text-green-300 text-sm">
                   {t('dashboard.workshopsMigratedDesc', { count: migratedCount.toString() })}
                 </p>
               </div>
@@ -262,27 +256,26 @@ const WorkshopDashboard = () => {
           </div>
         )}
 
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-[#03122F]">
+            <h1 className="text-4xl font-bold text-foreground">
               {t('dashboard.title')}
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-muted-foreground mt-2">
               {workshops.length} {workshops.length === 1 ? t('dashboard.workshop') : t('dashboard.workshops')}
             </p>
           </div>
           
           {isFree && workshops.length >= 1 ? (
             <Link to="/upgrade">
-              <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+              <Button className="bg-gradient-to-r from-accent to-secondary text-accent-foreground px-6 py-3 rounded-lg font-semibold hover:opacity-90">
                 <Sparkles className="w-5 h-5 mr-2" />
                 {t('dashboard.upgradeForMore')}
               </Button>
             </Link>
           ) : (
             <Link to="/create-workshop">
-              <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+              <Button className="bg-gradient-to-r from-accent to-secondary text-accent-foreground px-6 py-3 rounded-lg font-semibold hover:opacity-90">
                 <Plus className="w-5 h-5 mr-2" />
                 {t('dashboard.createNew')}
               </Button>
@@ -290,12 +283,11 @@ const WorkshopDashboard = () => {
           )}
         </div>
 
-        {/* Workshop limit warning for free users */}
         {isFree && workshops.length >= 1 && (
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
-            <p className="text-yellow-800">
+          <div className="bg-yellow-50 dark:bg-yellow-950/30 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
+            <p className="text-yellow-800 dark:text-yellow-200">
               <strong>📊 Free-plan:</strong> {t('dashboard.freePlanWarning')}{' '}
-              <Link to="/upgrade" className="underline ml-1 font-semibold hover:text-yellow-900">
+              <Link to="/upgrade" className="underline ml-1 font-semibold hover:opacity-80">
                 {t('dashboard.upgradeForMore')}
               </Link>{' '}
               {t('dashboard.forUnlimited')}
@@ -303,18 +295,17 @@ const WorkshopDashboard = () => {
           </div>
         )}
 
-        {/* Workshops Grid */}
         {workshops.length === 0 ? (
           <div className="text-center py-20">
             <div className="text-6xl mb-4">📋</div>
-            <h2 className="text-2xl font-semibold text-gray-700 mb-2">
+            <h2 className="text-2xl font-semibold text-muted-foreground mb-2">
               {t('dashboard.noWorkshops')}
             </h2>
-            <p className="text-gray-500 mb-6">
+            <p className="text-muted-foreground mb-6">
               {t('dashboard.comeBack')}
             </p>
             <Link to="/create-workshop">
-              <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white">
+              <Button className="bg-gradient-to-r from-accent to-secondary text-accent-foreground">
                 <Plus className="w-4 h-4 mr-2" />
                 {t('dashboard.createWorkshop')}
               </Button>
@@ -354,7 +345,7 @@ const WorkshopDashboard = () => {
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleDelete(workshop.id)}
-                          className="text-red-600"
+                          className="text-destructive"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
                           {t('dashboard.delete')}
@@ -369,12 +360,12 @@ const WorkshopDashboard = () => {
                       <Badge variant={workshop.status === 'active' ? 'default' : 'secondary'}>
                         {workshop.status === 'active' ? t('dashboard.status.active') : t('dashboard.status.draft')}
                       </Badge>
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-muted-foreground">
                         {workshop.code}
                       </span>
                     </div>
                     
-                    <div className="flex items-center justify-between text-sm text-gray-600">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Users className="w-4 h-4" />
                         <span>{workshop.boardCount} {t('dashboard.boards')}</span>

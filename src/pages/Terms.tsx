@@ -111,7 +111,7 @@ const Terms = () => {
               Vid frågor om dessa användarvillkor, kontakta oss på:{' '}
               <a 
                 href="mailto:kontakt@criteroconsulting.se" 
-                className="text-[#F1916D] hover:underline"
+                className="text-accent hover:underline"
               >
                 kontakt@criteroconsulting.se
               </a>
