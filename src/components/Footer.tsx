@@ -17,6 +17,18 @@ export const Footer = () => {
             >
               Integritetspolicy
             </Link>
+            <Link 
+              to="/terms" 
+              className="hover:text-[#F1916D] transition-colors"
+            >
+              Användarvillkor
+            </Link>
+            <Link 
+              to="/cookies" 
+              className="hover:text-[#F1916D] transition-colors"
+            >
+              Cookies
+            </Link>
             <a 
               href="mailto:kontakt@criteroconsulting.se" 
               className="hover:text-[#F1916D] transition-colors"

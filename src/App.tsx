@@ -18,6 +18,8 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import AccountSettings from "./pages/AccountSettings";
 import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Cookies from "./pages/Cookies";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -43,6 +45,8 @@ const App = () => (
             <Route path="/payment-success" element={<AuthWrapper><PaymentSuccess /></AuthWrapper>} />
             <Route path="/payment-cancelled" element={<AuthWrapper><PaymentCancelled /></AuthWrapper>} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/cookies" element={<Cookies />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
