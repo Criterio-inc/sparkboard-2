@@ -1,13 +1,28 @@
 import { Navigation } from '@/components/Navigation';
 import { Footer } from '@/components/Footer';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { Info } from 'lucide-react';
 
 const Privacy = () => {
+  const { language } = useLanguage();
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navigation />
       
       <main className="flex-1 py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {language === 'en' && (
+            <div className="mb-6 p-4 bg-muted/50 border border-border rounded-lg flex items-start gap-3">
+              <Info className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                This page is only available in Swedish. For questions, please contact us at{' '}
+                <a href="mailto:kontakt@criteroconsulting.se" className="text-primary hover:underline">
+                  kontakt@criteroconsulting.se
+                </a>
+              </p>
+            </div>
+          )}
           <h1 className="text-3xl font-bold text-foreground mb-8">Integritetspolicy</h1>
           
           <div className="prose prose-lg max-w-none text-foreground/90 space-y-8">
