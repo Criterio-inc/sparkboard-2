@@ -10,8 +10,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Sparkles, CreditCard, AlertCircle, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { sv } from 'date-fns/locale';
+import { sv, enUS } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const AccountSettings = () => {
   const { profile, isPro, isFree, isCuragoUser } = useSubscription();
@@ -19,6 +20,9 @@ const AccountSettings = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
+  const { t, language } = useLanguage();
+  
+  const dateLocale = language === 'sv' ? sv : enUS;
 
   const handleManageSubscription = async () => {
     if (!user?.primaryEmailAddress?.emailAddress) return;
@@ -39,8 +43,8 @@ const AccountSettings = () => {
     } catch (error) {
       console.error('Error opening customer portal:', error);
       toast({
-        title: 'Ett fel uppstod',
-        description: 'Kunde inte öppna Stripe-portalen. Försök igen.',
+        title: t('account.errorOccurred'),
+        description: t('account.stripeError'),
         variant: 'destructive'
       });
     } finally {
@@ -63,14 +67,14 @@ const AccountSettings = () => {
       if (error) throw error;
       
       toast({
-        title: '✅ Status uppdaterad',
-        description: 'Din prenumerationsstatus är nu synkroniserad.',
+        title: `✅ ${t('account.statusUpdated')}`,
+        description: t('account.statusSynced'),
       });
     } catch (error) {
       console.error('Error refreshing subscription:', error);
       toast({
-        title: 'Kunde inte uppdatera',
-        description: 'Försök igen om en stund.',
+        title: t('account.updateFailed'),
+        description: t('account.tryAgainLater'),
         variant: 'destructive'
       });
     } finally {
@@ -93,21 +97,21 @@ const AccountSettings = () => {
       <Navigation />
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-3xl font-bold mb-8">Konto & Prenumeration</h1>
+        <h1 className="text-3xl font-bold mb-8">{t('account.title')}</h1>
 
         {/* Account Info */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Din profil</CardTitle>
-            <CardDescription>Kontoinformation</CardDescription>
+            <CardTitle>{t('account.profile')}</CardTitle>
+            <CardDescription>{t('account.profileInfo')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Namn</label>
+              <label className="text-sm font-medium text-muted-foreground">{t('account.name')}</label>
               <p className="text-lg">{user?.firstName} {user?.lastName || ''}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">E-post</label>
+              <label className="text-sm font-medium text-muted-foreground">{t('account.email')}</label>
               <p className="text-lg">{user?.primaryEmailAddress?.emailAddress}</p>
             </div>
           </CardContent>
@@ -118,21 +122,21 @@ const AccountSettings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="w-5 h-5" />
-              Din prenumeration
+              {t('account.subscription')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-sm font-medium text-muted-foreground block mb-2">Nuvarande plan</label>
+                <label className="text-sm font-medium text-muted-foreground block mb-2">{t('account.currentPlan')}</label>
                 {getPlanBadge()}
               </div>
               
               {isPro && profile?.subscription_current_period_end && (
                 <div className="text-right">
-                  <label className="text-sm font-medium text-muted-foreground block mb-1">Nästa betalning</label>
+                  <label className="text-sm font-medium text-muted-foreground block mb-1">{t('account.nextPayment')}</label>
                   <p className="text-sm">
-                    {format(new Date(profile.subscription_current_period_end), 'PPP', { locale: sv })}
+                    {format(new Date(profile.subscription_current_period_end), 'PPP', { locale: dateLocale })}
                   </p>
                 </div>
               )}
@@ -144,14 +148,14 @@ const AccountSettings = () => {
                 <Alert>
                   <Sparkles className="h-4 w-4" />
                   <AlertDescription>
-                    <strong>Uppgradera till Pro</strong> för obegränsat workshops, AI-analys och prioriterad support!
+                    <strong>{t('account.upgradeCta')}</strong>
                   </AlertDescription>
                 </Alert>
                 
                 <Link to="/upgrade">
                   <Button className="w-full bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white">
                     <Sparkles className="w-4 h-4 mr-2" />
-                    Se Pro-planer
+                    {t('account.seePlans')}
                   </Button>
                 </Link>
               </>
@@ -163,19 +167,20 @@ const AccountSettings = () => {
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription className="space-y-2">
-                    <p className="font-medium">📋 Hantera din prenumeration</p>
-                    <p className="text-sm">Du kan när som helst:</p>
+                    <p className="font-medium">📋 {t('account.manageSubscription')}</p>
+                    <p className="text-sm">{t('account.manageInfo')}</p>
                     <ul className="text-sm list-disc list-inside space-y-1 ml-2">
-                      <li>Avbryta din prenumeration (du behåller Pro till periodens slut)</li>
-                      <li>Ändra från månadsvis till årlig betalning (eller tvärtom)</li>
-                      <li>Uppdatera betalningsmetod</li>
-                      <li>Se alla dina fakturor</li>
+                      <li>{t('account.cancelInfo')}</li>
+                      <li>{t('account.changePayment')}</li>
+                      <li>{t('account.updateMethod')}</li>
+                      <li>{t('account.viewInvoices')}</li>
                     </ul>
                     <p className="text-sm text-muted-foreground mt-2">
-                      ⚠️ <strong>Vid avbokning:</strong> Du behåller Pro-funktioner till{' '}
-                      {profile?.subscription_current_period_end && 
-                        format(new Date(profile.subscription_current_period_end), 'PPP', { locale: sv })}, 
-                      därefter nedgraderas du automatiskt till Free (max 1 workshop).
+                      ⚠️ <strong>{t('account.cancellationWarning', { 
+                        date: profile?.subscription_current_period_end 
+                          ? format(new Date(profile.subscription_current_period_end), 'PPP', { locale: dateLocale })
+                          : ''
+                      })}</strong>
                     </p>
                   </AlertDescription>
                 </Alert>
@@ -190,12 +195,12 @@ const AccountSettings = () => {
                     {loading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Öppnar...
+                        {t('account.opening')}
                       </>
                     ) : (
                       <>
                         <ExternalLink className="w-4 h-4 mr-2" />
-                        Hantera prenumeration i Stripe
+                        {t('account.manageInStripe')}
                       </>
                     )}
                   </Button>
@@ -204,7 +209,7 @@ const AccountSettings = () => {
                     disabled={loading || refreshing}
                     variant="outline"
                     size="icon"
-                    title="Uppdatera prenumerationsstatus"
+                    title={t('account.refreshStatus')}
                   >
                     <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                   </Button>
@@ -216,10 +221,9 @@ const AccountSettings = () => {
             {isCuragoUser && (
               <Alert className="bg-[#5A9BD5]/10 border-[#5A9BD5]">
                 <AlertDescription>
-                  <p className="font-medium">🏢 Curago Enterprise</p>
+                  <p className="font-medium">🏢 {t('account.enterpriseTitle')}</p>
                   <p className="text-sm mt-1">
-                    Din prenumeration hanteras av din organisation. 
-                    Kontakta din administratör för ändringar.
+                    {t('account.enterpriseInfo')}
                   </p>
                 </AlertDescription>
               </Alert>
@@ -230,30 +234,30 @@ const AccountSettings = () => {
         {/* Plan Features */}
         <Card>
           <CardHeader>
-            <CardTitle>Funktioner i din plan</CardTitle>
+            <CardTitle>{t('account.featuresTitle')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${isPro || isCuragoUser ? 'bg-green-500' : 'bg-gray-400'}`} />
                 <span className={isPro || isCuragoUser ? '' : 'text-muted-foreground'}>
-                  {isPro || isCuragoUser ? 'Obegränsat' : 'Max 1'} aktiva workshops
+                  {isPro || isCuragoUser ? t('account.unlimitedWorkshops') : t('account.activeWorkshops', { count: '1' })}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span>Obegränsat deltagare</span>
+                <span>{t('account.unlimitedParticipants')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${isPro || isCuragoUser ? 'bg-green-500' : 'bg-gray-400'}`} />
                 <span className={isPro || isCuragoUser ? '' : 'text-muted-foreground'}>
-                  AI-analys av resultat {!isPro && !isCuragoUser && '(endast Pro)'}
+                  {t('account.aiAnalysis')} {!isPro && !isCuragoUser && t('account.proOnly')}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${isPro || isCuragoUser ? 'bg-green-500' : 'bg-gray-400'}`} />
                 <span className={isPro || isCuragoUser ? '' : 'text-muted-foreground'}>
-                  Prioriterad support {!isPro && !isCuragoUser && '(endast Pro)'}
+                  {t('account.prioritySupport')} {!isPro && !isCuragoUser && t('account.proOnly')}
                 </span>
               </div>
             </div>

@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,6 +18,78 @@ serve(async (req) => {
     console.log("Received analysis request for", notes.length, "notes");
     console.log("Custom prompt provided:", !!customPrompt);
     
+    // Get auth header and verify user subscription
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.log("No authorization header provided");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - please log in" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create Supabase client to check subscription
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Get user from auth
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // For Clerk users, we need to check differently - extract user ID from token
+    let userId: string | null = null;
+    
+    if (user) {
+      userId = user.id;
+    } else {
+      // Try to decode JWT to get user ID (for Clerk tokens)
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          userId = payload.sub || payload.user_id;
+          console.log("Extracted user ID from token:", userId);
+        }
+      } catch (e) {
+        console.log("Could not extract user ID from token:", e);
+      }
+    }
+
+    if (!userId) {
+      console.log("Could not determine user ID");
+      return new Response(
+        JSON.stringify({ error: "Could not verify user identity" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check user's plan in profiles table
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', userId)
+      .single();
+
+    if (profileError) {
+      console.log("Error fetching profile:", profileError);
+      // If profile doesn't exist, treat as free user
+    }
+
+    const userPlan = profile?.plan || 'free';
+    console.log("User plan:", userPlan);
+
+    // Check if user has pro or curago plan
+    if (userPlan !== 'pro' && userPlan !== 'curago') {
+      console.log("User does not have Pro plan, blocking AI analysis");
+      return new Response(
+        JSON.stringify({ error: "AI analysis requires Pro subscription" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY not configured");

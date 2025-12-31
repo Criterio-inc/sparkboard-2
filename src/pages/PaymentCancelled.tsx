@@ -3,8 +3,11 @@ import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { XCircle, ArrowLeft, Sparkles } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const PaymentCancelled = () => {
+  const { t } = useLanguage();
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
       <Navigation />
@@ -16,31 +19,30 @@ const PaymentCancelled = () => {
               <XCircle className="w-20 h-20 text-orange-500" />
             </div>
             <CardTitle className="text-3xl font-bold text-orange-800">
-              Betalning avbruten
+              {t('payment.cancelled.title')}
             </CardTitle>
             <CardDescription className="text-lg mt-2">
-              Ingen betalning har genomförts
+              {t('payment.cancelled.description')}
             </CardDescription>
           </CardHeader>
           
           <CardContent className="text-center space-y-6 pt-6">
             <p className="text-gray-600">
-              Betalningen avbröts och ditt konto har inte debiterats.
-              Du kan försöka igen när du är redo.
+              {t('payment.cancelled.info')}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link to="/upgrade">
                 <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white">
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Försök igen
+                  {t('payment.cancelled.tryAgain')}
                 </Button>
               </Link>
               
               <Link to="/dashboard">
                 <Button variant="outline">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Tillbaka till Dashboard
+                  {t('payment.cancelled.backToDashboard')}
                 </Button>
               </Link>
             </div>

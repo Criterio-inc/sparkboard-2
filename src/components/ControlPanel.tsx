@@ -6,9 +6,13 @@ import {
   SkipForward, 
   Sparkles, 
   FileText,
-  Import
+  Import,
+  Lock
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 interface ControlPanelProps {
   isTimerRunning: boolean;
@@ -30,6 +34,21 @@ export const ControlPanel = ({
   canGoNext,
 }: ControlPanelProps) => {
   const { t } = useLanguage();
+  const { isPro, isCuragoUser } = useSubscription();
+  const { toast } = useToast();
+  
+  const canUseAI = isPro || isCuragoUser;
+
+  const handleAIClick = () => {
+    if (canUseAI) {
+      onAIAnalysis();
+    } else {
+      toast({
+        title: t('ai.proRequired'),
+        description: t('ai.proRequiredDesc'),
+      });
+    }
+  };
   
   return (
     <Card className="shadow-[var(--shadow-card)]">
@@ -76,12 +95,25 @@ export const ControlPanel = ({
           </Button>
 
           <Button
-            onClick={onAIAnalysis}
+            onClick={handleAIClick}
             variant="accent"
             size="sm"
-            className="h-auto py-3 flex-col gap-2 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--primary-glow))] hover:shadow-[var(--shadow-button-hover)] group"
+            className={`h-auto py-3 flex-col gap-2 relative group ${
+              canUseAI 
+                ? 'bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--primary-glow))] hover:shadow-[var(--shadow-button-hover)]' 
+                : 'opacity-75'
+            }`}
           >
-            <Sparkles className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+            {!canUseAI && (
+              <Badge className="absolute -top-2 -right-2 bg-yellow-500 text-white text-[10px] px-1.5 py-0.5">
+                Pro
+              </Badge>
+            )}
+            {canUseAI ? (
+              <Sparkles className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+            ) : (
+              <Lock className="w-4 h-4" />
+            )}
             <span className="text-xs font-semibold">{t('control.aiAnalysis')}</span>
           </Button>
 

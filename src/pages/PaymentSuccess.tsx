@@ -7,11 +7,13 @@ import { CheckCircle2, Sparkles, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@clerk/clerk-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useUser();
+  const { t } = useLanguage();
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -40,8 +42,8 @@ const PaymentSuccess = () => {
         // Wait a moment before redirecting to ensure profile updated
         setTimeout(() => {
           toast({
-            title: '🎉 Välkommen till Pro!',
-            description: 'Du kan nu skapa obegränsat med workshops',
+            title: `🎉 ${t('payment.success.welcome')}`,
+            description: t('payment.success.welcomeDesc'),
           });
           navigate('/dashboard');
         }, 1500);
@@ -55,7 +57,7 @@ const PaymentSuccess = () => {
             checkSubscription(2);
           }, 2000);
         } else {
-          setError('Kunde inte verifiera prenumerationen. Försöker igen...');
+          setError(t('payment.success.verifyError'));
           setChecking(false);
           // Still redirect after error, profile may have updated
           setTimeout(() => {
@@ -66,7 +68,7 @@ const PaymentSuccess = () => {
     };
 
     checkSubscription();
-  }, [navigate, toast, user, retryCount]);
+  }, [navigate, toast, user, retryCount, t]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
@@ -83,10 +85,10 @@ const PaymentSuccess = () => {
               )}
             </div>
             <CardTitle className="text-3xl font-bold text-green-800">
-              Betalning genomförd!
+              {t('payment.success.title')}
             </CardTitle>
             <CardDescription className="text-lg mt-2">
-              Tack för att du uppgraderade till Pro
+              {t('payment.success.description')}
             </CardDescription>
           </CardHeader>
           
@@ -94,22 +96,22 @@ const PaymentSuccess = () => {
             <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
               <p className="text-green-800 font-medium flex items-center justify-center gap-2">
                 <Sparkles className="w-5 h-5" />
-                Du har nu tillgång till alla Pro-funktioner!
+                {t('payment.success.features')}
               </p>
             </div>
 
             <div className="space-y-2 text-left">
               <p className="flex items-center gap-2 text-gray-700">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
-                Obegränsat antal workshops
+                {t('payment.success.unlimitedWorkshops')}
               </p>
               <p className="flex items-center gap-2 text-gray-700">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
-                Obegränsat antal deltagare
+                {t('payment.success.unlimitedParticipants')}
               </p>
               <p className="flex items-center gap-2 text-gray-700">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
-                AI-analys av resultaten
+                {t('payment.success.aiAnalysis')}
               </p>
             </div>
 
@@ -121,14 +123,14 @@ const PaymentSuccess = () => {
 
             {checking ? (
               <p className="text-gray-600 text-sm animate-pulse">
-                Uppdaterar ditt konto{retryCount > 0 && ' (försöker igen)'}...
+                {retryCount > 0 ? t('payment.success.retrying') : t('payment.success.updating')}
               </p>
             ) : (
               <Button 
                 onClick={() => navigate('/dashboard')}
                 className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white"
               >
-                Gå till Dashboard
+                {t('payment.success.goToDashboard')}
               </Button>
             )}
           </CardContent>
