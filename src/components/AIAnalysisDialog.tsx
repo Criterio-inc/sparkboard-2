@@ -286,7 +286,7 @@ export const AIAnalysisDialog = ({
             </ul>
             
             <Link to="/upgrade" onClick={() => onOpenChange(false)}>
-              <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white">
+              <Button className="bg-gradient-to-r from-accent to-secondary text-accent-foreground">
                 <Sparkles className="w-4 h-4 mr-2" />
                 {t('ai.upgradeNow')}
               </Button>

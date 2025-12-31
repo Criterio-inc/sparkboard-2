@@ -84,22 +84,21 @@ const AccountSettings = () => {
 
   const getPlanBadge = () => {
     if (isCuragoUser) {
-      return <Badge className="bg-[#5A9BD5] text-white">🏢 Curago Enterprise</Badge>;
+      return <Badge className="bg-curago text-white">🏢 Curago Enterprise</Badge>;
     }
     if (isPro) {
-      return <Badge className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white">⭐ Pro</Badge>;
+      return <Badge className="bg-gradient-to-r from-accent to-secondary text-white">⭐ Pro</Badge>;
     }
     return <Badge variant="secondary">🆓 Free</Badge>;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h1 className="text-3xl font-bold mb-8">{t('account.title')}</h1>
 
-        {/* Account Info */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>{t('account.profile')}</CardTitle>
@@ -117,7 +116,6 @@ const AccountSettings = () => {
           </CardContent>
         </Card>
 
-        {/* Subscription Info */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -142,7 +140,6 @@ const AccountSettings = () => {
               )}
             </div>
 
-            {/* Free User - Upgrade CTA */}
             {isFree && (
               <>
                 <Alert>
@@ -153,7 +150,7 @@ const AccountSettings = () => {
                 </Alert>
                 
                 <Link to="/upgrade">
-                  <Button className="w-full bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white">
+                  <Button className="w-full bg-gradient-to-r from-accent to-secondary text-accent-foreground">
                     <Sparkles className="w-4 h-4 mr-2" />
                     {t('account.seePlans')}
                   </Button>
@@ -161,7 +158,6 @@ const AccountSettings = () => {
               </>
             )}
 
-            {/* Pro User (Stripe) - Manage Subscription */}
             {isPro && profile?.plan_source === 'stripe' && (
               <>
                 <Alert>
@@ -217,9 +213,8 @@ const AccountSettings = () => {
               </>
             )}
 
-            {/* Curago Enterprise User */}
             {isCuragoUser && (
-              <Alert className="bg-[#5A9BD5]/10 border-[#5A9BD5]">
+              <Alert className="bg-curago/10 border-curago">
                 <AlertDescription>
                   <p className="font-medium">🏢 {t('account.enterpriseTitle')}</p>
                   <p className="text-sm mt-1">
@@ -231,7 +226,6 @@ const AccountSettings = () => {
           </CardContent>
         </Card>
 
-        {/* Plan Features */}
         <Card>
           <CardHeader>
             <CardTitle>{t('account.featuresTitle')}</CardTitle>
@@ -239,7 +233,7 @@ const AccountSettings = () => {
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${isPro || isCuragoUser ? 'bg-green-500' : 'bg-gray-400'}`} />
+                <div className={`w-2 h-2 rounded-full ${isPro || isCuragoUser ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
                 <span className={isPro || isCuragoUser ? '' : 'text-muted-foreground'}>
                   {isPro || isCuragoUser ? t('account.unlimitedWorkshops') : t('account.activeWorkshops', { count: '1' })}
                 </span>
@@ -249,13 +243,13 @@ const AccountSettings = () => {
                 <span>{t('account.unlimitedParticipants')}</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${isPro || isCuragoUser ? 'bg-green-500' : 'bg-gray-400'}`} />
+                <div className={`w-2 h-2 rounded-full ${isPro || isCuragoUser ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
                 <span className={isPro || isCuragoUser ? '' : 'text-muted-foreground'}>
                   {t('account.aiAnalysis')} {!isPro && !isCuragoUser && t('account.proOnly')}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${isPro || isCuragoUser ? 'bg-green-500' : 'bg-gray-400'}`} />
+                <div className={`w-2 h-2 rounded-full ${isPro || isCuragoUser ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
                 <span className={isPro || isCuragoUser ? '' : 'text-muted-foreground'}>
                   {t('account.prioritySupport')} {!isPro && !isCuragoUser && t('account.proOnly')}
                 </span>

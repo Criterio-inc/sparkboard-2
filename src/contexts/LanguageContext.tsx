@@ -185,6 +185,8 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.login': 'Logga in',
     'nav.logout': 'Logga ut',
     'nav.myWorkshops': 'Mina Workshops',
+    'nav.account': 'Konto',
+    'nav.upgrade': 'Uppgradera',
     
     // FACILITATOR CONTROL
     'facilitator.control': 'Facilitator Control',
@@ -336,8 +338,9 @@ Struktur: Använd tydliga rubriker (##) och punktlistor för maximal läsbarhet.
     // FOOTER
     'footer.privacy': 'Integritetspolicy',
     'footer.terms': 'Användarvillkor',
-    'footer.cookies': 'Cookie-policy',
+    'footer.cookies': 'Cookies',
     'footer.contact': 'Kontakt',
+    'footer.rights': 'Alla rättigheter förbehållna.',
     'footer.copyright': '© 2025 Sparkboard. Alla rättigheter förbehållna.',
     
     // NOT FOUND
@@ -700,6 +703,8 @@ Struktur: Använd tydliga rubriker (##) och punktlistor för maximal läsbarhet.
     'nav.login': 'Log in',
     'nav.logout': 'Log out',
     'nav.myWorkshops': 'My Workshops',
+    'nav.account': 'Account',
+    'nav.upgrade': 'Upgrade',
     
     // FACILITATOR CONTROL
     'facilitator.control': 'Facilitator Control',
@@ -851,8 +856,9 @@ Structure: Use clear headings (##) and bullet points for maximum readability.`,
     // FOOTER
     'footer.privacy': 'Privacy Policy',
     'footer.terms': 'Terms of Service',
-    'footer.cookies': 'Cookie Policy',
+    'footer.cookies': 'Cookies',
     'footer.contact': 'Contact',
+    'footer.rights': 'All rights reserved.',
     'footer.copyright': '© 2025 Sparkboard. All rights reserved.',
     
     // NOT FOUND
