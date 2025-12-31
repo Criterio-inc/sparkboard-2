@@ -59,7 +59,7 @@ export const UpgradeToPro = () => {
         {/* FREE PLAN */}
         <Card className={plan === 'free' ? 'ring-2 ring-primary/50' : 'opacity-75'}>
           <CardHeader>
-            <CardTitle>Free</CardTitle>
+            <CardTitle>Sparkboard Free</CardTitle>
             <CardDescription>
               <span className="text-3xl font-bold text-foreground">0 SEK</span>
               <span className="text-muted-foreground">/alltid</span>
@@ -73,7 +73,7 @@ export const UpgradeToPro = () => {
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>Obegränsat deltagare</span>
+                <span>Max 5 deltagare per workshop</span>
               </li>
               <li className="flex items-center gap-2">
                 <X className="w-5 h-5 text-red-500 flex-shrink-0" />
@@ -100,7 +100,7 @@ export const UpgradeToPro = () => {
           onClick={() => setSelectedPlan('monthly')}
         >
           <CardHeader>
-            <CardTitle>Månadsvis</CardTitle>
+            <CardTitle>Sparkboard Pro Monthly</CardTitle>
             <CardDescription>
               <span className="text-3xl font-bold text-foreground">99 SEK</span>
               <span className="text-muted-foreground">/månad</span>
@@ -136,12 +136,12 @@ export const UpgradeToPro = () => {
           onClick={() => setSelectedPlan('yearly')}
         >
           <div className="absolute -top-3 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-            Spara 99 SEK
+            Spara 238 SEK
           </div>
           <CardHeader>
-            <CardTitle>Årlig</CardTitle>
+            <CardTitle>Sparkboard Pro Yearly</CardTitle>
             <CardDescription>
-              <span className="text-3xl font-bold text-foreground">1089 SEK</span>
+              <span className="text-3xl font-bold text-foreground">950 SEK</span>
               <span className="text-muted-foreground">/år</span>
             </CardDescription>
           </CardHeader>
@@ -165,7 +165,7 @@ export const UpgradeToPro = () => {
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span className="font-bold">1 månad gratis!</span>
+                <span className="font-bold">Spara nästan 2 månader!</span>
               </li>
             </ul>
           </CardContent>
@@ -186,7 +186,7 @@ export const UpgradeToPro = () => {
                 Laddar...
               </>
             ) : (
-              `Uppgradera nu - ${selectedPlan === 'monthly' ? '99 SEK/mån' : '1089 SEK/år'}`
+              `Uppgradera nu - ${selectedPlan === 'monthly' ? '99 SEK/mån' : '950 SEK/år'}`
             )}
           </Button>
         </div>
