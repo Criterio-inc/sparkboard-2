@@ -17,6 +17,7 @@ import Upgrade from "./pages/Upgrade";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import AccountSettings from "./pages/AccountSettings";
+import Privacy from "./pages/Privacy";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/account" element={<AuthWrapper><AccountSettings /></AuthWrapper>} />
             <Route path="/payment-success" element={<AuthWrapper><PaymentSuccess /></AuthWrapper>} />
             <Route path="/payment-cancelled" element={<AuthWrapper><PaymentCancelled /></AuthWrapper>} />
+            <Route path="/privacy" element={<Privacy />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
