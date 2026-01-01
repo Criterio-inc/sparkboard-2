@@ -45,7 +45,7 @@ const CreateWorkshop = () => {
   const { user } = useProfile();
   const { isFree, isPro } = useSubscription();
   const { canCreateMore, activeWorkshops, limit } = useWorkshopLimit();
-  const { invokeWithAuth, getAuthenticatedClient } = useAuthenticatedFunctions();
+  const { invokeWithAuth } = useAuthenticatedFunctions();
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
@@ -69,63 +69,34 @@ const CreateWorkshop = () => {
       }
 
       try {
-        // Use authenticated client to pass RLS policies
-        const authClient = await getAuthenticatedClient();
-        
-        // Hämta workshop från Supabase
-        const { data: workshopData, error: workshopError } = await authClient
-          .from('workshops')
-          .select('*')
-          .eq('id', workshopId)
-          .single();
+        // Use edge function to load workshop (Clerk JWT verified there)
+        const { data, error } = await invokeWithAuth('workshop-operations', {
+          operation: 'get-workshop',
+          workshopId: workshopId
+        });
 
-        if (workshopError || !workshopData) {
+        if (error || data?.error || !data?.workshop) {
+          console.error("Fel vid laddning av workshop:", error || data?.error);
           setIsLoadingResponses(false);
           return;
         }
 
-        // Hämta boards med frågor
-        const { data: boardsData } = await authClient
-          .from('boards')
-          .select('*')
-          .eq('workshop_id', workshopId)
-          .order('order_index');
+        const workshopData = data.workshop;
+        const boardsData = data.boards || [];
 
-        const boardsWithQuestions = await Promise.all(
-          (boardsData || []).map(async (board) => {
-            const { data: questions } = await authClient
-              .from('questions')
-              .select('*')
-              .eq('board_id', board.id)
-              .order('order_index');
+        const boardsWithQuestions = boardsData.map((board: any) => ({
+          id: board.id,
+          title: board.title,
+          timeLimit: board.time_limit,
+          colorIndex: board.color_index,
+          questions: (board.questions || []).map((q: any) => ({
+            id: q.id,
+            title: q.title,
+          })),
+          orderIndex: board.order_index,
+        }));
 
-            return {
-              id: board.id,
-              title: board.title,
-              timeLimit: board.time_limit,
-              colorIndex: board.color_index,
-              questions: (questions || []).map(q => ({
-                id: q.id,
-                title: q.title,
-              })),
-              orderIndex: board.order_index,
-            };
-          })
-        );
-
-        // Check if workshop has any participant responses
-        const questionIds = boardsWithQuestions.flatMap(b => b.questions.map(q => q.id));
-        if (questionIds.length > 0) {
-          const { data: notesData, error: notesError } = await authClient
-            .from('notes')
-            .select('id')
-            .in('question_id', questionIds)
-            .limit(1);
-
-          if (!notesError && notesData && notesData.length > 0) {
-            setHasResponses(true);
-          }
-        }
+        setHasResponses(data.hasResponses || false);
 
         setWorkshop({
           title: workshopData.name,

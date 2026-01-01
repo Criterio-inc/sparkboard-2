@@ -207,6 +207,123 @@ serve(async (req) => {
     logStep("Operation requested", { operation, workshopId });
 
     switch (operation) {
+      case 'list-workshops': {
+        // List all workshops for the authenticated user
+        const { data: workshops, error } = await supabase
+          .from('workshops')
+          .select('*')
+          .eq('facilitator_id', userId)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Get board counts for each workshop
+        const workshopIds = (workshops || []).map(w => w.id);
+        let countsByWorkshop: Record<string, number> = {};
+        
+        if (workshopIds.length > 0) {
+          const { data: allBoards } = await supabase
+            .from('boards')
+            .select('id, workshop_id')
+            .in('workshop_id', workshopIds);
+          
+          countsByWorkshop = (allBoards || []).reduce((acc, b) => {
+            acc[b.workshop_id] = (acc[b.workshop_id] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+        }
+
+        const workshopsWithCounts = (workshops || []).map(workshop => ({
+          ...workshop,
+          boardCount: countsByWorkshop[workshop.id] || 0
+        }));
+
+        logStep("Workshops listed", { count: workshopsWithCounts.length });
+
+        return new Response(
+          JSON.stringify({ success: true, workshops: workshopsWithCounts }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case 'get-workshop': {
+        if (!workshopId) {
+          return new Response(
+            JSON.stringify({ error: 'Workshop ID required' }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Get workshop with ownership check
+        const { data: workshop, error: workshopError } = await supabase
+          .from('workshops')
+          .select('*')
+          .eq('id', workshopId)
+          .single();
+
+        if (workshopError || !workshop) {
+          return new Response(
+            JSON.stringify({ error: 'Workshop not found' }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Verify ownership
+        if (workshop.facilitator_id !== userId) {
+          return new Response(
+            JSON.stringify({ error: 'Access denied' }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Get boards with questions
+        const { data: boardsData } = await supabase
+          .from('boards')
+          .select('*')
+          .eq('workshop_id', workshopId)
+          .order('order_index');
+
+        const boardsWithQuestions = await Promise.all(
+          (boardsData || []).map(async (board) => {
+            const { data: questions } = await supabase
+              .from('questions')
+              .select('*')
+              .eq('board_id', board.id)
+              .order('order_index');
+
+            return {
+              ...board,
+              questions: questions || [],
+            };
+          })
+        );
+
+        // Check if workshop has any participant responses
+        const questionIds = boardsWithQuestions.flatMap(b => b.questions.map((q: any) => q.id));
+        let hasResponses = false;
+        if (questionIds.length > 0) {
+          const { data: notesData } = await supabase
+            .from('notes')
+            .select('id')
+            .in('question_id', questionIds)
+            .limit(1);
+
+          hasResponses = !!(notesData && notesData.length > 0);
+        }
+
+        logStep("Workshop retrieved", { workshopId, boardCount: boardsWithQuestions.length });
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            workshop, 
+            boards: boardsWithQuestions,
+            hasResponses 
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       case 'create-workshop':
       case 'save-draft':
       case 'activate-workshop': {
