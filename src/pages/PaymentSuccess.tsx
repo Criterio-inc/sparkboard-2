@@ -4,14 +4,17 @@ import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Sparkles, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useUser();
+  const { getToken } = useAuth();
+  const { t } = useLanguage();
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -22,11 +25,13 @@ const PaymentSuccess = () => {
       
       try {
         console.log(`🔄 Checking subscription (attempt ${attempt})...`);
+        const token = await getToken();
         const { data, error } = await supabase.functions.invoke('check-subscription', {
           body: { 
             userEmail: user.primaryEmailAddress?.emailAddress,
             userId: user.id
-          }
+          },
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
 
         if (error) {
@@ -37,27 +42,24 @@ const PaymentSuccess = () => {
         console.log('✅ Subscription check result:', data);
         setChecking(false);
 
-        // Wait a moment before redirecting to ensure profile updated
         setTimeout(() => {
           toast({
-            title: '🎉 Välkommen till Pro!',
-            description: 'Du kan nu skapa obegränsat med workshops',
+            title: `🎉 ${t('payment.success.welcome')}`,
+            description: t('payment.success.welcomeDesc'),
           });
           navigate('/dashboard');
         }, 1500);
       } catch (err) {
         console.error('Error checking subscription:', err);
         
-        // Retry once after 2 seconds if first attempt fails
         if (attempt === 1 && retryCount === 0) {
           setRetryCount(1);
           setTimeout(() => {
             checkSubscription(2);
           }, 2000);
         } else {
-          setError('Kunde inte verifiera prenumerationen. Försöker igen...');
+          setError(t('payment.success.verifyError'));
           setChecking(false);
-          // Still redirect after error, profile may have updated
           setTimeout(() => {
             navigate('/dashboard');
           }, 3000);
@@ -66,14 +68,14 @@ const PaymentSuccess = () => {
     };
 
     checkSubscription();
-  }, [navigate, toast, user, retryCount]);
+  }, [navigate, toast, user, retryCount, t]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <Card className="border-2 border-green-200 shadow-xl">
+        <Card className="border-2 border-green-200 dark:border-green-800 shadow-xl">
           <CardHeader className="text-center pb-2">
             <div className="flex justify-center mb-4">
               {checking ? (
@@ -82,53 +84,53 @@ const PaymentSuccess = () => {
                 <CheckCircle2 className="w-20 h-20 text-green-600" />
               )}
             </div>
-            <CardTitle className="text-3xl font-bold text-green-800">
-              Betalning genomförd!
+            <CardTitle className="text-3xl font-bold text-green-800 dark:text-green-400">
+              {t('payment.success.title')}
             </CardTitle>
             <CardDescription className="text-lg mt-2">
-              Tack för att du uppgraderade till Pro
+              {t('payment.success.description')}
             </CardDescription>
           </CardHeader>
           
           <CardContent className="text-center space-y-6 pt-6">
-            <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
-              <p className="text-green-800 font-medium flex items-center justify-center gap-2">
+            <div className="bg-green-50 dark:bg-green-950/30 border-l-4 border-green-500 p-4 rounded">
+              <p className="text-green-800 dark:text-green-300 font-medium flex items-center justify-center gap-2">
                 <Sparkles className="w-5 h-5" />
-                Du har nu tillgång till alla Pro-funktioner!
+                {t('payment.success.features')}
               </p>
             </div>
 
             <div className="space-y-2 text-left">
-              <p className="flex items-center gap-2 text-gray-700">
+              <p className="flex items-center gap-2 text-foreground">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
-                Obegränsat antal workshops
+                {t('payment.success.unlimitedWorkshops')}
               </p>
-              <p className="flex items-center gap-2 text-gray-700">
+              <p className="flex items-center gap-2 text-foreground">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
-                Obegränsat antal deltagare
+                {t('payment.success.unlimitedParticipants')}
               </p>
-              <p className="flex items-center gap-2 text-gray-700">
+              <p className="flex items-center gap-2 text-foreground">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
-                AI-analys av resultaten
+                {t('payment.success.aiAnalysis')}
               </p>
             </div>
 
             {error && (
-              <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded text-sm text-yellow-800">
+              <div className="bg-yellow-50 dark:bg-yellow-950/30 border-l-4 border-yellow-500 p-3 rounded text-sm text-yellow-800 dark:text-yellow-200">
                 {error}
               </div>
             )}
 
             {checking ? (
-              <p className="text-gray-600 text-sm animate-pulse">
-                Uppdaterar ditt konto{retryCount > 0 && ' (försöker igen)'}...
+              <p className="text-muted-foreground text-sm animate-pulse">
+                {retryCount > 0 ? t('payment.success.retrying') : t('payment.success.updating')}
               </p>
             ) : (
               <Button 
                 onClick={() => navigate('/dashboard')}
-                className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white"
+                className="bg-gradient-to-r from-accent to-secondary text-accent-foreground"
               >
-                Gå till Dashboard
+                {t('payment.success.goToDashboard')}
               </Button>
             )}
           </CardContent>

@@ -1,4 +1,4 @@
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,6 +19,7 @@ export interface UserProfile {
 
 export const useProfile = () => {
   const { user, isLoaded: isUserLoaded } = useUser();
+  const { getToken } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,46 +34,46 @@ export const useProfile = () => {
 
     const syncProfile = async () => {
       try {
-        // Försök hämta befintlig profil
-        const { data: existingProfile, error: fetchError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .maybeSingle();
+        // Use check-subscription edge function to get/create profile
+        // This edge function verifies Clerk JWT and uses service role to access DB
+        const token = await getToken();
+        
+        const { data, error: fnError } = await supabase.functions.invoke('check-subscription', {
+          body: { 
+            userEmail: user.primaryEmailAddress?.emailAddress || '',
+            userId: user.id
+          },
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
 
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          throw fetchError;
+        if (fnError) {
+          console.error('❌ Profile sync via check-subscription error:', fnError);
+          // Fallback: try to create profile via insert (will work due to service role in edge function)
+          throw fnError;
         }
 
-        if (!existingProfile) {
-          // Skapa ny profil
-          const userEmail = user.primaryEmailAddress?.emailAddress || '';
-          const isCuragoEmail = userEmail.toLowerCase().endsWith('@curago.se');
-          
-          const newProfile = {
+        // The check-subscription function returns the profile data
+        if (data?.profile) {
+          setProfile(data.profile as UserProfile);
+          console.log('✅ Profil laddad via check-subscription:', data.profile);
+        } else {
+          console.log('⚠️ No profile returned, creating fallback...');
+          // Create basic profile object from Clerk user data
+          const basicProfile: UserProfile = {
             id: user.id,
-            email: userEmail,
+            email: user.primaryEmailAddress?.emailAddress || '',
             first_name: user.firstName,
             last_name: user.lastName,
             image_url: user.imageUrl,
             subscription_tier: 'free',
             subscription_status: 'active',
-            plan: isCuragoEmail ? 'curago' : 'free',
-            plan_source: isCuragoEmail ? 'curago_domain' : null,
+            stripe_customer_id: null,
+            stripe_subscription_id: null,
+            subscription_current_period_end: null,
+            plan: data?.plan || 'free',
+            plan_source: data?.planSource || null,
           };
-
-          const { data, error: insertError } = await supabase
-            .from('profiles')
-            .insert(newProfile)
-            .select()
-            .single();
-
-          if (insertError) throw insertError;
-          setProfile(data as UserProfile);
-          console.log('✅ Profil skapad:', data);
-        } else {
-          setProfile(existingProfile as UserProfile);
-          console.log('✅ Profil laddad:', existingProfile);
+          setProfile(basicProfile);
         }
 
         setLoading(false);
@@ -84,7 +85,7 @@ export const useProfile = () => {
     };
 
     syncProfile();
-  }, [user, isUserLoaded]);
+  }, [user, isUserLoaded, getToken]);
 
   // Auto-check subscription status once after profile loads
   useEffect(() => {
@@ -101,11 +102,13 @@ export const useProfile = () => {
     const checkSubscription = async () => {
       try {
         console.log('🔄 Auto-checking subscription status...');
+        const token = await getToken();
         const { data, error } = await supabase.functions.invoke('check-subscription', {
           body: { 
             userEmail: user.primaryEmailAddress!.emailAddress,
             userId: user.id
-          }
+          },
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
 
         if (error) {

@@ -136,97 +136,62 @@ const JoinWorkshop = () => {
 
     setIsLoading(true);
 
-    console.log("🔍 === SÖKER WORKSHOP I SUPABASE ===");
+    console.log("🔍 === ANSLUTER TILL WORKSHOP (VIA EDGE FUNCTION) ===");
     console.log("🔑 Angiven kod:", enteredCode);
 
     try {
-      // Sök efter workshop i Supabase (istället för localStorage)
-      const { data: workshop, error } = await supabase
-        .from('workshops')
-        .select('*')
-        .eq('code', enteredCode)
-        .single();
+      // Use edge function for secure join
+      const { data, error } = await supabase.functions.invoke('join-workshop', {
+        body: {
+          workshopCode: enteredCode,
+          participantName: participantName.trim(),
+        },
+      });
 
-      if (error || !workshop) {
-        setIsLoading(false);
-        console.log("❌ WORKSHOP HITTADES INTE I SUPABASE");
-        toast({
-          title: "Workshop-koden hittades inte",
-          description: "Kontrollera att koden är korrekt och försök igen",
-          variant: "destructive",
-        });
-        return;
+      if (error) {
+        throw new Error(error.message || 'Failed to join workshop');
       }
 
-      console.log("✅ WORKSHOP HITTAD I SUPABASE:", workshop.name);
-
-      // Hämta boards för denna workshop
-      const { data: boards } = await supabase
-        .from('boards')
-        .select('*')
-        .eq('workshop_id', workshop.id)
-        .order('order_index');
-
-      if (!boards || boards.length === 0) {
-        setIsLoading(false);
-        toast({
-          title: "Ingen aktiv övning",
-          description: "Workshopen har inga boards än",
-          variant: "destructive",
-        });
-        return;
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to join workshop');
       }
 
-      // Spara deltagare till Supabase (istället för localStorage)
-      const colorIndex = Math.floor(Math.random() * 6);
-      const { data: participant, error: participantError } = await supabase
-        .from('participants')
-        .insert({
-          workshop_id: workshop.id,
-          name: participantName.trim(),
-          color_index: colorIndex,
-        })
-        .select()
-        .single();
-
-      if (participantError || !participant) {
-        setIsLoading(false);
-        console.error("❌ Kunde inte spara deltagare:", participantError);
-        toast({
-          title: "Fel",
-          description: "Kunde inte ansluta till workshop. Försök igen.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log("✅ Deltagare sparad i Supabase:", participant.name);
+      console.log("✅ Deltagare ansluten via edge function:", data.participant.name);
 
       // Spara session-data lokalt (endast för denna enhet)
       const participantSession = {
-        workshopId: workshop.id,
-        workshopCode: workshop.code,
-        participantName: participant.name,
-        participantId: participant.id,
-        joinedAt: participant.joined_at,
+        workshopId: data.workshop.id,
+        workshopCode: data.workshop.code,
+        participantName: data.participant.name,
+        participantId: data.participant.id,
+        joinedAt: data.participant.joinedAt,
       };
 
       sessionStorage.setItem('participantSession', JSON.stringify(participantSession));
 
       toast({
         title: "Välkommen!",
-        description: `Du har anslutit till "${workshop.name}"`,
+        description: `Du har anslutit till "${data.workshop.name}"`,
       });
 
       // Navigate to first board
-      const firstBoard = boards[0];
-      navigate(`/board/${workshop.id}/${firstBoard.id}`);
-    } catch (error) {
+      navigate(`/board/${data.workshop.id}/${data.firstBoardId}`);
+    } catch (error: any) {
       setIsLoading(false);
       console.error("❌ Fel vid anslutning:", error);
+      
+      let errorMessage = "Något gick fel. Försök igen.";
+      if (error.message?.includes('not found')) {
+        errorMessage = "Workshop-koden hittades inte. Kontrollera att koden är korrekt.";
+      } else if (error.message?.includes('not active')) {
+        errorMessage = "Denna workshop är inte aktiv just nu.";
+      } else if (error.message?.includes('limit')) {
+        errorMessage = "Workshopen har nått max antal deltagare.";
+      }
+      
       toast({
-        title: "Fel",
-        description: "Något gick fel. Försök igen.",
+        title: "Kunde inte ansluta",
+        description: errorMessage,
         variant: "destructive",
       });
     }

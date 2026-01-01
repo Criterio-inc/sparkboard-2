@@ -5,6 +5,7 @@ import { Users, UserPlus, Sparkles, Bot } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Footer } from "@/components/Footer";
 import heroImage from "@/assets/hero-braindrain.jpg";
 const Index = () => {
   const { t } = useLanguage();
@@ -163,6 +164,8 @@ const Index = () => {
           </div>
         </section>
       </main>
+      
+      <Footer />
     </div>
   );
 };

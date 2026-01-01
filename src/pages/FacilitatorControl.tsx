@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateWorkshopPDF } from "@/utils/pdfExport";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuthenticatedFunctions } from "@/hooks/useAuthenticatedFunctions";
 
 interface Question {
   id: string;
@@ -52,6 +53,7 @@ const FacilitatorControl = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { invokeWithAuth } = useAuthenticatedFunctions();
 
   const [currentBoardIndex, setCurrentBoardIndex] = useState(0);
   const [workshop, setWorkshop] = useState<any>(null);
@@ -68,7 +70,7 @@ const FacilitatorControl = () => {
   const [isParticipantListVisible, setIsParticipantListVisible] = useState(true);
   const [draggedNoteId, setDraggedNoteId] = useState<string | null>(null);
 
-  // Ladda workshop och boards från Supabase
+  // Ladda workshop och boards från edge function
   useEffect(() => {
     const loadWorkshop = async () => {
       if (!workshopId) return;
@@ -76,14 +78,13 @@ const FacilitatorControl = () => {
       try {
         console.log("🔄 [Facilitator] Laddar workshop:", workshopId);
 
-        // Hämta workshop
-        const { data: workshopData, error: workshopError } = await supabase
-          .from('workshops')
-          .select('*')
-          .eq('id', workshopId)
-          .single();
+        // Use edge function to load workshop (Clerk JWT verified there)
+        const { data, error } = await invokeWithAuth('workshop-operations', {
+          operation: 'get-workshop',
+          workshopId: workshopId
+        });
 
-        if (workshopError || !workshopData) {
+        if (error || data?.error || !data?.workshop) {
           toast({
             title: "Workshop saknas",
             description: "Kunde inte hitta workshopen. Återgår till dashboard.",
@@ -93,48 +94,25 @@ const FacilitatorControl = () => {
           return;
         }
 
-        setWorkshop(workshopData);
+        setWorkshop(data.workshop);
 
-        // Hämta boards
-        const { data: boardsData, error: boardsError } = await supabase
-          .from('boards')
-          .select('*')
-          .eq('workshop_id', workshopId)
-          .order('order_index');
-
-        if (boardsError) {
-          console.error("Fel vid hämtning av boards:", boardsError);
-          setBoards([]);
-          return;
-        }
-
-        // Hämta frågor för varje board
-        const boardsWithQuestions = await Promise.all(
-          (boardsData || []).map(async (board) => {
-            const { data: questions } = await supabase
-              .from('questions')
-              .select('*')
-              .eq('board_id', board.id)
-              .order('order_index');
-
-            return {
-              id: board.id,
-              title: board.title,
-              timeLimit: board.time_limit,
-              colorIndex: board.color_index,
-              questions: (questions || []).map(q => ({
-                id: q.id,
-                title: q.title,
-              })),
-            };
-          })
-        );
+        // Transform boards data
+        const boardsWithQuestions = (data.boards || []).map((board: any) => ({
+          id: board.id,
+          title: board.title,
+          timeLimit: board.time_limit,
+          colorIndex: board.color_index,
+          questions: (board.questions || []).map((q: any) => ({
+            id: q.id,
+            title: q.title,
+          })),
+        }));
 
         setBoards(boardsWithQuestions);
         setCurrentBoardIndex(0);
         setTimeRemaining((boardsWithQuestions[0]?.timeLimit || 0) * 60);
 
-        console.log("✅ [Facilitator] Workshop laddad:", workshopData.name);
+        console.log("✅ [Facilitator] Workshop laddad:", data.workshop.name);
       } catch (error) {
         console.error("Fel vid laddning av workshop:", error);
         toast({

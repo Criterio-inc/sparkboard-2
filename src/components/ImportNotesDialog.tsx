@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthenticatedFunctions } from "@/hooks/useAuthenticatedFunctions";
+import { useSubscription } from "@/hooks/useSubscription";
 import { 
   Plus, 
   Trash2, 
@@ -19,8 +21,10 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  FolderOpen
+  FolderOpen,
+  Lock
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface Note {
   id: string;
@@ -71,6 +75,10 @@ export function ImportNotesDialog({
 }: ImportNotesDialogProps) {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { invokeWithAuth } = useAuthenticatedFunctions();
+  const { isPro, isCuragoUser } = useSubscription();
+  
+  const canUseAI = isPro || isCuragoUser;
   
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
   const [categories, setCategories] = useState<CategoryItem[]>([]);
@@ -195,6 +203,16 @@ export function ImportNotesDialog({
   const enabledCategories = categories.filter(c => c.enabled && c.title.trim().length > 0);
 
   const handlePreviewClustering = async () => {
+    // Check subscription first
+    if (!canUseAI) {
+      toast({
+        title: t('ai.proRequired'),
+        description: t('ai.proRequiredDesc'),
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (selectedNotes.length === 0) {
       toast({
         title: t('import.noNotesSelected'),
@@ -217,25 +235,23 @@ export function ImportNotesDialog({
     setClusterPreview(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('cluster-notes', {
-        body: {
-          notes: selectedNotes.map(n => ({
-            id: n.id,
-            content: n.content,
-            authorName: n.authorName,
-          })),
-          categories: enabledCategories.map(c => c.title),
-          context: context.trim() || undefined,
-        },
+      const { data, error } = await invokeWithAuth('cluster-notes', {
+        notes: selectedNotes.map(n => ({
+          id: n.id,
+          content: n.content,
+          authorName: n.authorName,
+        })),
+        categories: enabledCategories.map(c => c.title),
+        context: context.trim() || undefined,
       });
 
       if (error) throw error;
 
-      if (data.error) {
+      if (data?.error) {
         throw new Error(data.error);
       }
 
-      setClusterPreview(data.clusters);
+      setClusterPreview(data?.clusters || null);
       setActiveTab("preview");
       
       toast({

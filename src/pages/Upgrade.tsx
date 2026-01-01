@@ -3,7 +3,7 @@ import { UpgradeToPro } from '@/components/UpgradeToPro';
 
 const Upgrade = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
+    <div className="min-h-screen bg-background">
       <Navigation />
       <UpgradeToPro />
     </div>
