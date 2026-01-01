@@ -87,8 +87,8 @@ const WorkshopDashboard = () => {
     } catch (error) {
       console.error('Error loading workshops:', error);
       toast({
-        title: "Kunde inte ladda workshops",
-        description: "Försök igen senare",
+        title: t('dashboard.loadFailed'),
+        description: t('dashboard.tryAgain'),
         variant: "destructive",
       });
     }
@@ -115,16 +115,16 @@ const WorkshopDashboard = () => {
       if (error) throw error;
 
       toast({
-        title: "Workshop raderad",
-        description: "Workshopen har tagits bort",
+        title: t('dashboard.workshopDeleted'),
+        description: t('dashboard.workshopDeletedDesc'),
       });
 
       loadWorkshops();
     } catch (error) {
       console.error('Error deleting workshop:', error);
       toast({
-        title: "Kunde inte radera workshop",
-        description: "Försök igen senare",
+        title: t('dashboard.deleteFailed'),
+        description: t('dashboard.tryAgain'),
         variant: "destructive",
       });
     }
@@ -159,16 +159,16 @@ const WorkshopDashboard = () => {
       if (error) throw error;
 
       toast({
-        title: "Workshop duplicerad!",
-        description: "En kopia av workshopen har skapats",
+        title: t('dashboard.workshopDuplicated'),
+        description: t('dashboard.workshopDuplicatedDesc'),
       });
 
       loadWorkshops();
     } catch (error) {
       console.error('Error duplicating workshop:', error);
       toast({
-        title: "Kunde inte duplicera workshop",
-        description: "Försök igen senare",
+        title: t('dashboard.duplicateFailed'),
+        description: t('dashboard.tryAgain'),
         variant: "destructive",
       });
     }
@@ -183,10 +183,10 @@ const WorkshopDashboard = () => {
           <div className="text-center">
             <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#19305C] mx-auto mb-6"></div>
             <h2 className="text-2xl font-semibold text-[#03122F] mb-2">
-              {isChecking ? '🔄 Kontrollerar dina workshops...' : 'Laddar...'}
+              {isChecking ? `🔄 ${t('dashboard.checking')}` : t('common.loading')}
             </h2>
             <p className="text-gray-600">
-              {isChecking ? 'Detta tar bara några sekunder' : 'Vänligen vänta'}
+              {isChecking ? t('dashboard.takesSeconds') : t('dashboard.pleaseWait')}
             </p>
           </div>
         </div>
@@ -202,14 +202,14 @@ const WorkshopDashboard = () => {
         <div className="flex items-center justify-center min-h-[80vh]">
           <div className="max-w-md bg-red-50 border-2 border-red-200 rounded-xl p-6">
             <h2 className="text-xl font-semibold text-red-800 mb-2">
-              ⚠️ Migration Error
+              ⚠️ {t('dashboard.migrationError')}
             </h2>
             <p className="text-red-700 mb-4">{error}</p>
             <button 
               onClick={() => window.location.reload()}
               className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
             >
-              Försök igen
+              {t('dashboard.tryAgain')}
             </button>
           </div>
         </div>
@@ -234,10 +234,10 @@ const WorkshopDashboard = () => {
               </svg>
               <div>
                 <h3 className="font-semibold text-green-900 mb-1">
-                  ✅ Dina workshops är nu kopplade till ditt konto!
+                  ✅ {t('dashboard.workshopsMigrated')}
                 </h3>
                 <p className="text-green-700 text-sm">
-                  {migratedCount} workshop{migratedCount > 1 ? 's' : ''} har automatiskt kopplats till din nya inloggning.
+                  {t('dashboard.workshopsMigratedDesc', { count: String(migratedCount) })}
                 </p>
               </div>
             </div>
@@ -259,7 +259,7 @@ const WorkshopDashboard = () => {
             <Link to="/upgrade">
               <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90">
                 <Sparkles className="w-5 h-5 mr-2" />
-                Uppgradera till Pro
+                {t('dashboard.upgradeForMore')}
               </Button>
             </Link>
           ) : (
@@ -276,10 +276,10 @@ const WorkshopDashboard = () => {
         {isFree && workshops.length >= 1 && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
             <p className="text-yellow-800">
-              <strong>📊 Free-plan:</strong> Du har nått gränsen på 1 workshop. 
+              <strong>📊 Free-plan:</strong> {t('dashboard.freePlanWarning')} 
               <Link to="/upgrade" className="underline ml-1 font-semibold hover:text-yellow-900">
-                Uppgradera till Pro
-              </Link> för obegränsat antal workshops!
+                {t('dashboard.upgradeForMore')}
+              </Link> {t('dashboard.forUnlimited')}
             </p>
           </div>
         )}
@@ -327,11 +327,11 @@ const WorkshopDashboard = () => {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDuplicate(workshop)}>
                           <Copy className="w-4 h-4 mr-2" />
-                          Duplicera
+                          {t('dashboard.duplicate')}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleShowQR(workshop.code)}>
                           <QrCode className="w-4 h-4 mr-2" />
-                          Visa QR
+                          {t('dashboard.showQR')}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleDelete(workshop.id)}

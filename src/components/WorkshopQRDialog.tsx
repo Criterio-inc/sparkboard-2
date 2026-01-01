@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface WorkshopQRDialogProps {
   code: string;
@@ -18,6 +19,8 @@ interface WorkshopQRDialogProps {
 }
 
 export const WorkshopQRDialog = ({ code, open, onOpenChange }: WorkshopQRDialogProps) => {
+  const { t } = useLanguage();
+
   const getJoinUrl = () => {
     return `${window.location.origin}/join?code=${code}`;
   };
@@ -50,9 +53,9 @@ export const WorkshopQRDialog = ({ code, open, onOpenChange }: WorkshopQRDialogP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Workshop QR-kod</DialogTitle>
+          <DialogTitle>{t('qr.title')}</DialogTitle>
           <DialogDescription>
-            Dela denna kod eller QR-kod med dina deltagare
+            {t('qr.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -67,19 +70,19 @@ export const WorkshopQRDialog = ({ code, open, onOpenChange }: WorkshopQRDialogP
               onClick={downloadQRCode}
               className="mt-2"
             >
-              Ladda ner QR-kod
+              {t('qr.download')}
             </Button>
           </div>
 
           <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-2">Workshop-kod</p>
+            <p className="text-sm text-muted-foreground mb-2">{t('qr.code')}</p>
             <p className="text-4xl font-bold font-mono tracking-wider text-primary">
               {code}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label>Deltagarlänk</Label>
+            <Label>{t('qr.participantLink')}</Label>
             <div className="flex gap-2">
               <Input value={getJoinUrl()} readOnly className="font-mono text-sm" />
               <Button
@@ -87,12 +90,12 @@ export const WorkshopQRDialog = ({ code, open, onOpenChange }: WorkshopQRDialogP
                 onClick={() => {
                   navigator.clipboard.writeText(getJoinUrl());
                   toast({
-                    title: "Kopierad!",
-                    description: "Länken har kopierats",
+                    title: t('qr.copied'),
+                    description: t('qr.copiedDesc'),
                   });
                 }}
               >
-                Kopiera
+                {t('qr.copy')}
               </Button>
             </div>
           </div>
