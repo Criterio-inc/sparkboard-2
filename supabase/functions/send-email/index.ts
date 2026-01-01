@@ -23,7 +23,7 @@ serve(async (req) => {
       throw new Error("RESEND_API_KEY not configured");
     }
 
-    const { to, subject, html, from = "Sparkboard <no-reply@send.sparkboard.eu>" }: EmailRequest = await req.json();
+    const { to, subject, html, from = "Sparkboard <no-reply@sparkboard.eu>" }: EmailRequest = await req.json();
 
     console.log("[SEND-EMAIL] Sending email to:", to, "Subject:", subject);
 
