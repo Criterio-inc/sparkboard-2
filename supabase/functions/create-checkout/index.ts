@@ -6,6 +6,34 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function verifyClerkToken(authHeader: string | null): string {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new Error('Missing authorization header');
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  
+  try {
+    // Decode JWT to get user ID (for Clerk tokens)
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid token format');
+    }
+    
+    const payload = JSON.parse(atob(parts[1]));
+    const userId = payload.sub || payload.user_id;
+    
+    if (!userId) {
+      throw new Error('Invalid token - no user ID');
+    }
+    
+    return userId;
+  } catch (error) {
+    console.error('Auth failed:', error);
+    throw new Error('Unauthorized');
+  }
+}
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
@@ -19,10 +47,22 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
+    // Verify authentication
+    const userId = verifyClerkToken(req.headers.get('Authorization'));
+    logStep("User authenticated", { userId });
+
     const { priceId, userEmail } = await req.json();
     
-    if (!priceId) throw new Error("Price ID is required");
-    if (!userEmail) throw new Error("User email is required");
+    // Input validation
+    if (!priceId || typeof priceId !== 'string' || priceId.length > 100) {
+      throw new Error("Invalid price ID");
+    }
+    if (!userEmail || typeof userEmail !== 'string' || !userEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      throw new Error("Invalid email");
+    }
+    if (userEmail.length > 255) {
+      throw new Error("Email too long");
+    }
     
     logStep("Request data", { priceId, email: userEmail });
 
