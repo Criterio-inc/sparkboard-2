@@ -39,54 +39,79 @@ const JoinWorkshop = () => {
 
   const startQRScanner = async () => {
     setShowScanner(true);
-    setIsScanning(true);
-
-    try {
-      const html5QrCode = new Html5Qrcode("qr-reader");
-      scannerRef.current = html5QrCode;
-
-      await html5QrCode.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 }
-        },
-        (decodedText) => {
-          // Extract code from URL or use directly
-          let code = "";
-          try {
-            const url = new URL(decodedText);
-            code = url.searchParams.get("code") || "";
-          } catch {
-            // If not a URL, assume it's the code directly
-            code = decodedText;
-          }
-
-          if (code && code.length === 6) {
-            setWorkshopCode(code.toUpperCase());
-            stopQRScanner();
-            toast({
-              title: t('join.qrScanned'),
-              description: t('join.qrCode', { code: code.toUpperCase() }),
-            });
-          }
-        },
-        (errorMessage) => {
-          // Ignore scanning errors (happens frequently)
-          console.debug("QR scanning:", errorMessage);
-        }
-      );
-    } catch (err) {
-      console.error("Error starting QR scanner:", err);
-      toast({
-        title: t('join.cameraError'),
-        description: t('join.cameraPermission'),
-        variant: "destructive",
-      });
-      setShowScanner(false);
-      setIsScanning(false);
-    }
   };
+
+  // Start scanner when dialog is shown and DOM element exists
+  useEffect(() => {
+    if (!showScanner) return;
+    
+    // Wait for DOM to be ready
+    const initScanner = async () => {
+      // Small delay to ensure dialog content is rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const element = document.getElementById("qr-reader");
+      if (!element) {
+        console.error("QR reader element not found");
+        toast({
+          title: t('join.cameraError'),
+          description: t('join.cameraPermission'),
+          variant: "destructive",
+        });
+        setShowScanner(false);
+        return;
+      }
+
+      try {
+        setIsScanning(true);
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        scannerRef.current = html5QrCode;
+
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 }
+          },
+          (decodedText) => {
+            // Extract code from URL or use directly
+            let code = "";
+            try {
+              const url = new URL(decodedText);
+              code = url.searchParams.get("code") || "";
+            } catch {
+              // If not a URL, assume it's the code directly
+              code = decodedText;
+            }
+
+            if (code && code.length === 6) {
+              setWorkshopCode(code.toUpperCase());
+              stopQRScanner();
+              toast({
+                title: t('join.qrScanned'),
+                description: t('join.qrCode', { code: code.toUpperCase() }),
+              });
+            }
+          },
+          (errorMessage) => {
+            // Ignore scanning errors (happens frequently)
+            console.debug("QR scanning:", errorMessage);
+          }
+        );
+      } catch (err) {
+        console.error("Error starting QR scanner:", err);
+        toast({
+          title: t('join.cameraError'),
+          description: t('join.cameraPermission'),
+          variant: "destructive",
+        });
+        setShowScanner(false);
+        setIsScanning(false);
+      }
+    };
+
+    initScanner();
+  }, [showScanner, t, toast]);
 
   const stopQRScanner = async () => {
     if (scannerRef.current && isScanning) {
