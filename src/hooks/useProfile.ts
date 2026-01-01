@@ -1,6 +1,11 @@
 import { useUser, useAuth } from '@clerk/clerk-react';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export interface UserProfile {
   id: string;
@@ -25,6 +30,24 @@ export const useProfile = () => {
   const [error, setError] = useState<string | null>(null);
   const hasCheckedSubscription = useRef(false);
 
+  // Helper to get authenticated Supabase client
+  const getAuthenticatedClient = useCallback(async () => {
+    const token = await getToken();
+    if (!token) return null;
+    
+    return createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
+    });
+  }, [getToken]);
+
   useEffect(() => {
     if (!isUserLoaded) return;
     if (!user) {
@@ -34,8 +57,14 @@ export const useProfile = () => {
 
     const syncProfile = async () => {
       try {
+        const authClient = await getAuthenticatedClient();
+        if (!authClient) {
+          setLoading(false);
+          return;
+        }
+
         // Försök hämta befintlig profil
-        const { data: existingProfile, error: fetchError } = await supabase
+        const { data: existingProfile, error: fetchError } = await authClient
           .from('profiles')
           .select('*')
           .eq('id', user.id)
@@ -85,7 +114,7 @@ export const useProfile = () => {
     };
 
     syncProfile();
-  }, [user, isUserLoaded]);
+  }, [user, isUserLoaded, getAuthenticatedClient]);
 
   // Auto-check subscription status once after profile loads
   useEffect(() => {

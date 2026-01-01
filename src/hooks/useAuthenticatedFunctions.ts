@@ -1,10 +1,15 @@
 import { useAuth } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@supabase/supabase-js';
 import { useCallback } from 'react';
+import type { Database } from '@/integrations/supabase/types';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 /**
- * Hook for invoking Supabase edge functions with Clerk authentication
- * This ensures all edge function calls include the Clerk JWT token
+ * Hook for invoking Supabase edge functions and queries with Clerk authentication
+ * This ensures all edge function calls and database queries include the Clerk JWT token
  */
 export const useAuthenticatedFunctions = () => {
   const { getToken } = useAuth();
@@ -45,5 +50,30 @@ export const useAuthenticatedFunctions = () => {
     }
   }, [getToken]);
 
-  return { invokeWithAuth };
+  /**
+   * Get an authenticated Supabase client that includes the Clerk JWT token
+   * Use this for direct database queries that need to pass RLS policies
+   */
+  const getAuthenticatedClient = useCallback(async () => {
+    const token = await getToken();
+    
+    if (!token) {
+      throw new Error('Not authenticated - please log in');
+    }
+
+    // Create a new Supabase client with the Clerk JWT in the Authorization header
+    return createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
+    });
+  }, [getToken]);
+
+  return { invokeWithAuth, getAuthenticatedClient };
 };

@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateWorkshopPDF } from "@/utils/pdfExport";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuthenticatedFunctions } from "@/hooks/useAuthenticatedFunctions";
 
 interface Question {
   id: string;
@@ -52,6 +53,7 @@ const FacilitatorControl = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { getAuthenticatedClient } = useAuthenticatedFunctions();
 
   const [currentBoardIndex, setCurrentBoardIndex] = useState(0);
   const [workshop, setWorkshop] = useState<any>(null);
@@ -76,8 +78,11 @@ const FacilitatorControl = () => {
       try {
         console.log("🔄 [Facilitator] Laddar workshop:", workshopId);
 
+        // Use authenticated client to pass RLS policies
+        const authClient = await getAuthenticatedClient();
+
         // Hämta workshop
-        const { data: workshopData, error: workshopError } = await supabase
+        const { data: workshopData, error: workshopError } = await authClient
           .from('workshops')
           .select('*')
           .eq('id', workshopId)
@@ -96,7 +101,7 @@ const FacilitatorControl = () => {
         setWorkshop(workshopData);
 
         // Hämta boards
-        const { data: boardsData, error: boardsError } = await supabase
+        const { data: boardsData, error: boardsError } = await authClient
           .from('boards')
           .select('*')
           .eq('workshop_id', workshopId)
@@ -111,7 +116,7 @@ const FacilitatorControl = () => {
         // Hämta frågor för varje board
         const boardsWithQuestions = await Promise.all(
           (boardsData || []).map(async (board) => {
-            const { data: questions } = await supabase
+            const { data: questions } = await authClient
               .from('questions')
               .select('*')
               .eq('board_id', board.id)
