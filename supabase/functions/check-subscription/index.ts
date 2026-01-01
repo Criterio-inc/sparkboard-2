@@ -7,6 +7,61 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Verify Clerk JWT token and return user ID
+function verifyClerkToken(authHeader: string | null): string {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new Error('Missing authorization header');
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid token format');
+    }
+    
+    const payload = JSON.parse(atob(parts[1]));
+    const userId = payload.sub || payload.user_id;
+    
+    if (!userId) {
+      throw new Error('Invalid token - no user ID');
+    }
+    
+    // Check token expiry
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      throw new Error('Token expired');
+    }
+    
+    return userId;
+  } catch (error) {
+    console.error('[CHECK-SUBSCRIPTION] Auth failed:', error);
+    throw new Error('Unauthorized');
+  }
+}
+
+// Input validation
+function validateInput(userEmail: any, userId: any): { valid: boolean; error?: string } {
+  if (!userEmail || typeof userEmail !== 'string') {
+    return { valid: false, error: 'Email is required' };
+  }
+  if (userEmail.length > 255) {
+    return { valid: false, error: 'Email too long (max 255 chars)' };
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
+    return { valid: false, error: 'Invalid email format' };
+  }
+  
+  if (!userId || typeof userId !== 'string') {
+    return { valid: false, error: 'User ID is required' };
+  }
+  if (userId.length > 100) {
+    return { valid: false, error: 'User ID too long' };
+  }
+  
+  return { valid: true };
+}
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
@@ -26,13 +81,45 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
+    // Verify authentication FIRST
+    const authHeader = req.headers.get('Authorization');
+    let tokenUserId: string;
+    
+    try {
+      tokenUserId = verifyClerkToken(authHeader);
+      logStep("User authenticated from token", { tokenUserId });
+    } catch (authError) {
+      logStep("Authentication failed", { error: String(authError) });
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - please log in" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     logStep("Stripe key verified");
 
     const { userEmail, userId } = await req.json();
-    if (!userEmail) throw new Error("User email is required");
-    if (!userId) throw new Error("User ID is required");
+    
+    // Validate input
+    const validation = validateInput(userEmail, userId);
+    if (!validation.valid) {
+      logStep("Validation failed", { error: validation.error });
+      return new Response(
+        JSON.stringify({ error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Verify the userId from request matches the token
+    if (userId !== tokenUserId) {
+      logStep("User ID mismatch", { requestUserId: userId, tokenUserId });
+      return new Response(
+        JSON.stringify({ error: "User ID mismatch" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     logStep("Request data", { email: userEmail, userId });
 
@@ -82,7 +169,6 @@ serve(async (req) => {
     if (customers.data.length === 0) {
       logStep("No customer found");
       
-      // Update user profile to free
       const { error: updateError } = await supabaseClient
         .from('profiles')
         .update({ 
@@ -106,14 +192,12 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    // List all subscriptions (not just active) and filter for eligible ones
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "all",
       limit: 10,
     });
     
-    // Find first subscription that's active or trialing
     const eligibleSub = subscriptions.data.find((sub: any) => 
       sub.status === 'active' || sub.status === 'trialing'
     );
@@ -124,7 +208,6 @@ serve(async (req) => {
         status: eligibleSub.status 
       });
       
-      // Safely get end date - use current_period_end or trial_end, validate it exists
       const endSeconds = eligibleSub.current_period_end ?? eligibleSub.trial_end;
       let subscriptionEnd: string | null = null;
       
@@ -140,14 +223,8 @@ serve(async (req) => {
         } catch (dateError) {
           logStep("Warning: Could not parse end date", { endSeconds, error: String(dateError) });
         }
-      } else {
-        logStep("Warning: No valid end date found", { 
-          current_period_end: eligibleSub.current_period_end,
-          trial_end: eligibleSub.trial_end 
-        });
       }
       
-      // Use upsert to ensure profile exists and is updated
       const profileData = {
         id: userId,
         email: userEmail,
@@ -181,7 +258,6 @@ serve(async (req) => {
         statuses: subscriptions.data.map((s: any) => s.status)
       });
       
-      // Use upsert to set profile to free
       const profileData = {
         id: userId,
         email: userEmail,
