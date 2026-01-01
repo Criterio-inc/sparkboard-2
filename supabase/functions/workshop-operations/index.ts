@@ -595,6 +595,106 @@ serve(async (req) => {
         );
       }
 
+      case 'duplicate-workshop': {
+        if (!workshopId) {
+          return new Response(
+            JSON.stringify({ error: 'Workshop ID required' }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Verify ownership
+        const { data: existing } = await supabase
+          .from('workshops')
+          .select('*, boards(*, questions(*))')
+          .eq('id', workshopId)
+          .single();
+        
+        if (!existing || existing.facilitator_id !== userId) {
+          return new Response(
+            JSON.stringify({ error: 'Workshop not found or access denied' }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Check workshop limit for free users
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('plan')
+          .eq('id', userId)
+          .single();
+        
+        const plan = profile?.plan || 'free';
+        
+        if (plan === 'free') {
+          const { count } = await supabase
+            .from('workshops')
+            .select('*', { count: 'exact', head: true })
+            .eq('facilitator_id', userId);
+          
+          if ((count || 0) >= 1) {
+            return new Response(
+              JSON.stringify({ error: 'Free users can only have 1 workshop. Upgrade to Pro for unlimited workshops.' }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+
+        // Create new workshop copy
+        const newCode = await generateUniqueCode(supabase);
+        const { data: newWorkshop, error: workshopError } = await supabase
+          .from('workshops')
+          .insert({
+            name: `${existing.name || 'Workshop'} (kopia)`,
+            facilitator_id: userId,
+            code: newCode,
+            status: 'draft',
+            date: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (workshopError) throw workshopError;
+
+        // Copy boards and questions
+        for (const board of existing.boards || []) {
+          const { data: newBoard, error: boardError } = await supabase
+            .from('boards')
+            .insert({
+              workshop_id: newWorkshop.id,
+              title: board.title,
+              color_index: board.color_index,
+              time_limit: board.time_limit,
+              order_index: board.order_index,
+            })
+            .select()
+            .single();
+
+          if (boardError) {
+            logStep("Board copy error", { error: boardError });
+            continue;
+          }
+
+          // Copy questions
+          for (const question of board.questions || []) {
+            await supabase
+              .from('questions')
+              .insert({
+                board_id: newBoard.id,
+                title: question.title,
+                order_index: question.order_index,
+              });
+          }
+        }
+
+        logStep("Workshop duplicated", { originalId: workshopId, newId: newWorkshop.id });
+
+        return new Response(
+          JSON.stringify({ success: true, workshop: newWorkshop }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Unknown operation' }),
