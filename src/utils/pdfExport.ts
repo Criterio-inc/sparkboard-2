@@ -1,4 +1,5 @@
 import html2pdf from 'html2pdf.js';
+import DOMPurify from 'dompurify';
 
 interface Question {
   id: string;
@@ -45,9 +46,12 @@ const escapeHtml = (text: string): string => {
   return div.innerHTML;
 };
 
-// Helper: Konvertera markdown till HTML
+// Helper: Konvertera markdown till HTML (med DOMPurify-sanitering)
 const markdownToHTML = (markdown: string): string => {
-  let html = markdown
+  // Sanitera input först för att förhindra XSS
+  const sanitizedMarkdown = DOMPurify.sanitize(markdown, { ALLOWED_TAGS: [] });
+  
+  let html = sanitizedMarkdown
     // Rubriker
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
@@ -86,7 +90,11 @@ const markdownToHTML = (markdown: string): string => {
     processedLines.push('</ul>');
   }
   
-  return processedLines.join('\n');
+  // Sanitera den slutgiltiga HTML-outputen
+  return DOMPurify.sanitize(processedLines.join('\n'), {
+    ALLOWED_TAGS: ['h1', 'h2', 'h3', 'p', 'ul', 'li', 'strong'],
+    ALLOWED_ATTR: []
+  });
 };
 
 export const generateWorkshopPDF = async (data: ExportData) => {
