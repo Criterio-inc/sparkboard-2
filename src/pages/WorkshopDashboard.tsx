@@ -31,7 +31,7 @@ const WorkshopDashboard = () => {
   const { profile, loading: profileLoading, user } = useProfile();
   const { isChecking, isComplete, migratedCount, error } = useMigrateWorkshops();
   const { isFree, isPro, loading: subscriptionLoading } = useSubscription();
-  const { invokeWithAuth, getAuthenticatedClient } = useAuthenticatedFunctions();
+  const { invokeWithAuth } = useAuthenticatedFunctions();
 
   const dateLocale = language === 'sv' ? 'sv-SE' : 'en-US';
 
@@ -45,38 +45,15 @@ const WorkshopDashboard = () => {
     if (!user?.id) return;
     
     try {
-      // Use authenticated client to pass RLS policies
-      const authClient = await getAuthenticatedClient();
-      
-      const { data: ws, error } = await authClient
-        .from('workshops')
-        .select('*')
-        .eq('facilitator_id', user.id)
-        .order('created_at', { ascending: false });
+      // Use edge function to load workshops (Clerk JWT verified there)
+      const { data, error } = await invokeWithAuth('workshop-operations', {
+        operation: 'list-workshops'
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      const workshopIds = ws?.map(w => w.id) || [];
-      let countsByWorkshop: Record<string, number> = {};
-      
-      if (workshopIds.length > 0) {
-        const { data: allBoards } = await authClient
-          .from('boards')
-          .select('id, workshop_id')
-          .in('workshop_id', workshopIds);
-        
-        countsByWorkshop = (allBoards || []).reduce((acc, b) => {
-          acc[b.workshop_id] = (acc[b.workshop_id] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-      }
-
-      const workshopsWithCounts = (ws || []).map(workshop => ({
-        ...workshop,
-        boardCount: countsByWorkshop[workshop.id] || 0
-      }));
-
-      setWorkshops(workshopsWithCounts);
+      setWorkshops(data?.workshops || []);
     } catch (error) {
       console.error('Error loading workshops:', error);
       toast({
