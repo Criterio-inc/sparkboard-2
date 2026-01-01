@@ -292,7 +292,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profile_display: {
+        Row: {
+          created_at: string | null
+          first_name: string | null
+          id: string | null
+          image_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          first_name?: string | null
+          id?: string | null
+          image_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          first_name?: string | null
+          id?: string | null
+          image_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       cleanup_expired_sessions: { Args: never; Returns: undefined }

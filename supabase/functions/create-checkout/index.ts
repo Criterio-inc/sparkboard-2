@@ -1,36 +1,39 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { createRemoteJWKSet, jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function verifyClerkToken(authHeader: string | null): string {
+// Clerk JWKS endpoint for cryptographic verification
+const CLERK_JWKS_URL = "https://api.clerk.dev/v1/jwks";
+const JWKS = createRemoteJWKSet(new URL(CLERK_JWKS_URL));
+
+// KRITISKT: Kryptografisk JWT-verifiering med JWKS
+async function verifyClerkToken(authHeader: string | null): Promise<string> {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('Missing authorization header');
+    throw new Error('Missing or invalid authorization header');
   }
 
   const token = authHeader.replace('Bearer ', '');
-  
+
   try {
-    // Decode JWT to get user ID (for Clerk tokens)
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Invalid token format');
-    }
+    // KRYPTOGRAFISK SIGNATURVERIFIERING med JWKS
+    const { payload } = await jwtVerify(token, JWKS, {
+      algorithms: ['RS256'],
+    });
     
-    const payload = JSON.parse(atob(parts[1]));
-    const userId = payload.sub || payload.user_id;
-    
-    if (!userId) {
+    if (!payload.sub) {
       throw new Error('Invalid token - no user ID');
     }
     
-    return userId;
+    console.log('[CREATE-CHECKOUT] Token cryptographically verified for user:', payload.sub);
+    return payload.sub;
   } catch (error) {
-    console.error('Auth failed:', error);
-    throw new Error('Unauthorized');
+    console.error('[CREATE-CHECKOUT] Token verification failed:', error);
+    throw new Error('Unauthorized - token verification failed');
   }
 }
 
