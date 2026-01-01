@@ -9,7 +9,6 @@ import { ArrowLeft, Sparkles, Plus, Save, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BoardCard } from "@/components/BoardCard";
 import { WorkshopQRDialog } from "@/components/WorkshopQRDialog";
-import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -46,7 +45,7 @@ const CreateWorkshop = () => {
   const { user } = useProfile();
   const { isFree, isPro } = useSubscription();
   const { canCreateMore, activeWorkshops, limit } = useWorkshopLimit();
-  const { invokeWithAuth } = useAuthenticatedFunctions();
+  const { invokeWithAuth, getAuthenticatedClient } = useAuthenticatedFunctions();
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
@@ -70,8 +69,11 @@ const CreateWorkshop = () => {
       }
 
       try {
+        // Use authenticated client to pass RLS policies
+        const authClient = await getAuthenticatedClient();
+        
         // Hämta workshop från Supabase
-        const { data: workshopData, error: workshopError } = await supabase
+        const { data: workshopData, error: workshopError } = await authClient
           .from('workshops')
           .select('*')
           .eq('id', workshopId)
@@ -83,7 +85,7 @@ const CreateWorkshop = () => {
         }
 
         // Hämta boards med frågor
-        const { data: boardsData } = await supabase
+        const { data: boardsData } = await authClient
           .from('boards')
           .select('*')
           .eq('workshop_id', workshopId)
@@ -91,7 +93,7 @@ const CreateWorkshop = () => {
 
         const boardsWithQuestions = await Promise.all(
           (boardsData || []).map(async (board) => {
-            const { data: questions } = await supabase
+            const { data: questions } = await authClient
               .from('questions')
               .select('*')
               .eq('board_id', board.id)
@@ -114,7 +116,7 @@ const CreateWorkshop = () => {
         // Check if workshop has any participant responses
         const questionIds = boardsWithQuestions.flatMap(b => b.questions.map(q => q.id));
         if (questionIds.length > 0) {
-          const { data: notesData, error: notesError } = await supabase
+          const { data: notesData, error: notesError } = await authClient
             .from('notes')
             .select('id')
             .in('question_id', questionIds)

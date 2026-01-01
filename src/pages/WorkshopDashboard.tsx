@@ -31,7 +31,7 @@ const WorkshopDashboard = () => {
   const { profile, loading: profileLoading, user } = useProfile();
   const { isChecking, isComplete, migratedCount, error } = useMigrateWorkshops();
   const { isFree, isPro, loading: subscriptionLoading } = useSubscription();
-  const { invokeWithAuth } = useAuthenticatedFunctions();
+  const { invokeWithAuth, getAuthenticatedClient } = useAuthenticatedFunctions();
 
   const dateLocale = language === 'sv' ? 'sv-SE' : 'en-US';
 
@@ -45,7 +45,10 @@ const WorkshopDashboard = () => {
     if (!user?.id) return;
     
     try {
-      const { data: ws, error } = await supabase
+      // Use authenticated client to pass RLS policies
+      const authClient = await getAuthenticatedClient();
+      
+      const { data: ws, error } = await authClient
         .from('workshops')
         .select('*')
         .eq('facilitator_id', user.id)
@@ -57,7 +60,7 @@ const WorkshopDashboard = () => {
       let countsByWorkshop: Record<string, number> = {};
       
       if (workshopIds.length > 0) {
-        const { data: allBoards } = await supabase
+        const { data: allBoards } = await authClient
           .from('boards')
           .select('id, workshop_id')
           .in('workshop_id', workshopIds);
