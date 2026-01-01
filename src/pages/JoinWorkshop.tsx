@@ -66,8 +66,8 @@ const JoinWorkshop = () => {
             setWorkshopCode(code.toUpperCase());
             stopQRScanner();
             toast({
-              title: "QR-kod scannad!",
-              description: `Workshop-kod: ${code.toUpperCase()}`,
+              title: t('join.qrScanned'),
+              description: t('join.qrCode', { code: code.toUpperCase() }),
             });
           }
         },
@@ -79,8 +79,8 @@ const JoinWorkshop = () => {
     } catch (err) {
       console.error("Error starting QR scanner:", err);
       toast({
-        title: "Kan inte starta kamera",
-        description: "Kontrollera att din webbläsare har tillgång till kameran",
+        title: t('join.cameraError'),
+        description: t('join.cameraPermission'),
         variant: "destructive",
       });
       setShowScanner(false);
@@ -118,8 +118,8 @@ const JoinWorkshop = () => {
     
     if (enteredCode.length !== 6) {
       toast({
-        title: "Ogiltig kod",
-        description: "Workshop-koden måste vara 6 tecken lång",
+        title: t('join.invalidCode'),
+        description: t('join.invalidCodeLength'),
         variant: "destructive",
       });
       return;
@@ -127,8 +127,8 @@ const JoinWorkshop = () => {
 
     if (!participantName.trim() || participantName.trim().length < 2) {
       toast({
-        title: "Namn saknas",
-        description: "Vänligen ange ett namn (minst 2 tecken)",
+        title: t('join.nameMissing'),
+        description: t('join.nameMinLength'),
         variant: "destructive",
       });
       return;
@@ -170,8 +170,8 @@ const JoinWorkshop = () => {
       sessionStorage.setItem('participantSession', JSON.stringify(participantSession));
 
       toast({
-        title: "Välkommen!",
-        description: `Du har anslutit till "${data.workshop.name}"`,
+        title: t('join.welcomeToast'),
+        description: t('join.connectedTo', { name: data.workshop.name }),
       });
 
       // Navigate to first board
@@ -180,17 +180,17 @@ const JoinWorkshop = () => {
       setIsLoading(false);
       console.error("❌ Fel vid anslutning:", error);
       
-      let errorMessage = "Något gick fel. Försök igen.";
+      let errorMessage = t('join.genericError');
       if (error.message?.includes('not found')) {
-        errorMessage = "Workshop-koden hittades inte. Kontrollera att koden är korrekt.";
+        errorMessage = t('join.notFound');
       } else if (error.message?.includes('not active')) {
-        errorMessage = "Denna workshop är inte aktiv just nu.";
+        errorMessage = t('join.notActive');
       } else if (error.message?.includes('limit')) {
-        errorMessage = "Workshopen har nått max antal deltagare.";
+        errorMessage = t('join.limitReached');
       }
       
       toast({
-        title: "Kunde inte ansluta",
+        title: t('join.connectionFailed'),
         description: errorMessage,
         variant: "destructive",
       });
@@ -203,7 +203,7 @@ const JoinWorkshop = () => {
         <Link to="/">
           <Button variant="ghost" size="sm" className="mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Tillbaka
+            {t('nav.back')}
           </Button>
         </Link>
 
@@ -211,29 +211,29 @@ const JoinWorkshop = () => {
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 bg-accent/10 px-4 py-2 rounded-full mb-4">
               <UserPlus className="w-4 h-4 text-accent" />
-              <span className="text-sm font-medium text-accent">Gå med</span>
+              <span className="text-sm font-medium text-accent">{t('join.badge')}</span>
             </div>
             
             <h1 className="text-4xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent mb-2">
-              Gå med i Workshop
+              {t('join.title')}
             </h1>
             <p className="text-muted-foreground">
-              Ange din 6-siffriga workshop-kod och ditt namn
+              {t('join.enterCode')}
             </p>
           </div>
 
           <Card className="shadow-[var(--shadow-accent)] bg-gradient-to-br from-card to-accent/5">
             <CardHeader>
-              <CardTitle>Anslut till Workshop</CardTitle>
+              <CardTitle>{t('join.connectTitle')}</CardTitle>
               <CardDescription>
-                Få workshop-koden från din facilitator
+                {t('join.getCodeFrom')}
               </CardDescription>
             </CardHeader>
             
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="code">Workshop-kod *</Label>
+                  <Label htmlFor="code">{t('join.code')} *</Label>
                   <Input
                     id="code"
                     placeholder="ABC123"
@@ -243,15 +243,15 @@ const JoinWorkshop = () => {
                     maxLength={6}
                   />
                   <p className="text-xs text-muted-foreground text-center">
-                    {workshopCode.length}/6 tecken
+                    {t('join.characters', { count: workshopCode.length.toString() })}
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="name">Ditt namn *</Label>
+                  <Label htmlFor="name">{t('join.name')} *</Label>
                   <Input
                     id="name"
-                    placeholder="Ange ditt namn"
+                    placeholder={t('join.namePlaceholder')}
                     value={participantName}
                     onChange={(e) => setParticipantName(e.target.value)}
                     className="h-12"
@@ -267,7 +267,7 @@ const JoinWorkshop = () => {
                     disabled={workshopCode.length !== 6 || !participantName.trim() || isLoading}
                   >
                     <UserPlus className="w-5 h-5 mr-2" />
-                    {isLoading ? "Ansluter..." : "Gå med i Workshop"}
+                    {isLoading ? t('join.joining') : t('join.button')}
                   </Button>
                   
                   <Link to="/" className="block">
@@ -277,7 +277,7 @@ const JoinWorkshop = () => {
                       size="lg" 
                       className="w-full"
                     >
-                      Avbryt
+                      {t('join.cancel')}
                     </Button>
                   </Link>
                 </div>
@@ -291,18 +291,18 @@ const JoinWorkshop = () => {
                   onClick={startQRScanner}
                 >
                   <QrCode className="w-5 h-5 mr-2" />
-                  Scanna QR-kod
+                  {t('join.scanQR')}
                 </Button>
               </div>
             </CardContent>
           </Card>
 
           <div className="mt-8 p-6 bg-muted/50 rounded-lg border border-border">
-            <h3 className="font-semibold mb-2">ℹ️ Information</h3>
+            <h3 className="font-semibold mb-2">ℹ️ {t('join.infoTitle')}</h3>
             <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Koden består av 6 bokstäver och siffror</li>
-              <li>• Du behöver inte skapa ett konto för att delta</li>
-              <li>• Ditt namn kommer att visas för andra deltagare</li>
+              <li>• {t('join.infoCode')}</li>
+              <li>• {t('join.infoNoAccount')}</li>
+              <li>• {t('join.infoNameVisible')}</li>
             </ul>
           </div>
         </div>
@@ -314,9 +314,9 @@ const JoinWorkshop = () => {
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Scanna QR-kod</DialogTitle>
+            <DialogTitle>{t('join.scanQRTitle')}</DialogTitle>
             <DialogDescription>
-              Rikta kameran mot QR-koden för att automatiskt fylla i workshop-koden
+              {t('join.scanQRDescription')}
             </DialogDescription>
           </DialogHeader>
 
@@ -335,7 +335,7 @@ const JoinWorkshop = () => {
 
           <div className="text-center">
             <p className="text-sm text-muted-foreground">
-              Se till att QR-koden är inom den gröna ramen
+              {t('join.scanQRHint')}
             </p>
           </div>
         </DialogContent>
