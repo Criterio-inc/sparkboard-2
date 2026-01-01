@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createRemoteJWKSet, jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
 
 const corsHeaders = {
@@ -10,6 +11,11 @@ const corsHeaders = {
 // Clerk JWKS endpoint for cryptographic verification (instance-specific)
 const CLERK_JWKS_URL = "https://clerk.sparkboard.eu/.well-known/jwks.json";
 const JWKS = createRemoteJWKSet(new URL(CLERK_JWKS_URL));
+
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
+};
 
 // KRITISKT: Kryptografisk JWT-verifiering med JWKS
 async function verifyClerkToken(authHeader: string | null): Promise<string> {
@@ -29,18 +35,13 @@ async function verifyClerkToken(authHeader: string | null): Promise<string> {
       throw new Error('Invalid token - no user ID');
     }
     
-    console.log('[CREATE-CHECKOUT] Token cryptographically verified for user:', payload.sub);
+    logStep("JWT verified successfully", { userId: payload.sub });
     return payload.sub;
   } catch (error) {
     console.error('[CREATE-CHECKOUT] Token verification failed:', error);
     throw new Error('Unauthorized - token verification failed');
   }
 }
-
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
-};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -50,35 +51,53 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    // Verify authentication
-    const userId = verifyClerkToken(req.headers.get('Authorization'));
+    // Verify JWT and get user ID
+    const userId = await verifyClerkToken(req.headers.get("authorization"));
     logStep("User authenticated", { userId });
 
-    const { priceId, userEmail } = await req.json();
-    
-    // Input validation
-    if (!priceId || typeof priceId !== 'string' || priceId.length > 100) {
+    // Get user's email from verified profile (NOT from request body)
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('email')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !profile) {
+      logStep("Error fetching profile", { error: profileError });
+      throw new Error("User profile not found");
+    }
+
+    const userEmail = profile.email;
+    logStep("Using verified email from profile", { email: userEmail });
+
+    const { priceId } = await req.json();
+
+    if (!priceId) throw new Error("Price ID is required");
+    if (!userEmail) throw new Error("User email is required");
+
+    // Validate priceId
+    if (typeof priceId !== 'string' || priceId.length > 100) {
       throw new Error("Invalid price ID");
     }
-    if (!userEmail || typeof userEmail !== 'string' || !userEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      throw new Error("Invalid email");
-    }
-    if (userEmail.length > 255) {
-      throw new Error("Email too long");
-    }
-    
+
     logStep("Request data", { priceId, email: userEmail });
 
     logStep("Creating checkout session", { priceId });
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { 
-      apiVersion: "2025-08-27.basil" 
+    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+      apiVersion: "2025-08-27.basil"
     });
 
     // Check if customer exists
     const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
     let customerId;
-    
+
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
       logStep("Found existing customer", { customerId });
@@ -109,9 +128,14 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });
+
+    const status = errorMessage.includes("Authorization") ||
+                   errorMessage.includes("token") ||
+                   errorMessage.includes("Invalid") ? 401 : 500;
+
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status,
     });
   }
 });
