@@ -8,6 +8,9 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthWrapper } from "@/components/AuthWrapper";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Cookies from "./pages/Cookies";
 import WorkshopDashboard from "./pages/WorkshopDashboard";
 import CreateWorkshop from "./pages/CreateWorkshop";
 import JoinWorkshop from "./pages/JoinWorkshop";
@@ -29,6 +32,9 @@ const App = () => (
           <Sonner />
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/cookies" element={<Cookies />} />
             <Route path="/join" element={<JoinWorkshop />} />
             <Route path="/board/:workshopId/:boardId" element={<BoardView />} />
             
