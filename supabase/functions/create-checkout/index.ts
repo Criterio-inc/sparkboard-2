@@ -1,45 +1,49 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { createRemoteJWKSet, jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
+import { createClerkClient } from "https://esm.sh/@clerk/backend@1.15.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Clerk JWKS endpoint for cryptographic verification (instance-specific)
 const CLERK_JWKS_URL = "https://clerk.sparkboard.eu/.well-known/jwks.json";
-const JWKS = createRemoteJWKSet(new URL(CLERK_JWKS_URL));
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
-// KRITISKT: Kryptografisk JWT-verifiering med JWKS
 async function verifyClerkToken(authHeader: string | null): Promise<string> {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('Missing or invalid authorization header');
+  if (!authHeader) {
+    throw new Error("Missing Authorization header");
   }
 
   const token = authHeader.replace('Bearer ', '');
+  const clerkSecretKey = Deno.env.get("CLERK_SECRET_KEY");
+
+  if (!clerkSecretKey) {
+    throw new Error("CLERK_SECRET_KEY not configured");
+  }
+
+  logStep("Verifying JWT with JWKS");
 
   try {
-    // KRYPTOGRAFISK SIGNATURVERIFIERING med JWKS
-    const { payload } = await jwtVerify(token, JWKS, {
-      algorithms: ['RS256'],
+    const clerk = createClerkClient({
+      secretKey: clerkSecretKey,
+      jwtKey: CLERK_JWKS_URL
     });
-    
-    if (!payload.sub) {
-      throw new Error('Invalid token - no user ID');
-    }
-    
-    logStep("JWT verified successfully", { userId: payload.sub });
-    return payload.sub;
+
+    const verifiedToken = await clerk.verifyToken(token, {
+      jwtKey: CLERK_JWKS_URL
+    });
+
+    logStep("JWT verified successfully", { userId: verifiedToken.sub });
+    return verifiedToken.sub;
   } catch (error) {
-    console.error('[CREATE-CHECKOUT] Token verification failed:', error);
-    throw new Error('Unauthorized - token verification failed');
+    logStep("JWT verification failed", { error: error.message });
+    throw new Error("Invalid or expired token");
   }
 }
 
@@ -77,27 +81,22 @@ serve(async (req) => {
     logStep("Using verified email from profile", { email: userEmail });
 
     const { priceId } = await req.json();
-
+    
     if (!priceId) throw new Error("Price ID is required");
     if (!userEmail) throw new Error("User email is required");
-
-    // Validate priceId
-    if (typeof priceId !== 'string' || priceId.length > 100) {
-      throw new Error("Invalid price ID");
-    }
-
+    
     logStep("Request data", { priceId, email: userEmail });
 
     logStep("Creating checkout session", { priceId });
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2025-08-27.basil"
+      apiVersion: "2024-12-18.acacia"
     });
 
     // Check if customer exists
     const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
     let customerId;
-
+    
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
       logStep("Found existing customer", { customerId });

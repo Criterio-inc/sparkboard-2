@@ -1,11 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { createRemoteJWKSet, jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClerkClient } from "https://esm.sh/@clerk/backend@1.15.8";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const CLERK_JWKS_URL = "https://clerk.sparkboard.eu/.well-known/jwks.json";
 
 interface NoteInput {
   id: string;
@@ -19,98 +21,36 @@ interface ClusterRequest {
   context?: string;
 }
 
-// Clerk JWKS endpoint for cryptographic verification (instance-specific)
-const CLERK_JWKS_URL = "https://clerk.sparkboard.eu/.well-known/jwks.json";
-const JWKS = createRemoteJWKSet(new URL(CLERK_JWKS_URL));
-
-// KRITISKT: Kryptografisk JWT-verifiering med JWKS
 async function verifyClerkToken(authHeader: string | null): Promise<string> {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('Missing or invalid authorization header');
+  if (!authHeader) {
+    throw new Error("Missing Authorization header");
   }
 
   const token = authHeader.replace('Bearer ', '');
+  const clerkSecretKey = Deno.env.get("CLERK_SECRET_KEY");
+
+  if (!clerkSecretKey) {
+    throw new Error("CLERK_SECRET_KEY not configured");
+  }
+
+  console.log("[CLUSTER-NOTES] Verifying JWT with JWKS");
 
   try {
-    // KRYPTOGRAFISK SIGNATURVERIFIERING med JWKS
-    const { payload } = await jwtVerify(token, JWKS, {
-      algorithms: ['RS256'],
+    const clerk = createClerkClient({
+      secretKey: clerkSecretKey,
+      jwtKey: CLERK_JWKS_URL
     });
-    
-    if (!payload.sub) {
-      throw new Error('Invalid token - no user ID');
-    }
-    
-    console.log('[CLUSTER-NOTES] Token cryptographically verified for user:', payload.sub);
-    return payload.sub;
-  } catch (error) {
-    console.error('[CLUSTER-NOTES] Token verification failed:', error);
-    throw new Error('Unauthorized - token verification failed');
-  }
-}
 
-// Input validation
-function validateInput(body: ClusterRequest): { valid: boolean; error?: string } {
-  const { notes, categories, context } = body;
-  
-  // Validate notes array
-  if (!Array.isArray(notes)) {
-    return { valid: false, error: 'Notes must be an array' };
+    const verifiedToken = await clerk.verifyToken(token, {
+      jwtKey: CLERK_JWKS_URL
+    });
+
+    console.log("[CLUSTER-NOTES] JWT verified successfully", { userId: verifiedToken.sub });
+    return verifiedToken.sub;
+  } catch (error) {
+    console.error("[CLUSTER-NOTES] JWT verification failed:", error.message);
+    throw new Error("Invalid or expired token");
   }
-  if (notes.length === 0) {
-    return { valid: false, error: 'No notes provided' };
-  }
-  if (notes.length > 1000) {
-    return { valid: false, error: 'Too many notes (max 1000)' };
-  }
-  
-  // Validate each note
-  for (let i = 0; i < notes.length; i++) {
-    const note = notes[i];
-    if (!note.id || typeof note.id !== 'string') {
-      return { valid: false, error: `Note ${i + 1}: id must be a string` };
-    }
-    if (!note.content || typeof note.content !== 'string') {
-      return { valid: false, error: `Note ${i + 1}: content must be a string` };
-    }
-    if (note.content.length > 10000) {
-      return { valid: false, error: `Note ${i + 1}: content too long (max 10000 chars)` };
-    }
-    if (note.authorName && typeof note.authorName !== 'string') {
-      return { valid: false, error: `Note ${i + 1}: authorName must be a string` };
-    }
-  }
-  
-  // Validate categories
-  if (!Array.isArray(categories)) {
-    return { valid: false, error: 'Categories must be an array' };
-  }
-  if (categories.length === 0) {
-    return { valid: false, error: 'No categories provided' };
-  }
-  if (categories.length > 50) {
-    return { valid: false, error: 'Too many categories (max 50)' };
-  }
-  for (let i = 0; i < categories.length; i++) {
-    if (typeof categories[i] !== 'string') {
-      return { valid: false, error: `Category ${i + 1}: must be a string` };
-    }
-    if (categories[i].length > 500) {
-      return { valid: false, error: `Category ${i + 1}: too long (max 500 chars)` };
-    }
-  }
-  
-  // Validate context
-  if (context !== undefined && context !== null) {
-    if (typeof context !== 'string') {
-      return { valid: false, error: 'Context must be a string' };
-    }
-    if (context.length > 2000) {
-      return { valid: false, error: 'Context too long (max 2000 chars)' };
-    }
-  }
-  
-  return { valid: true };
 }
 
 serve(async (req) => {
@@ -120,68 +60,69 @@ serve(async (req) => {
   }
 
   try {
-    // Verify authentication FIRST
-    const authHeader = req.headers.get('Authorization');
-    let userId: string;
-    
-    try {
-      userId = await verifyClerkToken(authHeader);
-      console.log("[CLUSTER-NOTES] User authenticated:", userId);
-    } catch (authError) {
-      console.log("[CLUSTER-NOTES] Authentication failed:", authError);
-      return new Response(
-        JSON.stringify({ error: "Unauthorized - please log in" }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // CRITICAL: Verify JWT first
+    const userId = await verifyClerkToken(req.headers.get("authorization"));
+    console.log("[CLUSTER-NOTES] User authenticated", { userId });
 
-    const body = await req.json() as ClusterRequest;
-    const { notes, categories, context } = body;
-    
-    // Validate input
-    const validation = validateInput(body);
-    if (!validation.valid) {
-      console.log("[CLUSTER-NOTES] Validation failed:", validation.error);
-      return new Response(
-        JSON.stringify({ error: validation.error }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    console.log(`[CLUSTER-NOTES] Clustering ${notes.length} notes into ${categories.length} categories`);
+    // Check user's plan - AI clustering requires Pro or Curago
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
 
-    // Check user's plan in profiles table
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader! } }
-    });
-
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('plan')
       .eq('id', userId)
       .single();
 
     if (profileError) {
-      console.log("[CLUSTER-NOTES] Error fetching profile:", profileError);
+      console.error("[CLUSTER-NOTES] Error fetching profile:", profileError);
+      throw new Error("Could not verify user plan");
     }
 
     const userPlan = profile?.plan || 'free';
     console.log("[CLUSTER-NOTES] User plan:", userPlan);
 
-    // Check if user has pro or curago plan
     if (userPlan !== 'pro' && userPlan !== 'curago') {
-      console.log("[CLUSTER-NOTES] User does not have Pro plan, blocking AI clustering");
+      console.log("[CLUSTER-NOTES] Access denied - plan not eligible", { plan: userPlan });
       return new Response(
-        JSON.stringify({ error: "AI clustering requires Pro subscription" }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          error: "AI_REQUIRES_PRO",
+          message: "AI-klustring kräver Sparkboard Pro. Uppgradera ditt konto för att använda denna funktion.",
+          userPlan,
+          requiredPlan: "pro eller curago"
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
       );
+    }
+
+    // User is authorized - proceed with clustering
+    const { notes, categories, context } = await req.json() as ClusterRequest;
+    
+    console.log(`🤖 Clustering ${notes.length} notes into ${categories.length} categories`);
+    console.log(`📋 Categories: ${categories.join(', ')}`);
+    
+    if (!notes || notes.length === 0) {
+      return new Response(JSON.stringify({ error: "No notes provided" }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!categories || categories.length === 0) {
+      return new Response(JSON.stringify({ error: "No categories provided" }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      console.error("[CLUSTER-NOTES] LOVABLE_API_KEY is not configured");
+      console.error("LOVABLE_API_KEY is not configured");
       return new Response(JSON.stringify({ error: "AI service not configured" }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -190,6 +131,7 @@ serve(async (req) => {
 
     // Extract keywords from each category for better matching
     const extractKeywords = (category: string): string[] => {
+      // Split on common separators and extract meaningful words
       const words = category
         .split(/[•&,\-–—]/)
         .flatMap(part => part.trim().toLowerCase().split(/\s+/))
@@ -215,6 +157,17 @@ KRITISKA REGLER - DU MÅSTE FÖLJA DESSA EXAKT:
 3. Varje note ska tilldelas den MEST SEMANTISKT RELEVANTA kategorin baserat på innehållets betydelse
 4. Analysera nyckelorden i varje kategori och matcha noter som handlar om samma ämne
 
+MATCHNINGSLOGIK:
+- Om en note nämner "data", "datadrivet", "datadriven" → kolla om någon kategori har nyckelord som "data", "datakvalitet", "datadriven"
+- Om en note nämner "kund", "kundservice", "support" → kolla kategorier med "kund", "service"
+- Om en note nämner "process", "automatisera", "effektivisera" → kolla kategorier med "process", "arbetssätt"
+- Om en note nämner "teknik", "IT", "system", "digital" → kolla kategorier med "teknik", "digital", "system"
+
+EXEMPEL PÅ KORREKT MATCHNING:
+- "Arbeta datadrivet" → kategori med "datadriven", "data" i nyckelorden
+- "Digital självservice" → kategori med "digital", "kund", "självservice"
+- "Förbättra kundupplevelsen" → kategori med "kund"
+
 Svara ENDAST med JSON i exakt detta format (inget annat!):
 {
   "clusters": {
@@ -228,7 +181,7 @@ VIKTIGT:
 - noteIndex är 1-baserat (första noten är 1)
 - confidence är ett tal mellan 0 och 1
 - Varje note MÅSTE tilldelas EXAKT EN kategori
-- Använd EXAKT samma kategorinamn som i listan`;
+- Använd EXAKT samma kategorinamn som i listan - inklusive alla specialtecken som • och &`;
 
     const userPrompt = `KATEGORIER ATT SORTERA IN I (använd EXAKT dessa namn i svaret):
 
@@ -237,9 +190,13 @@ ${categoriesWithKeywords}
 ${context ? `KONTEXT FRÅN FACILITATORN: ${context}\n\n` : ''}POST-ITS ATT KLUSTRA:
 ${notesText}
 
-INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin. Svara med JSON.`;
+INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin.
+- Analysera innebörden i varje post-it
+- Matcha mot nyckelorden i kategorierna
+- Kopiera kategorinamnet EXAKT som det står ovan (inklusive • och andra tecken)
+- Svara med JSON.`;
 
-    console.log("[CLUSTER-NOTES] Sending request to Lovable AI...");
+    console.log("📤 Sending request to Lovable AI...");
     
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -258,7 +215,7 @@ INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[CLUSTER-NOTES] AI gateway error:", response.status, errorText);
+      console.error("AI gateway error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
@@ -283,14 +240,14 @@ INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin
     const content = aiResponse.choices?.[0]?.message?.content;
     
     if (!content) {
-      console.error("[CLUSTER-NOTES] No content in AI response");
+      console.error("No content in AI response");
       return new Response(JSON.stringify({ error: "Empty AI response" }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log("[CLUSTER-NOTES] AI response received");
+    console.log("📥 AI response received");
     
     // Parse JSON from response (handle markdown code blocks)
     let jsonStr = content;
@@ -299,17 +256,18 @@ INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin
       jsonStr = jsonMatch[1].trim();
     }
     
-    // Normalize JSON string
+    // KRITISKT: Normalisera JSON-strängen för att hantera tabs och extra whitespace
+    // AI returnerar ibland tabs (\t) i kategorinamn som orsakar parsningsfel
     jsonStr = jsonStr
-      .replace(/\t/g, ' ')
-      .replace(/  +/g, ' ')
-      .replace(/\n\s*\n/g, '\n');
+      .replace(/\t/g, ' ')           // Ersätt tabs med mellanslag
+      .replace(/  +/g, ' ')          // Ta bort dubbla mellanslag
+      .replace(/\n\s*\n/g, '\n');    // Ta bort tomma rader
     
     let parsed;
     try {
       parsed = JSON.parse(jsonStr);
     } catch (parseError) {
-      console.error("[CLUSTER-NOTES] Failed to parse AI response:", jsonStr);
+      console.error("Failed to parse AI response after normalization:", jsonStr);
       return new Response(JSON.stringify({ error: "Invalid AI response format" }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -329,6 +287,7 @@ INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin
       for (const cat of categories) {
         const catMainPart = cat.toLowerCase().split('•')[0].trim();
         if (catMainPart === aiMainPart) {
+          console.log(`🔄 Fuzzy match (main part): "${aiCategoryName}" → "${cat}"`);
           return cat;
         }
       }
@@ -337,6 +296,7 @@ INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin
       for (const cat of categories) {
         const catLower = cat.toLowerCase();
         if (catLower.includes(aiMainPart) || aiMainPart.includes(catLower.split('•')[0].trim())) {
+          console.log(`🔄 Fuzzy match (substring): "${aiCategoryName}" → "${cat}"`);
           return cat;
         }
       }
@@ -354,10 +314,11 @@ INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin
       }
       
       if (bestMatch && bestMatch.overlap >= 1) {
+        console.log(`🔄 Fuzzy match (keywords): "${aiCategoryName}" → "${bestMatch.category}" (${bestMatch.overlap} keywords)`);
         return bestMatch.category;
       }
       
-      console.warn(`[CLUSTER-NOTES] No match found for AI category: "${aiCategoryName}"`);
+      console.warn(`⚠️ No match found for AI category: "${aiCategoryName}"`);
       return null;
     };
 
@@ -365,18 +326,27 @@ INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin
     const result: Record<string, Array<{ note: NoteInput; confidence: number }>> = {};
     
     for (const [aiCategoryName, clusteredNotes] of Object.entries(parsed.clusters || {})) {
+      // Find the best matching category from our list
       const matchedCategory = findBestCategoryMatch(aiCategoryName);
+      
+      if (!matchedCategory) {
+        // If no match found, use the first category as fallback
+        console.warn(`⚠️ Using first category as fallback for: "${aiCategoryName}"`);
+      }
+      
       const finalCategoryName = matchedCategory || categories[0];
       
+      // Initialize array if needed
       if (!result[finalCategoryName]) {
         result[finalCategoryName] = [];
       }
       
+      // Add notes to this category
       const notesToAdd = (clusteredNotes as Array<{ noteIndex: number; confidence: number }>)
         .map(item => {
-          const note = notes[item.noteIndex - 1];
+          const note = notes[item.noteIndex - 1]; // Convert 1-based to 0-based
           if (!note) {
-            console.warn(`[CLUSTER-NOTES] Note index ${item.noteIndex} not found`);
+            console.warn(`Note index ${item.noteIndex} not found`);
             return null;
           }
           return {
@@ -389,16 +359,26 @@ INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin
       result[finalCategoryName].push(...notesToAdd);
     }
 
-    console.log(`[CLUSTER-NOTES] Clustered ${notes.length} notes into ${Object.keys(result).length} categories`);
+    // Log final clustering result
+    console.log(`✅ Clustered ${notes.length} notes into ${Object.keys(result).length} categories:`);
+    for (const [cat, catNotes] of Object.entries(result)) {
+      console.log(`   - "${cat}": ${catNotes.length} notes`);
+    }
 
     return new Response(JSON.stringify({ clusters: result }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('[CLUSTER-NOTES] Error:', error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
-      status: 500,
+    console.error('[CLUSTER-NOTES] Error in cluster-notes function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    const status = errorMessage.includes("Authorization") ||
+                   errorMessage.includes("token") ||
+                   errorMessage.includes("Invalid") ? 401 : 500;
+
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

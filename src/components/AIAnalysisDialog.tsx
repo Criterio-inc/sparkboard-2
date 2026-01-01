@@ -11,15 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StickyNote } from "@/components/StickyNote";
-import { Loader2, Copy, CheckCircle2, Trash2, Sparkles, Lock } from "lucide-react";
+import { Loader2, Copy, CheckCircle2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useSubscription } from "@/hooks/useSubscription";
-import { useAuthenticatedFunctions } from "@/hooks/useAuthenticatedFunctions";
 import { format } from "date-fns";
-import { Link } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
 
 interface Note {
   id: string;
@@ -58,8 +56,7 @@ export const AIAnalysisDialog = ({
 }: AIAnalysisDialogProps) => {
   const { toast } = useToast();
   const { t, language } = useLanguage();
-  const { isPro, isCuragoUser } = useSubscription();
-  const { invokeWithAuth } = useAuthenticatedFunctions();
+  const { getToken } = useAuth();
   const [customPrompt, setCustomPrompt] = useState("");
   const [hasCustomPrompt, setHasCustomPrompt] = useState(false);
   const [analysis, setAnalysis] = useState<string>("");
@@ -67,8 +64,6 @@ export const AIAnalysisDialog = ({
   const [copied, setCopied] = useState(false);
   const [previousAnalyses, setPreviousAnalyses] = useState<SavedAnalysis[]>([]);
   const [loadingPrevious, setLoadingPrevious] = useState(false);
-
-  const canUseAI = isPro || isCuragoUser;
 
   // Load prompt from previous analysis or use default
   useEffect(() => {
@@ -85,6 +80,8 @@ export const AIAnalysisDialog = ({
         .maybeSingle();
 
       if (latestAnalysis?.analysis) {
+        // Check if there's a custom prompt stored (we'll need to infer from analysis or store separately)
+        // For now, we'll use the default prompt from translations
         const defaultPrompt = t('ai.defaultPrompt');
         setCustomPrompt(defaultPrompt);
         setHasCustomPrompt(false);
@@ -101,6 +98,7 @@ export const AIAnalysisDialog = ({
   // Load previous analyses when board changes and RESET current analysis
   useEffect(() => {
     if (open && boardId) {
+      // CRITICAL: Reset analysis when switching boards
       setAnalysis("");
       loadPreviousAnalyses();
     }
@@ -118,7 +116,10 @@ export const AIAnalysisDialog = ({
       if (error) throw error;
       setPreviousAnalyses(data || []);
 
+      // If there's a latest analysis, check if we should use its prompt
       if (data && data.length > 0 && data[0].analysis) {
+        // We'll use the default prompt for now since we don't store custom_prompt separately yet
+        // This will be enhanced when we add custom_prompt column to the database
         const defaultPrompt = t('ai.defaultPrompt');
         setCustomPrompt(defaultPrompt);
         setHasCustomPrompt(false);
@@ -136,29 +137,42 @@ export const AIAnalysisDialog = ({
   };
 
   const handleAnalyze = async () => {
-    if (!canUseAI) {
-      toast({
-        title: t('ai.proRequired'),
-        description: t('ai.proRequiredDesc'),
-      });
-      return;
-    }
-
     setIsAnalyzing(true);
     setAnalysis("");
 
     try {
-      const { data, error } = await invokeWithAuth("analyze-notes", {
-        notes: notes.map((note) => ({
-          content: note.content,
-          question: note.question || "Question",
-        })),
-        customPrompt,
+      // Get Clerk JWT token
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      const { data, error } = await supabase.functions.invoke("analyze-notes", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: {
+          notes: notes.map((note) => ({
+            content: note.content,
+            question: note.question || "Question",
+          })),
+          customPrompt,
+        },
       });
 
       if (error) throw error;
 
-      if (data?.error) {
+      if (data.error) {
+        // Check if it's a plan upgrade required error
+        if (data.error === 'AI_REQUIRES_PRO') {
+          toast({
+            title: t('common.error'),
+            description: data.message || "AI-analys kräver Sparkboard Pro",
+            variant: "destructive",
+          });
+          return;
+        }
+
         toast({
           title: t('common.error'),
           description: data.error,
@@ -169,6 +183,7 @@ export const AIAnalysisDialog = ({
 
       setAnalysis(data.analysis);
 
+      // Save analysis to database
       const { error: saveError } = await supabase
         .from('ai_analyses')
         .insert({
@@ -179,9 +194,11 @@ export const AIAnalysisDialog = ({
       if (saveError) {
         console.error('Error saving analysis:', saveError);
       } else {
+        // Reload previous analyses
         await loadPreviousAnalyses();
       }
       
+      // Notify parent component about the analysis
       if (onAnalysisComplete) {
         onAnalysisComplete(data.analysis);
       }
@@ -248,54 +265,6 @@ export const AIAnalysisDialog = ({
       });
     }
   };
-
-  // Show Pro Required screen if user doesn't have access
-  if (!canUseAI) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Lock className="w-5 h-5" />
-              {t('ai.proRequired')}
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="text-center py-8">
-            <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
-              <Sparkles className="w-10 h-10 text-white" />
-            </div>
-            
-            <p className="text-muted-foreground mb-6">
-              {t('ai.proRequiredDesc')}
-            </p>
-            
-            <ul className="text-left space-y-3 mb-8 max-w-xs mx-auto">
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>{t('ai.benefit1')}</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>{t('ai.benefit2')}</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>{t('ai.benefit3')}</span>
-              </li>
-            </ul>
-            
-            <Link to="/upgrade" onClick={() => onOpenChange(false)}>
-              <Button className="bg-gradient-to-r from-accent to-secondary text-accent-foreground">
-                <Sparkles className="w-4 h-4 mr-2" />
-                {t('ai.upgradeNow')}
-              </Button>
-            </Link>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

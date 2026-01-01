@@ -1,87 +1,45 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { createRemoteJWKSet, jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
+import { createClerkClient } from "https://esm.sh/@clerk/backend@1.15.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Clerk JWKS endpoint for cryptographic verification (instance-specific)
 const CLERK_JWKS_URL = "https://clerk.sparkboard.eu/.well-known/jwks.json";
-const JWKS = createRemoteJWKSet(new URL(CLERK_JWKS_URL));
 
-// KRITISKT: Kryptografisk JWT-verifiering med JWKS
 async function verifyClerkToken(authHeader: string | null): Promise<string> {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('Missing or invalid authorization header');
+  if (!authHeader) {
+    throw new Error("Missing Authorization header");
   }
 
   const token = authHeader.replace('Bearer ', '');
+  const clerkSecretKey = Deno.env.get("CLERK_SECRET_KEY");
+
+  if (!clerkSecretKey) {
+    throw new Error("CLERK_SECRET_KEY not configured");
+  }
+
+  console.log("[ANALYZE-NOTES] Verifying JWT with JWKS");
 
   try {
-    // KRYPTOGRAFISK SIGNATURVERIFIERING med JWKS
-    const { payload } = await jwtVerify(token, JWKS, {
-      algorithms: ['RS256'],
+    const clerk = createClerkClient({
+      secretKey: clerkSecretKey,
+      jwtKey: CLERK_JWKS_URL
     });
-    
-    if (!payload.sub) {
-      throw new Error('Invalid token - no user ID');
-    }
-    
-    console.log('[ANALYZE-NOTES] Token cryptographically verified for user:', payload.sub);
-    return payload.sub;
+
+    const verifiedToken = await clerk.verifyToken(token, {
+      jwtKey: CLERK_JWKS_URL
+    });
+
+    console.log("[ANALYZE-NOTES] JWT verified successfully", { userId: verifiedToken.sub });
+    return verifiedToken.sub;
   } catch (error) {
-    console.error('[ANALYZE-NOTES] Token verification failed:', error);
-    throw new Error('Unauthorized - token verification failed');
+    console.error("[ANALYZE-NOTES] JWT verification failed:", error.message);
+    throw new Error("Invalid or expired token");
   }
-}
-
-// Input validation
-interface NoteInput {
-  content: string;
-  question?: string;
-}
-
-function validateInput(notes: any, customPrompt: any): { valid: boolean; error?: string } {
-  // Validate notes array
-  if (!Array.isArray(notes)) {
-    return { valid: false, error: 'Notes must be an array' };
-  }
-  if (notes.length === 0) {
-    return { valid: false, error: 'No notes provided' };
-  }
-  if (notes.length > 1000) {
-    return { valid: false, error: 'Too many notes (max 1000)' };
-  }
-  
-  // Validate each note
-  for (let i = 0; i < notes.length; i++) {
-    const note = notes[i];
-    if (!note.content || typeof note.content !== 'string') {
-      return { valid: false, error: `Note ${i + 1}: content must be a string` };
-    }
-    if (note.content.length > 10000) {
-      return { valid: false, error: `Note ${i + 1}: content too long (max 10000 chars)` };
-    }
-    if (note.question && typeof note.question !== 'string') {
-      return { valid: false, error: `Note ${i + 1}: question must be a string` };
-    }
-    if (note.question && note.question.length > 500) {
-      return { valid: false, error: `Note ${i + 1}: question too long (max 500 chars)` };
-    }
-  }
-  
-  // Validate custom prompt
-  if (!customPrompt || typeof customPrompt !== 'string') {
-    return { valid: false, error: 'Custom prompt is required' };
-  }
-  if (customPrompt.length > 5000) {
-    return { valid: false, error: 'Prompt too long (max 5000 chars)' };
-  }
-  
-  return { valid: true };
 }
 
 serve(async (req) => {
@@ -90,44 +48,18 @@ serve(async (req) => {
   }
 
   try {
-    // Verify authentication FIRST
-    const authHeader = req.headers.get('Authorization');
-    let userId: string;
-    
-    try {
-      userId = await verifyClerkToken(authHeader);
-      console.log("[ANALYZE-NOTES] User authenticated:", userId);
-    } catch (authError) {
-      console.log("[ANALYZE-NOTES] Authentication failed:", authError);
-      return new Response(
-        JSON.stringify({ error: "Unauthorized - please log in" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // CRITICAL: Verify JWT first
+    const userId = await verifyClerkToken(req.headers.get("authorization"));
+    console.log("[ANALYZE-NOTES] User authenticated", { userId });
 
-    const { notes, customPrompt } = await req.json();
-    
-    // Validate input
-    const validation = validateInput(notes, customPrompt);
-    if (!validation.valid) {
-      console.log("[ANALYZE-NOTES] Validation failed:", validation.error);
-      return new Response(
-        JSON.stringify({ error: validation.error }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    console.log("[ANALYZE-NOTES] Processing", notes.length, "notes");
+    // Check user's plan - AI analysis requires Pro or Curago
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
 
-    // Create Supabase client with SERVICE_ROLE_KEY to bypass RLS
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false }
-    });
-
-    // Check user's plan in profiles table
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('plan')
       .eq('id', userId)
@@ -141,7 +73,6 @@ serve(async (req) => {
     const userPlan = profile?.plan || 'free';
     console.log("[ANALYZE-NOTES] User plan:", userPlan);
 
-    // Check if user has pro or curago plan
     if (userPlan !== 'pro' && userPlan !== 'curago') {
       console.log("[ANALYZE-NOTES] Access denied - plan not eligible", { plan: userPlan });
       return new Response(
@@ -157,6 +88,12 @@ serve(async (req) => {
       );
     }
 
+    // User is authorized - proceed with AI analysis
+    const { notes, customPrompt } = await req.json();
+
+    console.log("[ANALYZE-NOTES] Received analysis request for", notes.length, "notes");
+    console.log("[ANALYZE-NOTES] Custom prompt provided:", !!customPrompt);
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY not configured");
@@ -164,8 +101,8 @@ serve(async (req) => {
 
     // Format notes for AI context
     const notesContext = notes
-      .map((note: NoteInput, index: number) => 
-        `Note ${index + 1} (Question: ${note.question || 'N/A'}):\n${note.content}`
+      .map((note: any, index: number) =>
+        `Note ${index + 1} (Question: ${note.question}):\n${note.content}`
       )
       .join("\n\n");
 
@@ -174,13 +111,18 @@ serve(async (req) => {
 
 KRITISKT: Formatera ALLTID ditt svar med Markdown:
 - Använd ## för huvudrubriker
-- Använd ### för underrubriker  
+- Använd ### för underrubriker
 - Använd - eller • för punktlistor
 - Använd **fetstil** för viktiga koncept
 - Lämna en tom rad mellan stycken
 - Strukturera tydligt med sektioner
 
 Skriv på samma språk som användarens prompt.`;
+
+    // Use the custom prompt directly - no fallback
+    if (!customPrompt) {
+      throw new Error("Custom prompt is required");
+    }
 
     const fullPrompt = `${customPrompt}\n\n--- WORKSHOP NOTES ---\n${notesContext}`;
 
@@ -205,21 +147,21 @@ Skriv på samma språk som användarens prompt.`;
     if (!response.ok) {
       const errorText = await response.text();
       console.error("[ANALYZE-NOTES] AI API error:", response.status, errorText);
-      
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit nådd. Försök igen om en stund." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
       if (response.status === 402) {
         return new Response(
           JSON.stringify({ error: "AI-krediter slut. Kontakta administratören." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
       throw new Error(`AI API error: ${response.status}`);
     }
 
@@ -233,13 +175,13 @@ Skriv på samma språk som användarens prompt.`;
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("[ANALYZE-NOTES] Error:", error);
+    console.error("[ANALYZE-NOTES] Error in analyze-notes function:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    
+
     const status = errorMessage.includes("Authorization") ||
                    errorMessage.includes("token") ||
                    errorMessage.includes("Invalid") ? 401 : 500;
-    
+
     return new Response(
       JSON.stringify({ error: errorMessage }),
       {

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Calendar, Users, MoreVertical, Edit, Trash2, Copy, QrCode, Sparkles } from "lucide-react";
+import { Plus, Calendar, Users, MoreVertical, Edit, Trash2, Copy, QrCode } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,22 +18,21 @@ import { Navigation } from "@/components/Navigation";
 import { useProfile } from "@/hooks/useProfile";
 import { useMigrateWorkshops } from "@/hooks/useMigrateWorkshops";
 import { useSubscription } from "@/hooks/useSubscription";
-import { useAuthenticatedFunctions } from "@/hooks/useAuthenticatedFunctions";
+import { Sparkles } from "lucide-react";
+import { useAuth } from "@clerk/clerk-react";
 
 const WorkshopDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
+  const { getToken } = useAuth();
   const [workshops, setWorkshops] = useState<any[]>([]);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [selectedWorkshopCode, setSelectedWorkshopCode] = useState<string>("");
-  
+
   const { profile, loading: profileLoading, user } = useProfile();
   const { isChecking, isComplete, migratedCount, error } = useMigrateWorkshops();
   const { isFree, isPro, loading: subscriptionLoading } = useSubscription();
-  const { invokeWithAuth } = useAuthenticatedFunctions();
-
-  const dateLocale = language === 'sv' ? 'sv-SE' : 'en-US';
 
   useEffect(() => {
     if (user?.id) {
@@ -43,48 +42,89 @@ const WorkshopDashboard = () => {
 
   const loadWorkshops = async () => {
     if (!user?.id) return;
-    
+
     try {
-      // Use edge function to load workshops (Clerk JWT verified there)
-      const { data, error } = await invokeWithAuth('workshop-operations', {
-        operation: 'list-workshops'
+      // Get Clerk JWT token
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      // Call workshop-operations edge function with JWT
+      const { data, error } = await supabase.functions.invoke('workshop-operations', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: { operation: 'list-workshops' }
       });
 
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
 
-      setWorkshops(data?.workshops || []);
+      const ws = data?.workshops || [];
+
+      // Hämta boards separat och räkna per workshop
+      const workshopIds = ws.map((w: any) => w.id);
+      let countsByWorkshop: Record<string, number> = {};
+
+      if (workshopIds.length > 0) {
+        const { data: allBoards } = await supabase
+          .from('boards')
+          .select('id, workshop_id')
+          .in('workshop_id', workshopIds);
+
+        countsByWorkshop = (allBoards || []).reduce((acc, b) => {
+          acc[b.workshop_id] = (acc[b.workshop_id] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+      }
+
+      const workshopsWithCounts = ws.map((workshop: any) => ({
+        ...workshop,
+        boardCount: countsByWorkshop[workshop.id] || 0
+      }));
+
+      setWorkshops(workshopsWithCounts);
     } catch (error) {
       console.error('Error loading workshops:', error);
       toast({
-        title: t('dashboard.loadFailed'),
-        description: t('account.tryAgainLater'),
+        title: "Kunde inte ladda workshops",
+        description: "Försök igen senare",
         variant: "destructive",
       });
     }
   };
 
+
   const handleDelete = async (id: string) => {
     try {
-      const { data, error } = await invokeWithAuth('workshop-operations', {
-        operation: 'delete-workshop',
-        workshopId: id
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      const { error } = await supabase.functions.invoke('workshop-operations', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: {
+          operation: 'delete-workshop',
+          workshopId: id
+        }
       });
 
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
 
       toast({
-        title: t('dashboard.workshopDeleted'),
-        description: t('dashboard.workshopDeletedDesc'),
+        title: "Workshop raderad",
+        description: "Workshopen har tagits bort",
       });
 
       loadWorkshops();
     } catch (error) {
       console.error('Error deleting workshop:', error);
       toast({
-        title: t('dashboard.deleteFailed'),
-        description: t('account.tryAgainLater'),
+        title: "Kunde inte radera workshop",
+        description: "Försök igen senare",
         variant: "destructive",
       });
     }
@@ -101,42 +141,52 @@ const WorkshopDashboard = () => {
 
   const handleDuplicate = async (workshop: any) => {
     try {
-      const { data, error } = await invokeWithAuth('workshop-operations', {
-        operation: 'duplicate-workshop',
-        workshopId: workshop.id
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      const { data, error } = await supabase.functions.invoke('workshop-operations', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: {
+          operation: 'duplicate-workshop',
+          workshopId: workshop.id
+        }
       });
 
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
 
       toast({
-        title: t('dashboard.workshopDuplicated'),
-        description: t('dashboard.workshopDuplicatedDesc'),
+        title: "Workshop duplicerad!",
+        description: "En kopia av workshopen har skapats",
       });
 
       loadWorkshops();
     } catch (error) {
       console.error('Error duplicating workshop:', error);
       toast({
-        title: t('dashboard.duplicateFailed'),
-        description: t('account.tryAgainLater'),
+        title: "Kunde inte duplicera workshop",
+        description: "Försök igen senare",
         variant: "destructive",
       });
     }
   };
 
+  // Visa loading under migration
   if (isChecking || profileLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
         <Navigation />
         <div className="flex items-center justify-center min-h-[80vh]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-6"></div>
-            <h2 className="text-2xl font-semibold text-foreground mb-2">
-              {isChecking ? `🔄 ${t('dashboard.checking')}` : t('common.loading')}
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#19305C] mx-auto mb-6"></div>
+            <h2 className="text-2xl font-semibold text-[#03122F] mb-2">
+              {isChecking ? '🔄 Kontrollerar dina workshops...' : 'Laddar...'}
             </h2>
-            <p className="text-muted-foreground">
-              {isChecking ? t('dashboard.takesSeconds') : t('dashboard.pleaseWait')}
+            <p className="text-gray-600">
+              {isChecking ? 'Detta tar bara några sekunder' : 'Vänligen vänta'}
             </p>
           </div>
         </div>
@@ -144,21 +194,22 @@ const WorkshopDashboard = () => {
     );
   }
 
+  // Visa migration-fel om något gick fel
   if (error) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
         <Navigation />
         <div className="flex items-center justify-center min-h-[80vh]">
-          <div className="max-w-md bg-destructive/10 border-2 border-destructive/20 rounded-xl p-6">
-            <h2 className="text-xl font-semibold text-destructive mb-2">
-              ⚠️ {t('dashboard.migrationError')}
+          <div className="max-w-md bg-red-50 border-2 border-red-200 rounded-xl p-6">
+            <h2 className="text-xl font-semibold text-red-800 mb-2">
+              ⚠️ Migration Error
             </h2>
-            <p className="text-destructive/80 mb-4">{error}</p>
+            <p className="text-red-700 mb-4">{error}</p>
             <button 
               onClick={() => window.location.reload()}
-              className="bg-destructive text-destructive-foreground px-4 py-2 rounded-lg hover:opacity-90"
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
             >
-              {t('dashboard.tryAgain')}
+              Försök igen
             </button>
           </div>
         </div>
@@ -166,51 +217,54 @@ const WorkshopDashboard = () => {
     );
   }
 
+  // Visa success-meddelande om workshops migrerades
   const showMigrationSuccess = isComplete && migratedCount > 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-[#F3DADF] to-white">
       <Navigation />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Migration success banner */}
         {showMigrationSuccess && (
-          <div className="bg-green-50 dark:bg-green-950/30 border-l-4 border-green-500 p-6 mb-8 rounded-r-lg">
+          <div className="bg-green-50 border-l-4 border-green-500 p-6 mb-8 rounded-r-lg">
             <div className="flex items-start gap-3">
               <svg className="w-6 h-6 text-green-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               <div>
-                <h3 className="font-semibold text-green-900 dark:text-green-100 mb-1">
-                  ✅ {t('dashboard.workshopsMigrated')}
+                <h3 className="font-semibold text-green-900 mb-1">
+                  ✅ Dina workshops är nu kopplade till ditt konto!
                 </h3>
-                <p className="text-green-700 dark:text-green-300 text-sm">
-                  {t('dashboard.workshopsMigratedDesc', { count: migratedCount.toString() })}
+                <p className="text-green-700 text-sm">
+                  {migratedCount} workshop{migratedCount > 1 ? 's' : ''} har automatiskt kopplats till din nya inloggning.
                 </p>
               </div>
             </div>
           </div>
         )}
 
+        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-foreground">
+            <h1 className="text-4xl font-bold text-[#03122F]">
               {t('dashboard.title')}
             </h1>
-            <p className="text-muted-foreground mt-2">
-              {workshops.length} {workshops.length === 1 ? t('dashboard.workshop') : t('dashboard.workshops')}
+            <p className="text-gray-600 mt-2">
+              {workshops.length} {workshops.length === 1 ? 'workshop' : 'workshops'}
             </p>
           </div>
           
           {isFree && workshops.length >= 1 ? (
             <Link to="/upgrade">
-              <Button className="bg-gradient-to-r from-accent to-secondary text-accent-foreground px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+              <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90">
                 <Sparkles className="w-5 h-5 mr-2" />
-                {t('dashboard.upgradeForMore')}
+                Uppgradera till Pro
               </Button>
             </Link>
           ) : (
             <Link to="/create-workshop">
-              <Button className="bg-gradient-to-r from-accent to-secondary text-accent-foreground px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+              <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90">
                 <Plus className="w-5 h-5 mr-2" />
                 {t('dashboard.createNew')}
               </Button>
@@ -218,29 +272,30 @@ const WorkshopDashboard = () => {
           )}
         </div>
 
+        {/* Workshop limit warning for free users */}
         {isFree && workshops.length >= 1 && (
-          <div className="bg-yellow-50 dark:bg-yellow-950/30 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
-            <p className="text-yellow-800 dark:text-yellow-200">
-              <strong>📊 Free-plan:</strong> {t('dashboard.freePlanWarning')}{' '}
-              <Link to="/upgrade" className="underline ml-1 font-semibold hover:opacity-80">
-                {t('dashboard.upgradeForMore')}
-              </Link>{' '}
-              {t('dashboard.forUnlimited')}
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
+            <p className="text-yellow-800">
+              <strong>📊 Free-plan:</strong> Du har nått gränsen på 1 workshop. 
+              <Link to="/upgrade" className="underline ml-1 font-semibold hover:text-yellow-900">
+                Uppgradera till Pro
+              </Link> för obegränsat antal workshops!
             </p>
           </div>
         )}
 
+        {/* Workshops Grid */}
         {workshops.length === 0 ? (
           <div className="text-center py-20">
             <div className="text-6xl mb-4">📋</div>
-            <h2 className="text-2xl font-semibold text-muted-foreground mb-2">
+            <h2 className="text-2xl font-semibold text-gray-700 mb-2">
               {t('dashboard.noWorkshops')}
             </h2>
-            <p className="text-muted-foreground mb-6">
+            <p className="text-gray-500 mb-6">
               {t('dashboard.comeBack')}
             </p>
             <Link to="/create-workshop">
-              <Button className="bg-gradient-to-r from-accent to-secondary text-accent-foreground">
+              <Button className="bg-gradient-to-r from-[#F1916D] to-[#AE7DAC] text-white">
                 <Plus className="w-4 h-4 mr-2" />
                 {t('dashboard.createWorkshop')}
               </Button>
@@ -256,7 +311,7 @@ const WorkshopDashboard = () => {
                       <CardTitle className="text-xl mb-2">{workshop.name}</CardTitle>
                       <CardDescription className="flex items-center gap-2">
                         <Calendar className="w-4 h-4" />
-                        {new Date(workshop.date).toLocaleDateString(dateLocale)}
+                        {new Date(workshop.date).toLocaleDateString('sv-SE')}
                       </CardDescription>
                     </div>
                     <DropdownMenu>
@@ -272,15 +327,15 @@ const WorkshopDashboard = () => {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDuplicate(workshop)}>
                           <Copy className="w-4 h-4 mr-2" />
-                          {t('dashboard.duplicate')}
+                          Duplicera
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleShowQR(workshop.code)}>
                           <QrCode className="w-4 h-4 mr-2" />
-                          {t('dashboard.showQR')}
+                          Visa QR
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleDelete(workshop.id)}
-                          className="text-destructive"
+                          className="text-red-600"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
                           {t('dashboard.delete')}
@@ -295,12 +350,12 @@ const WorkshopDashboard = () => {
                       <Badge variant={workshop.status === 'active' ? 'default' : 'secondary'}>
                         {workshop.status === 'active' ? t('dashboard.status.active') : t('dashboard.status.draft')}
                       </Badge>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-gray-500">
                         {workshop.code}
                       </span>
                     </div>
                     
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <div className="flex items-center justify-between text-sm text-gray-600">
                       <div className="flex items-center gap-1">
                         <Users className="w-4 h-4" />
                         <span>{workshop.boardCount} {t('dashboard.boards')}</span>

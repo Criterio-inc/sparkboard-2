@@ -4,16 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, X, Loader2 } from 'lucide-react';
 import { STRIPE_PRICES } from '@/lib/stripe';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useAuthenticatedFunctions } from '@/hooks/useAuthenticatedFunctions';
 
 export const UpgradeToPro = () => {
   const { user } = useUser();
   const { plan } = useSubscription();
-  const { t } = useLanguage();
-  const { invokeWithAuth } = useAuthenticatedFunctions();
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
 
@@ -23,13 +20,24 @@ export const UpgradeToPro = () => {
     setLoading(true);
 
     try {
-      const priceId = selectedPlan === 'monthly' 
+      const priceId = selectedPlan === 'monthly'
         ? STRIPE_PRICES.monthly
         : STRIPE_PRICES.yearly;
 
-      // Email is fetched from verified profile in edge function - not sent from client
-      const { data, error } = await invokeWithAuth('create-checkout', { 
-        priceId
+      // Get Clerk JWT token
+      const token = await user.getToken?.() || await (window as any).Clerk?.session?.getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: {
+          priceId
+          // Email is fetched from verified profile in edge function
+        }
       });
 
       if (error) throw error;
@@ -40,8 +48,8 @@ export const UpgradeToPro = () => {
     } catch (error) {
       console.error('Upgrade error:', error);
       toast({
-        title: t('common.error'),
-        description: t('upgrade.error'),
+        title: 'Fel',
+        description: 'Något gick fel. Försök igen.',
         variant: 'destructive',
       });
     } finally {
@@ -52,121 +60,142 @@ export const UpgradeToPro = () => {
   return (
     <div className="max-w-6xl mx-auto p-6">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-2">{t('upgrade.title')}</h2>
-        <p className="text-muted-foreground">{t('upgrade.subtitle')}</p>
+        <h2 className="text-3xl font-bold mb-2">Välj din plan</h2>
+        <p className="text-muted-foreground">Skapa workshops som passar dina behov</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* FREE PLAN */}
         <Card className={plan === 'free' ? 'ring-2 ring-primary/50' : 'opacity-75'}>
           <CardHeader>
-            <CardTitle>{t('upgrade.free.title')}</CardTitle>
+            <CardTitle>Sparkboard Free</CardTitle>
             <CardDescription>
-              <span className="text-3xl font-bold text-foreground">{t('upgrade.free.price')}</span>
-              <span className="text-muted-foreground">{t('upgrade.free.period')}</span>
+              <span className="text-3xl font-bold text-foreground">0 SEK</span>
+              <span className="text-muted-foreground">/alltid</span>
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Perfekt för att testa Sparkboard och köra enstaka workshops
+            </p>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>{t('upgrade.free.workshop')}</span>
+                <span>1 aktiv workshop</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>{t('upgrade.free.participants')}</span>
+                <span>5 deltagare per workshop</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <span>Grundläggande funktioner</span>
               </li>
               <li className="flex items-center gap-2">
                 <X className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <span className="text-muted-foreground">{t('upgrade.free.noAi')}</span>
+                <span className="text-muted-foreground">AI-analys av resultat</span>
               </li>
               <li className="flex items-center gap-2">
                 <X className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <span className="text-muted-foreground">{t('upgrade.free.noSupport')}</span>
+                <span className="text-muted-foreground">Prioriterad support</span>
               </li>
             </ul>
             {plan === 'free' && (
               <div className="mt-4 text-center text-sm text-muted-foreground font-medium">
-                {t('upgrade.free.currentPlan')}
+                Din nuvarande plan
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* MÅNADSVIS */}
-        <Card 
+        <Card
           className={`cursor-pointer transition-all ${
             selectedPlan === 'monthly' ? 'ring-2 ring-primary' : ''
           }`}
           onClick={() => setSelectedPlan('monthly')}
         >
           <CardHeader>
-            <CardTitle>{t('upgrade.monthly.title')}</CardTitle>
+            <CardTitle>Sparkboard Pro - månad</CardTitle>
             <CardDescription>
-              <span className="text-3xl font-bold text-foreground">{t('upgrade.monthly.price')}</span>
-              <span className="text-muted-foreground">{t('upgrade.monthly.period')}</span>
+              <span className="text-3xl font-bold text-foreground">99 SEK</span>
+              <span className="text-muted-foreground">/månad</span>
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Full tillgång till alla funktioner - flexibelt månadsabonnemang
+            </p>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>{t('upgrade.pro.workshops')}</span>
+                <span>Obegränsat antal workshops</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>{t('upgrade.pro.participants')}</span>
+                <span>Obegränsat antal deltagare</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>{t('upgrade.pro.ai')}</span>
+                <span>AI-analys av resultat</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>{t('upgrade.pro.support')}</span>
+                <span>Export till Excel och PDF</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <span>Prioriterad support</span>
               </li>
             </ul>
           </CardContent>
         </Card>
 
         {/* ÅRLIG */}
-        <Card 
+        <Card
           className={`cursor-pointer transition-all relative ${
             selectedPlan === 'yearly' ? 'ring-2 ring-primary' : ''
           }`}
           onClick={() => setSelectedPlan('yearly')}
         >
           <div className="absolute -top-3 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-            {t('upgrade.yearly.save')}
+            Spara ca 20%
           </div>
           <CardHeader>
-            <CardTitle>{t('upgrade.yearly.title')}</CardTitle>
+            <CardTitle>Sparkboard Pro årligen</CardTitle>
             <CardDescription>
-              <span className="text-3xl font-bold text-foreground">{t('upgrade.yearly.price')}</span>
-              <span className="text-muted-foreground">{t('upgrade.yearly.period')}</span>
+              <span className="text-3xl font-bold text-foreground">950 SEK</span>
+              <span className="text-muted-foreground">/år</span>
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Bästa priset - full tillgång hela året för professionella facilitatorer
+            </p>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>{t('upgrade.pro.workshops')}</span>
+                <span>Obegränsat antal workshops</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>{t('upgrade.pro.participants')}</span>
+                <span>Obegränsat antal deltagare</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>{t('upgrade.pro.ai')}</span>
+                <span>AI-analys av resultat</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span>{t('upgrade.pro.support')}</span>
+                <span>Export till Excel och PDF</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span className="font-bold">{t('upgrade.yearly.saveMonths')}</span>
+                <span>Prioriterad support</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <span className="font-bold text-green-600">Spara 238 SEK per år</span>
               </li>
             </ul>
           </CardContent>
@@ -175,8 +204,8 @@ export const UpgradeToPro = () => {
 
       {plan !== 'pro' && plan !== 'curago' && (
         <div className="mt-8 text-center">
-          <Button 
-            size="lg" 
+          <Button
+            size="lg"
             onClick={handleUpgrade}
             disabled={loading}
             className="min-w-[200px]"
@@ -184,10 +213,10 @@ export const UpgradeToPro = () => {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {t('upgrade.loading')}
+                Laddar...
               </>
             ) : (
-              `${t('upgrade.button')} - ${selectedPlan === 'monthly' ? '99 SEK/mån' : '950 SEK/år'}`
+              `Uppgradera nu - ${selectedPlan === 'monthly' ? '99 SEK/mån' : '950 SEK/år'}`
             )}
           </Button>
         </div>

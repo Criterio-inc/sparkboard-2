@@ -312,7 +312,7 @@ export type Database = {
       }
     }
     Functions: {
-      cleanup_expired_sessions: { Args: never; Returns: undefined }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

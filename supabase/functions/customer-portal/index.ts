@@ -1,61 +1,51 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createRemoteJWKSet, jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClerkClient } from "https://esm.sh/@clerk/backend@1.15.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Clerk JWKS endpoint for cryptographic verification (instance-specific)
 const CLERK_JWKS_URL = "https://clerk.sparkboard.eu/.well-known/jwks.json";
-const JWKS = createRemoteJWKSet(new URL(CLERK_JWKS_URL));
-
-// KRITISKT: Kryptografisk JWT-verifiering med JWKS
-async function verifyClerkToken(authHeader: string | null): Promise<string> {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('Missing or invalid authorization header');
-  }
-
-  const token = authHeader.replace('Bearer ', '');
-
-  try {
-    // KRYPTOGRAFISK SIGNATURVERIFIERING med JWKS
-    const { payload } = await jwtVerify(token, JWKS, {
-      algorithms: ['RS256'],
-    });
-    
-    if (!payload.sub) {
-      throw new Error('Invalid token - no user ID');
-    }
-    
-    console.log('[CUSTOMER-PORTAL] Token cryptographically verified for user:', payload.sub);
-    return payload.sub;
-  } catch (error) {
-    console.error('[CUSTOMER-PORTAL] Token verification failed:', error);
-    throw new Error('Unauthorized - token verification failed');
-  }
-}
-
-// Input validation
-function validateInput(userEmail: any): { valid: boolean; error?: string } {
-  if (!userEmail || typeof userEmail !== 'string') {
-    return { valid: false, error: 'Email is required' };
-  }
-  if (userEmail.length > 255) {
-    return { valid: false, error: 'Email too long (max 255 chars)' };
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
-    return { valid: false, error: 'Invalid email format' };
-  }
-  
-  return { valid: true };
-}
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CUSTOMER-PORTAL] ${step}${detailsStr}`);
 };
+
+async function verifyClerkToken(authHeader: string | null): Promise<string> {
+  if (!authHeader) {
+    throw new Error("Missing Authorization header");
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const clerkSecretKey = Deno.env.get("CLERK_SECRET_KEY");
+
+  if (!clerkSecretKey) {
+    throw new Error("CLERK_SECRET_KEY not configured");
+  }
+
+  logStep("Verifying JWT with JWKS");
+
+  try {
+    const clerk = createClerkClient({
+      secretKey: clerkSecretKey,
+      jwtKey: CLERK_JWKS_URL
+    });
+
+    const verifiedToken = await clerk.verifyToken(token, {
+      jwtKey: CLERK_JWKS_URL
+    });
+
+    logStep("JWT verified successfully", { userId: verifiedToken.sub });
+    return verifiedToken.sub;
+  } catch (error) {
+    logStep("JWT verification failed", { error: error.message });
+    throw new Error("Invalid or expired token");
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -65,38 +55,34 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    // Verify authentication FIRST
-    const authHeader = req.headers.get('Authorization');
-    let userId: string;
-    
-    try {
-      userId = await verifyClerkToken(authHeader);
-      logStep("User authenticated", { userId });
-    } catch (authError) {
-      logStep("Authentication failed", { error: String(authError) });
-      return new Response(
-        JSON.stringify({ error: "Unauthorized - please log in" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Verify JWT and get user ID
+    const userId = await verifyClerkToken(req.headers.get("authorization"));
+    logStep("User authenticated", { userId });
+
+    // Get user's email from verified profile (NOT from request body)
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('email')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !profile) {
+      logStep("Error fetching profile", { error: profileError });
+      throw new Error("User profile not found");
     }
+
+    const userEmail = profile.email;
+    logStep("Using verified email from profile", { email: userEmail });
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     logStep("Stripe key verified");
-
-    const { userEmail } = await req.json();
-    
-    // Validate input
-    const validation = validateInput(userEmail);
-    if (!validation.valid) {
-      logStep("Validation failed", { error: validation.error });
-      return new Response(
-        JSON.stringify({ error: validation.error }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    logStep("Request data", { email: userEmail, userId });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     
@@ -124,9 +110,14 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR in customer-portal", { message: errorMessage });
+
+    const status = errorMessage.includes("Authorization") ||
+                   errorMessage.includes("token") ||
+                   errorMessage.includes("Invalid") ? 401 : 500;
+
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status,
     });
   }
 });

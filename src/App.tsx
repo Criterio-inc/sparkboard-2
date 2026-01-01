@@ -17,9 +17,7 @@ import Upgrade from "./pages/Upgrade";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import AccountSettings from "./pages/AccountSettings";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
-import Cookies from "./pages/Cookies";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -39,14 +37,10 @@ const App = () => (
             <Route path="/create-workshop" element={<AuthWrapper><CreateWorkshop /></AuthWrapper>} />
             <Route path="/create-workshop/:id" element={<AuthWrapper><CreateWorkshop /></AuthWrapper>} />
             <Route path="/facilitator/:workshopId" element={<AuthWrapper><FacilitatorControl /></AuthWrapper>} />
-            <Route path="/settings" element={<AuthWrapper><AccountSettings /></AuthWrapper>} />
             <Route path="/upgrade" element={<AuthWrapper><Upgrade /></AuthWrapper>} />
             <Route path="/account" element={<AuthWrapper><AccountSettings /></AuthWrapper>} />
             <Route path="/payment-success" element={<AuthWrapper><PaymentSuccess /></AuthWrapper>} />
             <Route path="/payment-cancelled" element={<AuthWrapper><PaymentCancelled /></AuthWrapper>} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/cookies" element={<Cookies />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
