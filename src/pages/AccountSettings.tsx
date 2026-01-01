@@ -237,7 +237,7 @@ const AccountSettings = () => {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span>{t('account.unlimitedParticipants')}</span>
+                <span>{isPro || isCuragoUser ? t('account.unlimitedParticipants') : t('account.maxParticipants', { count: '5' })}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${isPro || isCuragoUser ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
