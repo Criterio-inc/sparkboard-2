@@ -22,6 +22,17 @@ interface Note {
   timestamp: string;
 }
 
+interface PDFTranslations {
+  date: string;
+  participants: string;
+  board: string;
+  timeLimit: string;
+  minutes: string;
+  question: string;
+  noAnswers: string;
+  aiAnalysis: string;
+}
+
 interface ExportData {
   workshopTitle: string;
   date: string;
@@ -29,6 +40,7 @@ interface ExportData {
   notesByBoard: Record<string, Note[]>;
   aiAnalyses?: Record<string, string>;
   participantCount: number;
+  translations: PDFTranslations;
 }
 
 const boardColorsHex = [
@@ -280,8 +292,8 @@ export const generateWorkshopPDF = async (data: ExportData) => {
     <body>
       <div class="header">
         <h1>${escapeHtml(data.workshopTitle)}</h1>
-        <p><strong>Datum:</strong> ${escapeHtml(data.date)}</p>
-        <p><strong>Deltagare:</strong> ${data.participantCount}</p>
+        <p><strong>${escapeHtml(data.translations.date)}:</strong> ${escapeHtml(data.date)}</p>
+        <p><strong>${escapeHtml(data.translations.participants)}:</strong> ${data.participantCount}</p>
       </div>
       
       ${data.boards.map((board, boardIndex) => {
@@ -292,10 +304,10 @@ export const generateWorkshopPDF = async (data: ExportData) => {
         return `
           <div class="board-section">
             <div class="board-title" style="border-left-color: ${borderColor}">
-              Board ${boardIndex + 1}: ${escapeHtml(board.title)}
+              ${escapeHtml(data.translations.board)} ${boardIndex + 1}: ${escapeHtml(board.title)}
             </div>
             <div class="board-info">
-              Tidsgräns: ${board.timeLimit} minuter
+              ${escapeHtml(data.translations.timeLimit)}: ${board.timeLimit} ${escapeHtml(data.translations.minutes)}
             </div>
             
             ${board.questions.map((question, qIndex) => {
@@ -303,7 +315,7 @@ export const generateWorkshopPDF = async (data: ExportData) => {
               
               return `
                 <div class="question-section">
-                  <div class="question-title">Fråga ${qIndex + 1}: ${escapeHtml(question.title)}</div>
+                  <div class="question-title">${escapeHtml(data.translations.question)} ${qIndex + 1}: ${escapeHtml(question.title)}</div>
                   ${questionNotes.length > 0 ? `
                     <div class="notes-section">
                       ${questionNotes.map(note => `
@@ -311,7 +323,7 @@ export const generateWorkshopPDF = async (data: ExportData) => {
                       `).join('')}
                     </div>
                   ` : `
-                    <div class="no-notes">Inga svar</div>
+                    <div class="no-notes">${escapeHtml(data.translations.noAnswers)}</div>
                   `}
                 </div>
               `;
@@ -319,7 +331,7 @@ export const generateWorkshopPDF = async (data: ExportData) => {
             
             ${analysis ? `
               <div class="ai-section">
-                <div class="ai-header">🤖 AI-Analys</div>
+                <div class="ai-header">${escapeHtml(data.translations.aiAnalysis)}</div>
                 <div class="ai-content">
                   ${markdownToHTML(analysis)}
                 </div>
