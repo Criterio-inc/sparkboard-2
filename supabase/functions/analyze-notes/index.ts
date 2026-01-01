@@ -7,64 +7,126 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Verify Clerk JWT token and return user ID
+function verifyClerkToken(authHeader: string | null): string {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new Error('Missing authorization header');
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid token format');
+    }
+    
+    const payload = JSON.parse(atob(parts[1]));
+    const userId = payload.sub || payload.user_id;
+    
+    if (!userId) {
+      throw new Error('Invalid token - no user ID');
+    }
+    
+    // Check token expiry
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      throw new Error('Token expired');
+    }
+    
+    return userId;
+  } catch (error) {
+    console.error('Auth failed:', error);
+    throw new Error('Unauthorized');
+  }
+}
+
+// Input validation
+interface NoteInput {
+  content: string;
+  question?: string;
+}
+
+function validateInput(notes: any, customPrompt: any): { valid: boolean; error?: string } {
+  // Validate notes array
+  if (!Array.isArray(notes)) {
+    return { valid: false, error: 'Notes must be an array' };
+  }
+  if (notes.length === 0) {
+    return { valid: false, error: 'No notes provided' };
+  }
+  if (notes.length > 1000) {
+    return { valid: false, error: 'Too many notes (max 1000)' };
+  }
+  
+  // Validate each note
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i];
+    if (!note.content || typeof note.content !== 'string') {
+      return { valid: false, error: `Note ${i + 1}: content must be a string` };
+    }
+    if (note.content.length > 10000) {
+      return { valid: false, error: `Note ${i + 1}: content too long (max 10000 chars)` };
+    }
+    if (note.question && typeof note.question !== 'string') {
+      return { valid: false, error: `Note ${i + 1}: question must be a string` };
+    }
+    if (note.question && note.question.length > 500) {
+      return { valid: false, error: `Note ${i + 1}: question too long (max 500 chars)` };
+    }
+  }
+  
+  // Validate custom prompt
+  if (!customPrompt || typeof customPrompt !== 'string') {
+    return { valid: false, error: 'Custom prompt is required' };
+  }
+  if (customPrompt.length > 5000) {
+    return { valid: false, error: 'Prompt too long (max 5000 chars)' };
+  }
+  
+  return { valid: true };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { notes, customPrompt } = await req.json();
-    
-    console.log("Received analysis request for", notes.length, "notes");
-    console.log("Custom prompt provided:", !!customPrompt);
-    
-    // Get auth header and verify user subscription
+    // Verify authentication FIRST
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.log("No authorization header provided");
+    let userId: string;
+    
+    try {
+      userId = verifyClerkToken(authHeader);
+      console.log("[ANALYZE-NOTES] User authenticated:", userId);
+    } catch (authError) {
+      console.log("[ANALYZE-NOTES] Authentication failed:", authError);
       return new Response(
         JSON.stringify({ error: "Unauthorized - please log in" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    const { notes, customPrompt } = await req.json();
+    
+    // Validate input
+    const validation = validateInput(notes, customPrompt);
+    if (!validation.valid) {
+      console.log("[ANALYZE-NOTES] Validation failed:", validation.error);
+      return new Response(
+        JSON.stringify({ error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    console.log("[ANALYZE-NOTES] Processing", notes.length, "notes");
+
     // Create Supabase client to check subscription
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } }
+      global: { headers: { Authorization: authHeader! } }
     });
-
-    // Get user from auth
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    // For Clerk users, we need to check differently - extract user ID from token
-    let userId: string | null = null;
-    
-    if (user) {
-      userId = user.id;
-    } else {
-      // Try to decode JWT to get user ID (for Clerk tokens)
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        const parts = token.split('.');
-        if (parts.length === 3) {
-          const payload = JSON.parse(atob(parts[1]));
-          userId = payload.sub || payload.user_id;
-          console.log("Extracted user ID from token:", userId);
-        }
-      } catch (e) {
-        console.log("Could not extract user ID from token:", e);
-      }
-    }
-
-    if (!userId) {
-      console.log("Could not determine user ID");
-      return new Response(
-        JSON.stringify({ error: "Could not verify user identity" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     // Check user's plan in profiles table
     const { data: profile, error: profileError } = await supabase
@@ -74,16 +136,15 @@ serve(async (req) => {
       .single();
 
     if (profileError) {
-      console.log("Error fetching profile:", profileError);
-      // If profile doesn't exist, treat as free user
+      console.log("[ANALYZE-NOTES] Error fetching profile:", profileError);
     }
 
     const userPlan = profile?.plan || 'free';
-    console.log("User plan:", userPlan);
+    console.log("[ANALYZE-NOTES] User plan:", userPlan);
 
     // Check if user has pro or curago plan
     if (userPlan !== 'pro' && userPlan !== 'curago') {
-      console.log("User does not have Pro plan, blocking AI analysis");
+      console.log("[ANALYZE-NOTES] User does not have Pro plan, blocking AI analysis");
       return new Response(
         JSON.stringify({ error: "AI analysis requires Pro subscription" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -97,8 +158,8 @@ serve(async (req) => {
 
     // Format notes for AI context
     const notesContext = notes
-      .map((note: any, index: number) => 
-        `Note ${index + 1} (Question: ${note.question}):\n${note.content}`
+      .map((note: NoteInput, index: number) => 
+        `Note ${index + 1} (Question: ${note.question || 'N/A'}):\n${note.content}`
       )
       .join("\n\n");
 
@@ -115,15 +176,9 @@ KRITISKT: Formatera ALLTID ditt svar med Markdown:
 
 Skriv på samma språk som användarens prompt.`;
 
-    // Use the custom prompt directly - no fallback
-    if (!customPrompt) {
-      throw new Error("Custom prompt is required");
-    }
-
     const fullPrompt = `${customPrompt}\n\n--- WORKSHOP NOTES ---\n${notesContext}`;
 
-    console.log("Calling AI with prompt length:", fullPrompt.length);
-    console.log("User prompt preview:", customPrompt.substring(0, 100) + "...");
+    console.log("[ANALYZE-NOTES] Calling AI with prompt length:", fullPrompt.length);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -142,7 +197,7 @@ Skriv på samma språk som användarens prompt.`;
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI API error:", response.status, errorText);
+      console.error("[ANALYZE-NOTES] AI API error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
@@ -164,14 +219,14 @@ Skriv på samma språk som användarens prompt.`;
     const data = await response.json();
     const analysis = data.choices[0].message.content;
 
-    console.log("Analysis generated successfully, length:", analysis.length);
+    console.log("[ANALYZE-NOTES] Analysis generated successfully, length:", analysis.length);
 
     return new Response(
       JSON.stringify({ analysis }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in analyze-notes function:", error);
+    console.error("[ANALYZE-NOTES] Error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
       JSON.stringify({ error: errorMessage }),
