@@ -534,22 +534,22 @@ export function ImportNotesDialog({
             <TabsTrigger value="select" className="gap-1 text-xs sm:text-sm">
               <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-semibold shrink-0">1</span>
               <span className="hidden sm:inline">{t('import.selectNotes')}</span>
-              <span className="sm:hidden">Välj</span>
+              <span className="sm:hidden">{t('import.selectMobile')}</span>
             </TabsTrigger>
             <TabsTrigger value="method" className="gap-1 text-xs sm:text-sm" disabled={selectedNotes.length === 0}>
               <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-semibold shrink-0">2</span>
               <span className="hidden sm:inline">{t('import.method')}</span>
-              <span className="sm:hidden">Metod</span>
+              <span className="sm:hidden">{t('import.methodMobile')}</span>
             </TabsTrigger>
             <TabsTrigger value="cluster" className="gap-1 text-xs sm:text-sm" disabled={activeTab !== "cluster" && activeTab !== "preview"}>
               <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-semibold shrink-0">3</span>
               <span className="hidden sm:inline">{t('import.defineCategories')}</span>
-              <span className="sm:hidden">AI</span>
+              <span className="sm:hidden">{t('import.aiMobile')}</span>
             </TabsTrigger>
             <TabsTrigger value="preview" className="gap-1 text-xs sm:text-sm" disabled={!clusterPreview}>
               <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-semibold shrink-0">4</span>
               <span className="hidden sm:inline">{t('import.preview')}</span>
-              <span className="sm:hidden">Granska</span>
+              <span className="sm:hidden">{t('import.previewMobile')}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -691,7 +691,7 @@ export function ImportNotesDialog({
                     <div className="mb-4">
                       <div className="flex items-center gap-2 mb-2">
                         <FolderOpen className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-medium text-primary">Befintliga kategorier</span>
+                        <span className="text-sm font-medium text-primary">{t('import.existingCategories')}</span>
                       </div>
                       <div className="space-y-2">
                         {categories.filter(c => c.isExisting).map((category, idx) => {
@@ -709,7 +709,7 @@ export function ImportNotesDialog({
                                 {category.title}
                               </div>
                               <Badge variant="outline" className="shrink-0 text-xs">
-                                Befintlig
+                                {t('import.existingBadge')}
                               </Badge>
                             </div>
                           );
@@ -723,7 +723,7 @@ export function ImportNotesDialog({
                     <div className="mb-4">
                       <div className="flex items-center gap-2 mb-2">
                         <Plus className="w-4 h-4 text-green-600" />
-                        <span className="text-sm font-medium text-green-600">Nya kategorier</span>
+                        <span className="text-sm font-medium text-green-600">{t('import.newCategories')}</span>
                       </div>
                       <div className="space-y-2">
                         {categories.filter(c => !c.isExisting).map((category) => {
@@ -840,7 +840,7 @@ export function ImportNotesDialog({
                             variant={categoryInfo.isExisting ? "outline" : "secondary"} 
                             className={`shrink-0 ${categoryInfo.isExisting ? 'border-primary text-primary' : 'bg-green-600/20 text-green-600 border-green-600'}`}
                           >
-                            {categoryInfo.isExisting ? 'Läggs till' : 'Ny'}
+                            {categoryInfo.isExisting ? t('import.addsToBadge') : t('import.newBadge')}
                           </Badge>
                           <Badge variant="secondary" className="shrink-0">{notes.length}</Badge>
                         </div>

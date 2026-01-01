@@ -86,8 +86,8 @@ const FacilitatorControl = () => {
 
         if (error || data?.error || !data?.workshop) {
           toast({
-            title: "Workshop saknas",
-            description: "Kunde inte hitta workshopen. Återgår till dashboard.",
+            title: t('facilitator.workshopMissing'),
+            description: t('facilitator.workshopMissingDesc'),
             variant: "destructive",
           });
           navigate("/dashboard");
@@ -116,8 +116,8 @@ const FacilitatorControl = () => {
       } catch (error) {
         console.error("Fel vid laddning av workshop:", error);
         toast({
-          title: "Fel",
-          description: "Kunde inte ladda workshop-data",
+          title: t('facilitator.loadError'),
+          description: t('facilitator.loadErrorDesc'),
           variant: "destructive",
         });
         navigate("/dashboard");
@@ -341,8 +341,8 @@ const FacilitatorControl = () => {
           }
           
           toast({
-            title: "Tiden är ute!",
-            description: "Boardens tidsgräns har nåtts",
+            title: t('facilitator.timeUp'),
+            description: t('facilitator.timeUpDesc'),
             variant: "destructive",
           });
           return 0;
@@ -358,11 +358,11 @@ const FacilitatorControl = () => {
   useEffect(() => {
     if (timeRemaining === 120 && isTimerRunning) {
       toast({
-        title: "2 minuter kvar!",
-        description: "Boardens tid håller på att ta slut",
+        title: t('facilitator.twoMinutesLeft'),
+        description: t('facilitator.twoMinutesLeftDesc'),
       });
     }
-  }, [timeRemaining, isTimerRunning, toast]);
+  }, [timeRemaining, isTimerRunning, toast, t]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -388,8 +388,8 @@ const FacilitatorControl = () => {
       if (error) {
         console.error("Fel vid uppdatering av active board:", error);
         toast({
-          title: "Fel",
-          description: "Kunde inte byta board",
+          title: t('facilitator.switchError'),
+          description: t('facilitator.switchErrorDesc'),
           variant: "destructive",
         });
         return;
@@ -402,8 +402,8 @@ const FacilitatorControl = () => {
       console.log("✅ [Facilitator] Bytte till board:", nextBoard.title);
       
       toast({
-        title: "Nästa board!",
-        description: `Nu på: ${nextBoard.title}`,
+        title: t('facilitator.nextBoardToast'),
+        description: t('facilitator.nextBoardDesc', { title: nextBoard.title }),
       });
     }
   };
@@ -453,14 +453,14 @@ const FacilitatorControl = () => {
       await generateWorkshopPDF(exportData);
 
       toast({
-        title: "PDF genererad!",
-        description: "Din workshop-rapport har laddats ner",
+        title: t('facilitator.pdfGenerated'),
+        description: t('facilitator.pdfGeneratedDesc'),
       });
     } catch (error) {
       console.error("PDF generation error:", error);
       toast({
-        title: "Fel vid PDF-generering",
-        description: "Kunde inte skapa PDF. Försök igen.",
+        title: t('facilitator.pdfError'),
+        description: t('facilitator.pdfErrorDesc'),
         variant: "destructive",
       });
     }
@@ -482,8 +482,8 @@ const FacilitatorControl = () => {
       if (error) {
         console.error("Kunde inte ta bort note:", error);
         toast({
-          title: "Fel",
-          description: "Kunde inte ta bort note",
+          title: t('facilitator.deleteError'),
+          description: t('facilitator.deleteErrorDesc'),
           variant: "destructive",
         });
         return;
@@ -492,8 +492,8 @@ const FacilitatorControl = () => {
       console.log("✅ [Facilitator] Note borttagen från Supabase");
       
       toast({
-        title: "Note borttagen",
-        description: "Sticky note har tagits bort",
+        title: t('facilitator.noteDeleted'),
+        description: t('facilitator.noteDeletedDesc'),
       });
       
       // Realtime kommer automatiskt uppdatera notes-state
@@ -514,8 +514,8 @@ const FacilitatorControl = () => {
       if (error) {
         console.error("Kunde inte flytta note:", error);
         toast({
-          title: "Fel",
-          description: "Kunde inte flytta note",
+          title: t('facilitator.moveError'),
+          description: t('facilitator.moveErrorDesc'),
           variant: "destructive",
         });
         return;
@@ -524,8 +524,8 @@ const FacilitatorControl = () => {
       console.log("✅ [Facilitator] Note flyttad");
       
       toast({
-        title: "Note flyttad",
-        description: "Sticky note har flyttats till ny kategori",
+        title: t('facilitator.noteMoved'),
+        description: t('facilitator.noteMovedDesc'),
       });
     } catch (error) {
       console.error("Fel vid flyttning av note:", error);
@@ -547,8 +547,8 @@ const FacilitatorControl = () => {
       if (notesError) {
         console.error("Kunde inte ta bort deltagarens anteckningar:", notesError);
         toast({
-          title: "Fel",
-          description: "Kunde inte ta bort deltagarens anteckningar",
+          title: t('facilitator.participantDeleteError'),
+          description: t('facilitator.participantNotesDeleteError'),
           variant: "destructive",
         });
         return;
@@ -563,8 +563,8 @@ const FacilitatorControl = () => {
       if (error) {
         console.error("Kunde inte ta bort deltagare:", error);
         toast({
-          title: "Fel",
-          description: "Kunde inte ta bort deltagare",
+          title: t('facilitator.participantDeleteError'),
+          description: t('facilitator.participantDeleteErrorDesc'),
           variant: "destructive",
         });
         return;
@@ -573,8 +573,8 @@ const FacilitatorControl = () => {
       console.log("✅ [Facilitator] Deltagare och anteckningar borttagna från Supabase");
       
       toast({
-        title: "Deltagare borttagen",
-        description: "Deltagaren och deras anteckningar har tagits bort från workshopen",
+        title: t('facilitator.participantDeleted'),
+        description: t('facilitator.participantDeletedDesc'),
       });
       
       // Realtime kommer automatiskt uppdatera participants-state
@@ -629,7 +629,7 @@ const FacilitatorControl = () => {
                   className="ml-4"
                 >
                   <QrCode className="w-4 h-4 mr-2" />
-                  Visa QR
+                  {t('facilitator.showQR')}
                 </Button>
               )}
             </div>
@@ -687,14 +687,14 @@ const FacilitatorControl = () => {
                         .update(updateData)
                         .eq('id', workshop.id);
                       
-                      if (error) {
-                        console.error("Kunde inte uppdatera timer state:", error);
-                        toast({
-                          title: "Fel",
-                          description: "Kunde inte uppdatera timer",
-                          variant: "destructive",
-                        });
-                      } else {
+                        if (error) {
+                          console.error("Kunde inte uppdatera timer state:", error);
+                          toast({
+                            title: t('common.error'),
+                            description: t('facilitator.timerUpdateError'),
+                            variant: "destructive",
+                          });
+                        } else {
                         console.log("✅ Timer state uppdaterad:", newRunningState ? "Startad" : "Pausad");
                       }
                     }
@@ -752,7 +752,7 @@ const FacilitatorControl = () => {
                       console.error("Could not update active board:", error);
                       toast({
                         title: t('common.error'),
-                        description: "Kunde inte byta board för deltagare",
+                        description: t('facilitator.couldNotSwitchBoard'),
                         variant: "destructive",
                       });
                       return;
@@ -919,7 +919,7 @@ const FacilitatorControl = () => {
           {/* Mobile/Tablet ParticipantList - shown below boards */}
           <div className="lg:hidden mt-6">
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Deltagare</h3>
+              <h3 className="text-lg font-semibold mb-4">{t('facilitator.participants')}</h3>
               <ParticipantList 
                 participants={participants}
                 onDeleteParticipant={handleDeleteParticipant}
