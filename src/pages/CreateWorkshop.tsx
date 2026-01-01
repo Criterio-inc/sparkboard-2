@@ -375,8 +375,8 @@ const CreateWorkshop = () => {
           URL.revokeObjectURL(url);
           
           toast({
-            title: "QR-kod nedladdad!",
-            description: "QR-koden har sparats som en bild",
+            title: t('createWorkshop.qrDownloaded'),
+            description: t('createWorkshop.qrDownloadedDesc'),
           });
         }
       });
@@ -391,37 +391,37 @@ const CreateWorkshop = () => {
         <Link to="/dashboard">
           <Button variant="ghost" size="sm" className="mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Tillbaka till Dashboard
+            {t('createWorkshop.backToDashboard')}
           </Button>
         </Link>
 
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full mb-4">
             <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Ny Workshop</span>
+            <span className="text-sm font-medium text-primary">{t('createWorkshop.badge')}</span>
           </div>
 
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
-            Skapa Workshop
+            {t('createWorkshop.pageTitle')}
           </h1>
           <p className="text-muted-foreground">
-            Bygg din interaktiva workshop med boards och frågor
+            {t('createWorkshop.pageSubtitle')}
           </p>
         </div>
 
         {/* Basic Info */}
         <Card className="mb-6 shadow-[var(--shadow-glow)] bg-gradient-to-br from-card to-muted/20">
           <CardHeader>
-            <CardTitle>Grundinformation</CardTitle>
-            <CardDescription>Beskriv din workshop</CardDescription>
+            <CardTitle>{t('createWorkshop.basicInfo')}</CardTitle>
+            <CardDescription>{t('createWorkshop.basicInfoDesc')}</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Workshop Titel *</Label>
+              <Label htmlFor="title">{t('createWorkshop.workshopTitleLabel')}</Label>
               <Input
                 id="title"
-                placeholder="T.ex. Strategi Workshop 2024"
+                placeholder={t('createWorkshop.workshopTitlePlaceholder')}
                 value={workshop.title}
                 onChange={(e) =>
                   setWorkshop({ ...workshop, title: e.target.value })
@@ -431,10 +431,10 @@ const CreateWorkshop = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Beskrivning</Label>
+              <Label htmlFor="description">{t('createWorkshop.descriptionLabel')}</Label>
               <Textarea
                 id="description"
-                placeholder="Beskriv syftet med workshopen..."
+                placeholder={t('createWorkshop.descriptionPlaceholder')}
                 value={workshop.description}
                 onChange={(e) =>
                   setWorkshop({ ...workshop, description: e.target.value })
@@ -449,15 +449,15 @@ const CreateWorkshop = () => {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-2xl font-bold">Boards & Övningar</h2>
+              <h2 className="text-2xl font-bold">{t('createWorkshop.boardsSection')}</h2>
               <p className="text-sm text-muted-foreground">
-                Lägg till olika övningar och frågor
+                {t('createWorkshop.boardsSectionDesc')}
               </p>
             </div>
 
             <Button onClick={addBoard} variant="default">
               <Plus className="w-4 h-4 mr-2" />
-              Lägg till Board
+              {t('createWorkshop.addBoardButton')}
             </Button>
           </div>
 
@@ -467,13 +467,13 @@ const CreateWorkshop = () => {
                 <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                   <Sparkles className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Inga boards än</h3>
+                <h3 className="text-lg font-semibold mb-2">{t('createWorkshop.noBoardsYet')}</h3>
                 <p className="text-muted-foreground mb-4">
-                  Börja med att lägga till ditt första board
+                  {t('createWorkshop.noBoardsStartHint')}
                 </p>
                 <Button onClick={addBoard} variant="default">
                   <Plus className="w-4 h-4 mr-2" />
-                  Lägg till Board
+                  {t('createWorkshop.addBoardButton')}
                 </Button>
               </div>
             </Card>
@@ -505,7 +505,7 @@ const CreateWorkshop = () => {
         {hasResponses && (
           <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
             <p className="text-destructive text-sm font-medium">
-              Du kan inte redigera en redan publicerad workshop som innehåller deltagarnas svar
+              {t('createWorkshop.cannotEditWithResponses')}
             </p>
           </div>
         )}
@@ -522,7 +522,7 @@ const CreateWorkshop = () => {
                 disabled={hasResponses || isLoadingResponses}
               >
                 <Save className="w-5 h-5 mr-2" />
-                Spara som Utkast
+                {t('createWorkshop.saveDraftButton')}
               </Button>
 
               <Button
@@ -533,7 +533,7 @@ const CreateWorkshop = () => {
                 disabled={hasResponses || isLoadingResponses}
               >
                 <Play className="w-5 h-5 mr-2" />
-                Aktivera Workshop
+                {t('createWorkshop.activateButton')}
               </Button>
             </div>
           </CardContent>
@@ -541,12 +541,12 @@ const CreateWorkshop = () => {
 
         {/* Info Box */}
         <div className="mt-6 p-6 bg-muted/50 rounded-lg border border-border">
-          <h3 className="font-semibold mb-2">💡 Tips för bra workshops</h3>
+          <h3 className="font-semibold mb-2">{t('createWorkshop.tipsTitle')}</h3>
           <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Använd tydliga och specifika frågor</li>
-            <li>• Sätt realistiska tidsgränser för varje board</li>
-            <li>• Variera frågorna mellan reflektiva och kreativa</li>
-            <li>• Färgkodning hjälper deltagare hålla koll på olika övningar</li>
+            <li>• {t('createWorkshop.tip1')}</li>
+            <li>• {t('createWorkshop.tip2')}</li>
+            <li>• {t('createWorkshop.tip3')}</li>
+            <li>• {t('createWorkshop.tip4')}</li>
           </ul>
         </div>
       </div>
@@ -561,7 +561,7 @@ const CreateWorkshop = () => {
       {/* Workshop limit status for Free users */}
       {!workshopId && limit !== Infinity && (
         <p className="text-sm text-muted-foreground text-center mt-4">
-          {activeWorkshops} av {limit} workshop använd
+          {t('createWorkshop.workshopCountInfo', { count: String(activeWorkshops), limit: String(limit) })}
         </p>
       )}
 

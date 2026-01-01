@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Sparkles } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface UpgradeRequiredDialogProps {
   open: boolean;
@@ -18,6 +19,7 @@ interface UpgradeRequiredDialogProps {
 
 export const UpgradeRequiredDialog = ({ open, onOpenChange }: UpgradeRequiredDialogProps) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -25,30 +27,30 @@ export const UpgradeRequiredDialog = ({ open, onOpenChange }: UpgradeRequiredDia
         <AlertDialogHeader>
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-6 h-6 text-primary" />
-            <AlertDialogTitle>Uppgradera till Pro</AlertDialogTitle>
+            <AlertDialogTitle>{t('upgradeRequired.title')}</AlertDialogTitle>
           </div>
           <AlertDialogDescription className="text-left space-y-3">
             <p>
-              Du har nått gränsen för gratis-planen (1 aktiv workshop).
+              {t('upgradeRequired.limitReached')}
             </p>
             <p className="font-medium">
-              Uppgradera till Pro för att skapa obegränsat med workshops:
+              {t('upgradeRequired.unlockFeatures')}
             </p>
             <ul className="list-disc list-inside space-y-1 text-sm">
-              <li>Obegränsat workshops</li>
-              <li>Obegränsat deltagare</li>
-              <li>AI-analys av resultat</li>
-              <li>Prioriterad support</li>
+              <li>{t('upgradeRequired.unlimitedWorkshops')}</li>
+              <li>{t('upgradeRequired.unlimitedParticipants')}</li>
+              <li>{t('upgradeRequired.aiAnalysis')}</li>
+              <li>{t('upgradeRequired.prioritySupport')}</li>
             </ul>
             <p className="text-sm font-bold text-primary">
-              Från endast 99 SEK/månad
+              {t('upgradeRequired.price')}
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogCancel>{t('upgradeRequired.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={() => navigate('/upgrade')}>
-            Se planer
+            {t('upgradeRequired.seePlans')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
