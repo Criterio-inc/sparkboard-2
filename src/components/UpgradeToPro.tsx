@@ -20,14 +20,23 @@ export const UpgradeToPro = () => {
     setLoading(true);
 
     try {
-      const priceId = selectedPlan === 'monthly' 
+      const priceId = selectedPlan === 'monthly'
         ? STRIPE_PRICES.monthly
         : STRIPE_PRICES.yearly;
 
+      // Get Clerk JWT token
+      const token = await user.getToken?.() || await (window as any).Clerk?.session?.getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { 
-          priceId,
-          userEmail: user.primaryEmailAddress?.emailAddress
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: {
+          priceId
+          // Email is fetched from verified profile in edge function
         }
       });
 

@@ -19,15 +19,17 @@ import { useProfile } from "@/hooks/useProfile";
 import { useMigrateWorkshops } from "@/hooks/useMigrateWorkshops";
 import { useSubscription } from "@/hooks/useSubscription";
 import { Sparkles } from "lucide-react";
+import { useAuth } from "@clerk/clerk-react";
 
 const WorkshopDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { getToken } = useAuth();
   const [workshops, setWorkshops] = useState<any[]>([]);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [selectedWorkshopCode, setSelectedWorkshopCode] = useState<string>("");
-  
+
   const { profile, loading: profileLoading, user } = useProfile();
   const { isChecking, isComplete, migratedCount, error } = useMigrateWorkshops();
   const { isFree, isPro, loading: subscriptionLoading } = useSubscription();
@@ -40,33 +42,43 @@ const WorkshopDashboard = () => {
 
   const loadWorkshops = async () => {
     if (!user?.id) return;
-    
+
     try {
-      const { data: ws, error } = await supabase
-        .from('workshops')
-        .select('*')
-        .eq('facilitator_id', user.id)
-        .order('created_at', { ascending: false });
+      // Get Clerk JWT token
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      // Call workshop-operations edge function with JWT
+      const { data, error } = await supabase.functions.invoke('workshop-operations', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: { operation: 'list-workshops' }
+      });
 
       if (error) throw error;
 
+      const ws = data?.workshops || [];
+
       // Hämta boards separat och räkna per workshop
-      const workshopIds = ws?.map(w => w.id) || [];
+      const workshopIds = ws.map((w: any) => w.id);
       let countsByWorkshop: Record<string, number> = {};
-      
+
       if (workshopIds.length > 0) {
         const { data: allBoards } = await supabase
           .from('boards')
           .select('id, workshop_id')
           .in('workshop_id', workshopIds);
-        
+
         countsByWorkshop = (allBoards || []).reduce((acc, b) => {
           acc[b.workshop_id] = (acc[b.workshop_id] || 0) + 1;
           return acc;
         }, {} as Record<string, number>);
       }
 
-      const workshopsWithCounts = (ws || []).map(workshop => ({
+      const workshopsWithCounts = ws.map((workshop: any) => ({
         ...workshop,
         boardCount: countsByWorkshop[workshop.id] || 0
       }));
@@ -85,10 +97,20 @@ const WorkshopDashboard = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('workshops')
-        .delete()
-        .eq('id', id);
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      const { error } = await supabase.functions.invoke('workshop-operations', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: {
+          operation: 'delete-workshop',
+          workshopId: id
+        }
+      });
 
       if (error) throw error;
 
@@ -119,60 +141,22 @@ const WorkshopDashboard = () => {
 
   const handleDuplicate = async (workshop: any) => {
     try {
-      const { data: newWorkshop, error: workshopError } = await supabase
-        .from('workshops')
-        .insert({
-          name: `${workshop.name || 'Workshop'} (kopia)`,
-          facilitator_id: user?.id,
-          code: Math.floor(100000 + Math.random() * 900000).toString(),
-          status: 'draft',
-        })
-        .select()
-        .single();
-
-      if (workshopError) throw workshopError;
-
-      const { data: boards } = await supabase
-        .from('boards')
-        .select('*')
-        .eq('workshop_id', workshop.id);
-
-      if (boards) {
-        for (const board of boards) {
-          const { data: newBoard, error: boardError } = await supabase
-            .from('boards')
-            .insert({
-              workshop_id: newWorkshop.id,
-              title: board.title,
-              color_index: board.color_index,
-              time_limit: board.time_limit,
-              order_index: board.order_index,
-            })
-            .select()
-            .single();
-
-          if (boardError) throw boardError;
-
-          const { data: questions } = await supabase
-            .from('questions')
-            .select('*')
-            .eq('board_id', board.id);
-
-          if (questions) {
-            const questionsToInsert = questions.map(q => ({
-              board_id: newBoard.id,
-              title: q.title,
-              order_index: q.order_index,
-            }));
-
-            const { error: questionsError } = await supabase
-              .from('questions')
-              .insert(questionsToInsert);
-
-            if (questionsError) throw questionsError;
-          }
-        }
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
       }
+
+      const { data, error } = await supabase.functions.invoke('workshop-operations', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: {
+          operation: 'duplicate-workshop',
+          workshopId: workshop.id
+        }
+      });
+
+      if (error) throw error;
 
       toast({
         title: "Workshop duplicerad!",

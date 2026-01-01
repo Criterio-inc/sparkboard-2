@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { format } from "date-fns";
+import { useAuth } from "@clerk/clerk-react";
 
 interface Note {
   id: string;
@@ -55,6 +56,7 @@ export const AIAnalysisDialog = ({
 }: AIAnalysisDialogProps) => {
   const { toast } = useToast();
   const { t, language } = useLanguage();
+  const { getToken } = useAuth();
   const [customPrompt, setCustomPrompt] = useState("");
   const [hasCustomPrompt, setHasCustomPrompt] = useState(false);
   const [analysis, setAnalysis] = useState<string>("");
@@ -139,7 +141,16 @@ export const AIAnalysisDialog = ({
     setAnalysis("");
 
     try {
+      // Get Clerk JWT token
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
       const { data, error } = await supabase.functions.invoke("analyze-notes", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
         body: {
           notes: notes.map((note) => ({
             content: note.content,
@@ -152,6 +163,16 @@ export const AIAnalysisDialog = ({
       if (error) throw error;
 
       if (data.error) {
+        // Check if it's a plan upgrade required error
+        if (data.error === 'AI_REQUIRES_PRO') {
+          toast({
+            title: t('common.error'),
+            description: data.message || "AI-analys kräver Sparkboard Pro",
+            variant: "destructive",
+          });
+          return;
+        }
+
         toast({
           title: t('common.error'),
           description: data.error,

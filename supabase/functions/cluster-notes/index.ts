@@ -1,9 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClerkClient } from "https://esm.sh/@clerk/backend@1.15.8";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const CLERK_JWKS_URL = "https://clerk.sparkboard.eu/.well-known/jwks.json";
 
 interface NoteInput {
   id: string;
@@ -17,6 +21,38 @@ interface ClusterRequest {
   context?: string;
 }
 
+async function verifyClerkToken(authHeader: string | null): Promise<string> {
+  if (!authHeader) {
+    throw new Error("Missing Authorization header");
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const clerkSecretKey = Deno.env.get("CLERK_SECRET_KEY");
+
+  if (!clerkSecretKey) {
+    throw new Error("CLERK_SECRET_KEY not configured");
+  }
+
+  console.log("[CLUSTER-NOTES] Verifying JWT with JWKS");
+
+  try {
+    const clerk = createClerkClient({
+      secretKey: clerkSecretKey,
+      jwtKey: CLERK_JWKS_URL
+    });
+
+    const verifiedToken = await clerk.verifyToken(token, {
+      jwtKey: CLERK_JWKS_URL
+    });
+
+    console.log("[CLUSTER-NOTES] JWT verified successfully", { userId: verifiedToken.sub });
+    return verifiedToken.sub;
+  } catch (error) {
+    console.error("[CLUSTER-NOTES] JWT verification failed:", error.message);
+    throw new Error("Invalid or expired token");
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -24,6 +60,47 @@ serve(async (req) => {
   }
 
   try {
+    // CRITICAL: Verify JWT first
+    const userId = await verifyClerkToken(req.headers.get("authorization"));
+    console.log("[CLUSTER-NOTES] User authenticated", { userId });
+
+    // Check user's plan - AI clustering requires Pro or Curago
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('plan')
+      .eq('id', userId)
+      .single();
+
+    if (profileError) {
+      console.error("[CLUSTER-NOTES] Error fetching profile:", profileError);
+      throw new Error("Could not verify user plan");
+    }
+
+    const userPlan = profile?.plan || 'free';
+    console.log("[CLUSTER-NOTES] User plan:", userPlan);
+
+    if (userPlan !== 'pro' && userPlan !== 'curago') {
+      console.log("[CLUSTER-NOTES] Access denied - plan not eligible", { plan: userPlan });
+      return new Response(
+        JSON.stringify({
+          error: "AI_REQUIRES_PRO",
+          message: "AI-klustring kräver Sparkboard Pro. Uppgradera ditt konto för att använda denna funktion.",
+          userPlan,
+          requiredPlan: "pro eller curago"
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // User is authorized - proceed with clustering
     const { notes, categories, context } = await req.json() as ClusterRequest;
     
     console.log(`🤖 Clustering ${notes.length} notes into ${categories.length} categories`);
@@ -293,9 +370,15 @@ INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin
     });
 
   } catch (error) {
-    console.error('Error in cluster-notes function:', error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
-      status: 500,
+    console.error('[CLUSTER-NOTES] Error in cluster-notes function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    const status = errorMessage.includes("Authorization") ||
+                   errorMessage.includes("token") ||
+                   errorMessage.includes("Invalid") ? 401 : 500;
+
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
