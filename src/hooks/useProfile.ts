@@ -1,4 +1,4 @@
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,6 +19,7 @@ export interface UserProfile {
 
 export const useProfile = () => {
   const { user, isLoaded: isUserLoaded } = useUser();
+  const { getToken } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,11 +102,13 @@ export const useProfile = () => {
     const checkSubscription = async () => {
       try {
         console.log('🔄 Auto-checking subscription status...');
+        const token = await getToken();
         const { data, error } = await supabase.functions.invoke('check-subscription', {
           body: { 
             userEmail: user.primaryEmailAddress!.emailAddress,
             userId: user.id
-          }
+          },
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
 
         if (error) {

@@ -4,15 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, X, Loader2 } from 'lucide-react';
 import { STRIPE_PRICES } from '@/lib/stripe';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuthenticatedFunctions } from '@/hooks/useAuthenticatedFunctions';
 
 export const UpgradeToPro = () => {
   const { user } = useUser();
   const { plan } = useSubscription();
   const { t } = useLanguage();
+  const { invokeWithAuth } = useAuthenticatedFunctions();
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
 
@@ -26,12 +27,12 @@ export const UpgradeToPro = () => {
         ? STRIPE_PRICES.monthly
         : STRIPE_PRICES.yearly;
 
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { 
-          priceId,
-          userEmail: user.primaryEmailAddress?.emailAddress
-        }
+      const { data, error } = await invokeWithAuth('create-checkout', { 
+        priceId,
+        userEmail: user.primaryEmailAddress?.emailAddress
       });
+
+      if (error) throw error;
 
       if (error) throw error;
 

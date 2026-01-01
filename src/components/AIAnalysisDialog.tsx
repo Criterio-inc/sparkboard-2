@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useAuthenticatedFunctions } from "@/hooks/useAuthenticatedFunctions";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 
@@ -58,6 +59,7 @@ export const AIAnalysisDialog = ({
   const { toast } = useToast();
   const { t, language } = useLanguage();
   const { isPro, isCuragoUser } = useSubscription();
+  const { invokeWithAuth } = useAuthenticatedFunctions();
   const [customPrompt, setCustomPrompt] = useState("");
   const [hasCustomPrompt, setHasCustomPrompt] = useState(false);
   const [analysis, setAnalysis] = useState<string>("");
@@ -146,19 +148,17 @@ export const AIAnalysisDialog = ({
     setAnalysis("");
 
     try {
-      const { data, error } = await supabase.functions.invoke("analyze-notes", {
-        body: {
-          notes: notes.map((note) => ({
-            content: note.content,
-            question: note.question || "Question",
-          })),
-          customPrompt,
-        },
+      const { data, error } = await invokeWithAuth("analyze-notes", {
+        notes: notes.map((note) => ({
+          content: note.content,
+          question: note.question || "Question",
+        })),
+        customPrompt,
       });
 
       if (error) throw error;
 
-      if (data.error) {
+      if (data?.error) {
         toast({
           title: t('common.error'),
           description: data.error,
