@@ -528,6 +528,23 @@ Struktur: Använd tydliga rubriker (##) och punktlistor för maximal läsbarhet.
     'ai.benefit3': 'Obegränsat antal deltagare',
     'ai.upgradeNow': 'Uppgradera till Pro',
     'ai.requiresProToast': 'AI-analys kräver Pro-prenumeration',
+
+    // QR DIALOG
+    'qr.title': 'Workshop QR-kod',
+    'qr.description': 'Dela denna kod eller QR-kod med dina deltagare',
+    'qr.download': 'Ladda ner QR-kod',
+    'qr.code': 'Workshop-kod',
+    'qr.participantLink': 'Deltagarlänk',
+    'qr.copy': 'Kopiera',
+    'qr.copied': 'Kopierad!',
+    'qr.copiedDesc': 'Länken har kopierats',
+
+    // UPGRADE PAGE DESCRIPTIONS
+    'upgrade.free.description': 'Perfekt för att testa Sparkboard och köra enstaka workshops',
+    'upgrade.free.basicFeatures': 'Grundläggande funktioner',
+    'upgrade.monthly.description': 'Full tillgång till alla funktioner - flexibelt månadsabonnemang',
+    'upgrade.yearly.description': 'Bästa priset - full tillgång hela året för professionella facilitatorer',
+    'upgrade.pro.export': 'Export till Excel och PDF',
   },
   
   en: {
@@ -1047,6 +1064,23 @@ Structure: Use clear headings (##) and bullet points for maximum readability.`,
     'ai.benefit3': 'Unlimited participants',
     'ai.upgradeNow': 'Upgrade to Pro',
     'ai.requiresProToast': 'AI analysis requires Pro subscription',
+
+    // QR DIALOG
+    'qr.title': 'Workshop QR Code',
+    'qr.description': 'Share this code or QR code with your participants',
+    'qr.download': 'Download QR Code',
+    'qr.code': 'Workshop code',
+    'qr.participantLink': 'Participant link',
+    'qr.copy': 'Copy',
+    'qr.copied': 'Copied!',
+    'qr.copiedDesc': 'The link has been copied',
+
+    // UPGRADE PAGE DESCRIPTIONS
+    'upgrade.free.description': 'Perfect for trying Sparkboard and running occasional workshops',
+    'upgrade.free.basicFeatures': 'Basic features',
+    'upgrade.monthly.description': 'Full access to all features - flexible monthly subscription',
+    'upgrade.yearly.description': 'Best price - full access all year for professional facilitators',
+    'upgrade.pro.export': 'Export to Excel and PDF',
   }
 };
 
