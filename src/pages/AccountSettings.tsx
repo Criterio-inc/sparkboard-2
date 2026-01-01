@@ -6,13 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useUser } from '@clerk/clerk-react';
-import { supabase } from '@/integrations/supabase/client';
 import { Sparkles, CreditCard, AlertCircle, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { sv, enUS } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuthenticatedFunctions } from '@/hooks/useAuthenticatedFunctions';
 
 const AccountSettings = () => {
   const { profile, isPro, isFree, isCuragoUser } = useSubscription();
@@ -21,6 +21,7 @@ const AccountSettings = () => {
   const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
   const { t, language } = useLanguage();
+  const { invokeWithAuth } = useAuthenticatedFunctions();
   
   const dateLocale = language === 'sv' ? sv : enUS;
 
@@ -29,10 +30,8 @@ const AccountSettings = () => {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal', {
-        body: { 
-          userEmail: user.primaryEmailAddress.emailAddress 
-        }
+      const { data, error } = await invokeWithAuth('customer-portal', { 
+        userEmail: user.primaryEmailAddress.emailAddress 
       });
 
       if (error) throw error;
@@ -57,11 +56,9 @@ const AccountSettings = () => {
     
     setRefreshing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('check-subscription', {
-        body: { 
-          userEmail: user.primaryEmailAddress.emailAddress,
-          userId: user.id
-        }
+      const { data, error } = await invokeWithAuth('check-subscription', { 
+        userEmail: user.primaryEmailAddress.emailAddress,
+        userId: user.id
       });
 
       if (error) throw error;

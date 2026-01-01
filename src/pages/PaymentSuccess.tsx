@@ -4,15 +4,16 @@ import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Sparkles, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useUser();
+  const { getToken } = useAuth();
   const { t } = useLanguage();
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,11 +25,13 @@ const PaymentSuccess = () => {
       
       try {
         console.log(`🔄 Checking subscription (attempt ${attempt})...`);
+        const token = await getToken();
         const { data, error } = await supabase.functions.invoke('check-subscription', {
           body: { 
             userEmail: user.primaryEmailAddress?.emailAddress,
             userId: user.id
-          }
+          },
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
 
         if (error) {
