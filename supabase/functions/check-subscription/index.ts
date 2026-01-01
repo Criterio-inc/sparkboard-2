@@ -8,8 +8,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Clerk JWKS endpoint for cryptographic verification
-const CLERK_JWKS_URL = "https://api.clerk.dev/v1/jwks";
+// Clerk JWKS endpoint for cryptographic verification (instance-specific)
+const CLERK_JWKS_URL = "https://clerk.sparkboard.eu/.well-known/jwks.json";
 const JWKS = createRemoteJWKSet(new URL(CLERK_JWKS_URL));
 
 // KRITISKT: Kryptografisk JWT-verifiering med JWKS
