@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Calendar, Users, MoreVertical, Edit, Trash2, Copy, QrCode } from "lucide-react";
+import { Plus, Calendar, Users, MoreVertical, Edit, Trash2, Copy, QrCode, Sparkles } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +18,7 @@ import { Navigation } from "@/components/Navigation";
 import { useProfile } from "@/hooks/useProfile";
 import { useMigrateWorkshops } from "@/hooks/useMigrateWorkshops";
 import { useSubscription } from "@/hooks/useSubscription";
-import { Sparkles } from "lucide-react";
+import { useAuthenticatedFunctions } from "@/hooks/useAuthenticatedFunctions";
 
 const WorkshopDashboard = () => {
   const navigate = useNavigate();
@@ -31,6 +31,7 @@ const WorkshopDashboard = () => {
   const { profile, loading: profileLoading, user } = useProfile();
   const { isChecking, isComplete, migratedCount, error } = useMigrateWorkshops();
   const { isFree, isPro, loading: subscriptionLoading } = useSubscription();
+  const { invokeWithAuth } = useAuthenticatedFunctions();
 
   const dateLocale = language === 'sv' ? 'sv-SE' : 'en-US';
 
@@ -85,12 +86,13 @@ const WorkshopDashboard = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('workshops')
-        .delete()
-        .eq('id', id);
+      const { data, error } = await invokeWithAuth('workshop-operations', {
+        operation: 'delete-workshop',
+        workshopId: id
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: t('dashboard.workshopDeleted'),
@@ -119,60 +121,13 @@ const WorkshopDashboard = () => {
 
   const handleDuplicate = async (workshop: any) => {
     try {
-      const { data: newWorkshop, error: workshopError } = await supabase
-        .from('workshops')
-        .insert({
-          name: `${workshop.name || 'Workshop'} (kopia)`,
-          facilitator_id: user?.id,
-          code: Math.floor(100000 + Math.random() * 900000).toString(),
-          status: 'draft',
-        })
-        .select()
-        .single();
+      const { data, error } = await invokeWithAuth('workshop-operations', {
+        operation: 'duplicate-workshop',
+        workshopId: workshop.id
+      });
 
-      if (workshopError) throw workshopError;
-
-      const { data: boards } = await supabase
-        .from('boards')
-        .select('*')
-        .eq('workshop_id', workshop.id);
-
-      if (boards) {
-        for (const board of boards) {
-          const { data: newBoard, error: boardError } = await supabase
-            .from('boards')
-            .insert({
-              workshop_id: newWorkshop.id,
-              title: board.title,
-              color_index: board.color_index,
-              time_limit: board.time_limit,
-              order_index: board.order_index,
-            })
-            .select()
-            .single();
-
-          if (boardError) throw boardError;
-
-          const { data: questions } = await supabase
-            .from('questions')
-            .select('*')
-            .eq('board_id', board.id);
-
-          if (questions) {
-            const questionsToInsert = questions.map(q => ({
-              board_id: newBoard.id,
-              title: q.title,
-              order_index: q.order_index,
-            }));
-
-            const { error: questionsError } = await supabase
-              .from('questions')
-              .insert(questionsToInsert);
-
-            if (questionsError) throw questionsError;
-          }
-        }
-      }
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: t('dashboard.workshopDuplicated'),
