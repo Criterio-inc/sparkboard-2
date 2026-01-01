@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createRemoteJWKSet, jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
 
 const corsHeaders = {
@@ -119,11 +119,11 @@ serve(async (req) => {
     
     console.log("[ANALYZE-NOTES] Processing", notes.length, "notes");
 
-    // Create Supabase client to check subscription
+    // Create Supabase client with SERVICE_ROLE_KEY to bypass RLS
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader! } }
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false }
     });
 
     // Check user's plan in profiles table
@@ -134,7 +134,8 @@ serve(async (req) => {
       .single();
 
     if (profileError) {
-      console.log("[ANALYZE-NOTES] Error fetching profile:", profileError);
+      console.error("[ANALYZE-NOTES] Error fetching profile:", profileError);
+      throw new Error("Could not verify user plan");
     }
 
     const userPlan = profile?.plan || 'free';
@@ -142,10 +143,17 @@ serve(async (req) => {
 
     // Check if user has pro or curago plan
     if (userPlan !== 'pro' && userPlan !== 'curago') {
-      console.log("[ANALYZE-NOTES] User does not have Pro plan, blocking AI analysis");
+      console.log("[ANALYZE-NOTES] Access denied - plan not eligible", { plan: userPlan });
       return new Response(
-        JSON.stringify({ error: "AI analysis requires Pro subscription" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          error: "AI_REQUIRES_PRO",
+          message: "AI-analys kräver Sparkboard Pro. Uppgradera ditt konto för att använda denna funktion.",
+          userPlan,
+          requiredPlan: "pro eller curago"
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
@@ -177,6 +185,7 @@ Skriv på samma språk som användarens prompt.`;
     const fullPrompt = `${customPrompt}\n\n--- WORKSHOP NOTES ---\n${notesContext}`;
 
     console.log("[ANALYZE-NOTES] Calling AI with prompt length:", fullPrompt.length);
+    console.log("[ANALYZE-NOTES] User prompt preview:", customPrompt.substring(0, 100) + "...");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -226,10 +235,15 @@ Skriv på samma språk som användarens prompt.`;
   } catch (error) {
     console.error("[ANALYZE-NOTES] Error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
+    const status = errorMessage.includes("Authorization") ||
+                   errorMessage.includes("token") ||
+                   errorMessage.includes("Invalid") ? 401 : 500;
+    
     return new Response(
       JSON.stringify({ error: errorMessage }),
       {
-        status: 500,
+        status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );

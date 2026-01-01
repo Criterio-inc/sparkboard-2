@@ -27,12 +27,10 @@ export const UpgradeToPro = () => {
         ? STRIPE_PRICES.monthly
         : STRIPE_PRICES.yearly;
 
+      // Email is fetched from verified profile in edge function - not sent from client
       const { data, error } = await invokeWithAuth('create-checkout', { 
-        priceId,
-        userEmail: user.primaryEmailAddress?.emailAddress
+        priceId
       });
-
-      if (error) throw error;
 
       if (error) throw error;
 
