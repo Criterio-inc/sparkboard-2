@@ -448,6 +448,16 @@ const FacilitatorControl = () => {
         notesByBoard,
         aiAnalyses,
         participantCount: participants.length,
+        translations: {
+          date: t('pdf.date'),
+          participants: t('pdf.participants'),
+          board: t('pdf.board'),
+          timeLimit: t('pdf.timeLimit'),
+          minutes: t('pdf.minutes'),
+          question: t('pdf.question'),
+          noAnswers: t('pdf.noAnswers'),
+          aiAnalysis: t('pdf.aiAnalysis'),
+        },
       };
 
       await generateWorkshopPDF(exportData);
