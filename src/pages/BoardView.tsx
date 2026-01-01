@@ -150,8 +150,6 @@ const BoardView = () => {
     loadWorkshopData();
   }, [workshopId, boardId, navigate, toast]);
 
-  // Participant color mapping - borttaget för unika färger per note istället
-
   // Synka notes från Supabase Realtime
   useEffect(() => {
     if (!board) return;
@@ -465,81 +463,63 @@ const BoardView = () => {
     if (!participantId || !participantName) return;
 
     try {
-      console.log("📝 [Participant] Skapar note för fråga:", questionId);
+      console.log("📝 [Participant] Skapar note via edge function för fråga:", questionId);
 
-      // Slumpa färgindex för denna note (0-5) - ger unika färger per note
-      const randomColorIndex = Math.floor(Math.random() * 6);
-
-      const { data, error } = await supabase
-        .from('notes')
-        .insert({
-          question_id: questionId,
-          content: content,
-          author_id: participantId,
-          author_name: participantName,
-          color_index: randomColorIndex,
-          timestamp: new Date().toISOString(),
-        })
-        .select()
-        .single();
+      // Use edge function for secure note creation
+      const { data, error } = await supabase.functions.invoke('create-note', {
+        body: {
+          questionId,
+          content,
+          participantId,
+          participantName,
+        },
+      });
 
       if (error) {
-        console.error("Kunde inte spara note:", error);
-        toast({
-          title: "Fel",
-          description: "Kunde inte spara note. Försök igen.",
-          variant: "destructive",
-        });
-        return;
+        throw new Error(error.message || 'Failed to create note');
       }
 
-      console.log("✅ [Participant] Note sparad i Supabase:", data.id);
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to create note');
+      }
+
+      console.log("✅ [Participant] Note sparad via edge function:", data.note.id);
       
       toast({
         title: "Note skapad!",
         description: "Din idé har lagts till",
       });
-      
-      // Realtime kommer automatiskt uppdatera notes-state
-    } catch (error) {
-      console.error("Fel vid skapande av note:", error);
+    } catch (error: any) {
+      console.error("Kunde inte spara note:", error);
       toast({
         title: "Fel",
-        description: "Kunde inte spara note. Försök igen.",
+        description: error.message || "Kunde inte spara note. Försök igen.",
         variant: "destructive",
       });
     }
   };
 
   const handleDeleteNote = async (noteId: string) => {
-    try {
-      console.log("🗑️ [Participant] Tar bort note:", noteId);
-
-      const { error } = await supabase
-        .from('notes')
-        .delete()
-        .eq('id', noteId);
-
-      if (error) {
-        console.error("Kunde inte ta bort note:", error);
-        toast({
-          title: "Fel",
-          description: "Kunde inte ta bort note. Försök igen.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log("✅ [Participant] Note borttagen från Supabase");
-      
+    // Participants can only delete their own notes - this is validated by checking authorId
+    const note = notes.find(n => n.id === noteId);
+    if (!note || note.authorId !== participantId) {
       toast({
-        title: "Note borttagen",
-        description: "Din note har tagits bort",
+        title: "Fel",
+        description: "Du kan bara ta bort dina egna notes",
+        variant: "destructive",
       });
-      
-      // Realtime kommer automatiskt uppdatera notes-state
+      return;
+    }
+
+    try {
+      // For now, participants cannot delete notes - only facilitator can
+      // This would need a separate edge function if we want to allow it
+      toast({
+        title: "Info",
+        description: "Kontakta facilitator för att ta bort notes",
+      });
     } catch (error) {
-      console.error("Fel vid borttagning av note:", error);
+      console.error("Fel vid borttagning:", error);
     }
   };
 
@@ -551,8 +531,8 @@ const BoardView = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Laddar...</h2>
-          <p className="text-muted-foreground">Hämtar workshop-data</p>
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Laddar board...</p>
         </div>
       </div>
     );
@@ -564,47 +544,46 @@ const BoardView = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div 
-        className="sticky top-0 z-10 border-b shadow-sm"
-        style={{
-          backgroundColor: "hsl(var(--background))",
+        className="sticky top-0 z-10 border-b shadow-sm bg-background"
+        style={{ 
           borderTopColor: boardColor,
-          borderTopWidth: "4px",
+          borderTopWidth: '4px'
         }}
       >
         <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(-1)}
-              >
+              <Button variant="ghost" size="icon" onClick={() => navigate('/join')}>
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               
               <div>
-                <h1 className="text-2xl font-bold">{board.title}</h1>
-                <p className="text-sm text-muted-foreground">
-                  {workshopTitle} • {board.questions.length} frågor
-                </p>
+                <h1 className="text-2xl font-semibold tracking-tight" style={{ color: boardColor }}>
+                  {board.title}
+                </h1>
+                <p className="text-sm text-muted-foreground">{workshopTitle}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              <Badge variant="secondary" className="flex items-center gap-2 px-3 py-2">
+            <div className="flex items-center gap-4">
+              {/* Participant Info */}
+              <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
                 <User className="w-4 h-4" />
-                <span className="font-medium">{participantName}</span>
-              </Badge>
-              <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-lg">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">{participantCount} {participantCount === 1 ? 'deltagare' : 'deltagare'}</span>
+                <span>{participantName}</span>
               </div>
 
+              {/* Participant Count */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Users className="w-4 h-4" />
+                <span>{participantCount}</span>
+              </div>
+
+              {/* Timer */}
               <div 
                 className="flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-lg font-bold"
-                style={{
+                style={{ 
                   backgroundColor: `${boardColor}20`,
-                  color: boardColor,
+                  color: boardColor
                 }}
               >
                 <Clock className="w-5 h-5" />
@@ -616,98 +595,58 @@ const BoardView = () => {
       </div>
 
       {/* Questions Grid */}
-      <div className="container mx-auto px-4 py-6 md:py-8">
-        {(() => {
-          // Dynamisk grid baserat på antal frågor
-          const questionCount = board.questions.length;
-          const questionGridClass = questionCount === 1
-            ? "grid-cols-1"
-            : questionCount === 2
-            ? "grid-cols-1 md:grid-cols-2"
-            : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
-          
-          // Dynamisk notes-grid baserat på antal frågor
-          const getNotesGridClass = () => {
-            if (questionCount === 1) {
-              return "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3";
-            }
-            if (questionCount === 2) {
-              return "grid grid-cols-2 md:grid-cols-3 gap-3";
-            }
-            return "flex flex-wrap gap-3";
-          };
+      <div className="container mx-auto px-4 py-6">
+        <div className={`grid gap-6 ${
+          board.questions.length === 1 
+            ? 'grid-cols-1' 
+            : board.questions.length === 2 
+            ? 'grid-cols-1 md:grid-cols-2' 
+            : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+        }`}>
+          {board.questions.map((question) => {
+            const questionNotes = getNotesForQuestion(question.id);
+            
+            return (
+              <Card key={question.id} className="p-4 space-y-4">
+                <div>
+                  <h2 className="text-lg font-semibold" style={{ color: boardColor }}>
+                    {question.title}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {questionNotes.length} {t('board.notes')}
+                  </p>
+                </div>
 
-          return (
-            <div className={`grid ${questionGridClass} gap-4 md:gap-6`}>
-              {board.questions.map((question) => {
-                const questionNotes = getNotesForQuestion(question.id);
-                
-                return (
-                  <Card key={question.id} className="p-6 space-y-4">
-                    <div>
-                      <h2 
-                        className="text-lg font-semibold mb-1"
-                        style={{ color: boardColor }}
-                      >
-                        {question.title}
-                      </h2>
-                      <p className="text-xs text-muted-foreground">
-                        {questionNotes.length} {questionNotes.length === 1 ? "note" : "notes"}
-                      </p>
+                <div className="space-y-3 min-h-[200px]">
+                  {questionNotes.length === 0 ? (
+                    <div className="flex items-center justify-center h-40 border-2 border-dashed border-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground">{t('board.noNotesYet')}</p>
                     </div>
-
-                    <div className={`${getNotesGridClass()} min-h-[200px]`}>
-                      {questionNotes.length === 0 ? (
-                        <div className="flex items-center justify-center h-40 border-2 border-dashed border-muted rounded-lg col-span-full">
-                          <p className="text-sm text-muted-foreground">
-                            Inga notes än
-                          </p>
-                        </div>
-                      ) : (
-                        questionNotes.map((note) => (
-                          <StickyNote
-                            key={note.id}
-                            {...note}
-                            isOwn={note.authorId === participantId}
-                            onDelete={() => handleDeleteNote(note.id)}
-                          />
-                        ))
-                      )}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          );
-        })()}
-
-        {/* Empty state */}
-        {notes.length === 0 && (
-          <Card className="mt-8 p-12 text-center border-dashed">
-            <div className="max-w-md mx-auto">
-              <div 
-                className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
-                style={{ backgroundColor: `${boardColor}20` }}
-              >
-                <Plus className="w-8 h-8" style={{ color: boardColor }} />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Sätt igång!</h3>
-              <p className="text-muted-foreground mb-4">
-                Klicka på knappen nedan för att skapa din första sticky note
-              </p>
-            </div>
-          </Card>
-        )}
+                  ) : (
+                    questionNotes.map((note) => (
+                      <StickyNote 
+                        key={note.id} 
+                        {...note} 
+                        isOwn={note.authorId === participantId}
+                        canDelete={note.authorId === participantId}
+                        onDelete={() => handleDeleteNote(note.id)}
+                      />
+                    ))
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Floating Action Button */}
+      {/* Floating Add Button */}
       <Button
         onClick={() => setShowAddDialog(true)}
-        className="fixed bottom-8 right-8 h-16 w-16 rounded-full shadow-[var(--shadow-glow)] hover:shadow-[var(--shadow-accent)] transition-all duration-300 hover:scale-110"
-        size="icon"
-        variant="hero"
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg"
+        style={{ backgroundColor: boardColor }}
       >
-        <Plus className="w-8 h-8" />
+        <Plus className="w-6 h-6" />
       </Button>
 
       {/* Add Note Dialog */}
