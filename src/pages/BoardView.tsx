@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { StickyNote } from "@/components/StickyNote";
 import { AddNoteDialog } from "@/components/AddNoteDialog";
 import { Plus, ArrowLeft, Clock, Users, User } from "lucide-react";
@@ -57,8 +56,8 @@ const BoardView = () => {
       const sessionData = sessionStorage.getItem('participantSession');
       if (!sessionData) {
         toast({
-          title: "Session saknas",
-          description: "Du måste gå med i workshopen igen",
+          title: t('board.sessionMissing'),
+          description: t('board.sessionMissingDesc'),
           variant: "destructive",
         });
         navigate('/join');
@@ -85,8 +84,8 @@ const BoardView = () => {
 
         if (workshopError || !workshop) {
           toast({
-            title: "Workshop hittades inte",
-            description: "Kontrollera att workshop-koden är korrekt",
+            title: t('board.workshopNotFound'),
+            description: t('board.workshopNotFoundDesc'),
             variant: "destructive",
           });
           navigate('/join');
@@ -104,8 +103,8 @@ const BoardView = () => {
 
         if (boardError || !boardData) {
           toast({
-            title: "Board hittades inte",
-            description: "Denna övning kunde inte hittas",
+            title: t('board.boardNotFound'),
+            description: t('board.boardNotFoundDesc'),
             variant: "destructive",
           });
           navigate('/join');
@@ -139,8 +138,8 @@ const BoardView = () => {
       } catch (error) {
         console.error("Fel vid laddning av workshop-data:", error);
         toast({
-          title: "Fel",
-          description: "Kunde inte ladda workshop-data",
+          title: t('board.error'),
+          description: t('board.loadError'),
           variant: "destructive",
         });
         navigate('/join');
@@ -148,7 +147,7 @@ const BoardView = () => {
     };
 
     loadWorkshopData();
-  }, [workshopId, boardId, navigate, toast]);
+  }, [workshopId, boardId, navigate, toast, t]);
 
   // Synka notes från Supabase Realtime
   useEffect(() => {
@@ -439,8 +438,8 @@ const BoardView = () => {
         setTimeRemaining((prev) => {
           if (prev <= 0) {
             toast({
-              title: "Tiden är ute!",
-              description: "Boardens tidsgräns har nåtts",
+              title: t('board.timeUp'),
+              description: t('board.timeLimitReached'),
               variant: "destructive",
             });
             return 0;
@@ -451,7 +450,7 @@ const BoardView = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [workshopId, timeRemaining, toast]);
+  }, [workshopId, timeRemaining, toast, t]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -486,14 +485,14 @@ const BoardView = () => {
       console.log("✅ [Participant] Note sparad via edge function:", data.note.id);
       
       toast({
-        title: "Note skapad!",
-        description: "Din idé har lagts till",
+        title: t('board.noteCreated'),
+        description: t('board.noteCreatedDesc'),
       });
     } catch (error: any) {
       console.error("Kunde inte spara note:", error);
       toast({
-        title: "Fel",
-        description: error.message || "Kunde inte spara note. Försök igen.",
+        title: t('board.error'),
+        description: error.message || t('board.saveError'),
         variant: "destructive",
       });
     }
@@ -504,8 +503,8 @@ const BoardView = () => {
     const note = notes.find(n => n.id === noteId);
     if (!note || note.authorId !== participantId) {
       toast({
-        title: "Fel",
-        description: "Du kan bara ta bort dina egna notes",
+        title: t('board.error'),
+        description: t('board.deleteOwnOnly'),
         variant: "destructive",
       });
       return;
@@ -515,8 +514,8 @@ const BoardView = () => {
       // For now, participants cannot delete notes - only facilitator can
       // This would need a separate edge function if we want to allow it
       toast({
-        title: "Info",
-        description: "Kontakta facilitator för att ta bort notes",
+        title: t('board.info'),
+        description: t('board.contactFacilitator'),
       });
     } catch (error) {
       console.error("Fel vid borttagning:", error);
@@ -532,7 +531,7 @@ const BoardView = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Laddar board...</p>
+          <p className="text-muted-foreground">{t('board.loading')}</p>
         </div>
       </div>
     );
