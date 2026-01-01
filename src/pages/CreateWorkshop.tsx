@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Sparkles, Plus, Save, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BoardCard } from "@/components/BoardCard";
-import { generateUniqueWorkshopCode } from "@/utils/workshopStorage";
 import { WorkshopQRDialog } from "@/components/WorkshopQRDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -16,6 +15,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useWorkshopLimit } from "@/hooks/useWorkshopLimit";
 import { UpgradeRequiredDialog } from "@/components/UpgradeRequiredDialog";
+import { useAuthenticatedFunctions } from "@/hooks/useAuthenticatedFunctions";
 
 interface Question {
   id: string;
@@ -46,6 +46,7 @@ const CreateWorkshop = () => {
   const { user } = useProfile();
   const { isFree, isPro } = useSubscription();
   const { canCreateMore, activeWorkshops, limit } = useWorkshopLimit();
+  const { invokeWithAuth } = useAuthenticatedFunctions();
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
@@ -60,8 +61,6 @@ const CreateWorkshop = () => {
     boards: [],
     status: "draft",
   });
-
-  // Workshop limit check is handled in handleActivate and handleSaveDraft
 
   useEffect(() => {
     const loadWorkshop = async () => {
@@ -128,7 +127,7 @@ const CreateWorkshop = () => {
 
         setWorkshop({
           title: workshopData.name,
-          description: '', // Workshop table doesn't have description yet
+          description: '',
           boards: boardsWithQuestions,
           code: workshopData.code,
           status: (workshopData.status === 'draft' ? 'draft' : 'active') as 'draft' | 'active',
@@ -147,106 +146,6 @@ const CreateWorkshop = () => {
 
     loadWorkshop();
   }, [workshopId]);
-
-  // Shared function to delete all workshop boards, questions and notes in correct order
-  const deleteWorkshopBoards = async (wid: string): Promise<void> => {
-    console.log("🗑️ Raderar workshop data för:", wid);
-    
-    // STEG 0: Nollställ active_board_id för att bryta cirkulärt beroende
-    const { error: clearActiveError } = await supabase
-      .from('workshops')
-      .update({ active_board_id: null })
-      .eq('id', wid);
-    
-    if (clearActiveError) {
-      console.error("Kunde inte nollställa active_board_id:", clearActiveError);
-      throw clearActiveError;
-    }
-    console.log("✅ active_board_id nollställd");
-    
-    // 1. Get all boards for this workshop
-    const { data: oldBoards, error: boardsFetchError } = await supabase
-      .from('boards')
-      .select('id')
-      .eq('workshop_id', wid);
-    
-    if (boardsFetchError) {
-      console.error("Kunde inte hämta boards:", boardsFetchError);
-      throw boardsFetchError;
-    }
-    
-    if (!oldBoards || oldBoards.length === 0) {
-      console.log("✅ Inga boards att radera");
-      return;
-    }
-    
-    const boardIds = oldBoards.map(b => b.id);
-    console.log("📋 Boards att radera:", boardIds);
-    
-    // 2. Get all questions for these boards
-    const { data: oldQuestions, error: questionsFetchError } = await supabase
-      .from('questions')
-      .select('id')
-      .in('board_id', boardIds);
-    
-    if (questionsFetchError) {
-      console.error("Kunde inte hämta questions:", questionsFetchError);
-      throw questionsFetchError;
-    }
-    
-    // 3. Delete notes first (foreign key to questions)
-    if (oldQuestions && oldQuestions.length > 0) {
-      const questionIds = oldQuestions.map(q => q.id);
-      
-      const { error: deleteNotesError } = await supabase
-        .from('notes')
-        .delete()
-        .in('question_id', questionIds);
-      
-      if (deleteNotesError) {
-        console.error("Kunde inte radera notes:", deleteNotesError);
-        throw deleteNotesError;
-      }
-      console.log("✅ Notes raderade");
-    }
-    
-    // 4. Delete AI analyses (foreign key to boards)
-    const { error: deleteAiError } = await supabase
-      .from('ai_analyses')
-      .delete()
-      .in('board_id', boardIds);
-    
-    if (deleteAiError) {
-      console.error("Kunde inte radera ai_analyses:", deleteAiError);
-      throw deleteAiError;
-    }
-    console.log("✅ AI-analyser raderade");
-    
-    // 5. Delete questions (foreign key to boards)
-    const { error: deleteQuestionsError } = await supabase
-      .from('questions')
-      .delete()
-      .in('board_id', boardIds);
-    
-    if (deleteQuestionsError) {
-      console.error("Kunde inte radera questions:", deleteQuestionsError);
-      throw deleteQuestionsError;
-    }
-    console.log("✅ Questions raderade");
-    
-    // 6. Delete boards
-    const { error: deleteBoardsError } = await supabase
-      .from('boards')
-      .delete()
-      .eq('workshop_id', wid);
-    
-    if (deleteBoardsError) {
-      console.error("Kunde inte radera boards:", deleteBoardsError);
-      throw deleteBoardsError;
-    }
-    console.log("✅ Boards raderade");
-  };
-
 
   const addBoard = () => {
     const newBoard: Board = {
@@ -369,79 +268,30 @@ const CreateWorkshop = () => {
       return;
     }
 
-    console.log("=== SPARAR WORKSHOP SOM DRAFT (SUPABASE) ===");
+    console.log("=== SPARAR WORKSHOP SOM DRAFT (VIA EDGE FUNCTION) ===");
     
     try {
-      const codeToUse = workshop.code || await generateUniqueWorkshopCodeFromSupabase();
-
-      const workshopData = {
-        name: workshop.title,
-        code: codeToUse,
-        date: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        facilitator_id: user.id,
-        status: 'draft',
-      };
-
-      let savedWorkshop;
-      if (workshopId) {
-        // Update existing draft
-        const { data, error } = await supabase
-          .from('workshops')
-          .update(workshopData)
-          .eq('id', workshopId)
-          .select()
-          .single();
-
-        if (error) throw error;
-        savedWorkshop = data;
-
-        // Delete all existing boards, questions and notes
-        await deleteWorkshopBoards(workshopId);
-      } else {
-        // Create new draft
-        const { data, error } = await supabase
-          .from('workshops')
-          .insert(workshopData)
-          .select()
-          .single();
-
-        if (error) throw error;
-        savedWorkshop = data;
-        setWorkshopId(savedWorkshop.id);
-      }
-
-      // Save boards and questions
-      for (let boardIndex = 0; boardIndex < workshop.boards.length; boardIndex++) {
-        const board = workshop.boards[boardIndex];
-        
-        const { data: savedBoard, error: boardError } = await supabase
-          .from('boards')
-          .insert({
-            workshop_id: savedWorkshop.id,
+      const { data, error } = await invokeWithAuth('workshop-operations', {
+        operation: 'save-draft',
+        workshopId: workshopId,
+        workshop: {
+          title: workshop.title,
+          description: workshop.description,
+          boards: workshop.boards.map((board, index) => ({
             title: board.title,
-            time_limit: board.timeLimit,
-            color_index: board.colorIndex,
-            order_index: boardIndex,
-          })
-          .select()
-          .single();
+            timeLimit: board.timeLimit,
+            colorIndex: board.colorIndex || index,
+            questions: board.questions.map(q => ({ title: q.title })),
+          })),
+          code: workshop.code,
+        },
+      });
 
-        if (boardError) throw boardError;
+      if (error) throw error;
 
-        for (let questionIndex = 0; questionIndex < board.questions.length; questionIndex++) {
-          const question = board.questions[questionIndex];
-          
-          const { error: questionError } = await supabase
-            .from('questions')
-            .insert({
-              board_id: savedBoard.id,
-              title: question.title,
-              order_index: questionIndex,
-            });
-
-          if (questionError) throw questionError;
-        }
+      if (data?.workshop) {
+        setWorkshopId(data.workshop.id);
+        setGeneratedCode(data.workshop.code);
       }
 
       toast({
@@ -479,157 +329,46 @@ const CreateWorkshop = () => {
       return;
     }
 
-    console.log("=== SPARAR WORKSHOP TILL SUPABASE ===");
+    console.log("=== AKTIVERAR WORKSHOP (VIA EDGE FUNCTION) ===");
     
     try {
-      // Generera eller normalisera kod
-      const normalized = (workshop.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-      const codeToUse = normalized.length === 6 ? normalized : await generateUniqueWorkshopCodeFromSupabase();
-      console.log("🔑 Kod att använda:", codeToUse);
+      const { data, error } = await invokeWithAuth('workshop-operations', {
+        operation: 'activate-workshop',
+        workshopId: workshopId,
+        workshop: {
+          title: workshop.title,
+          description: workshop.description,
+          boards: workshop.boards.map((board, index) => ({
+            title: board.title,
+            timeLimit: board.timeLimit,
+            colorIndex: board.colorIndex || index,
+            questions: board.questions.map(q => ({ title: q.title })),
+          })),
+          code: workshop.code,
+        },
+      });
 
-      // Spara eller uppdatera workshop
-      const workshopData = {
-        name: workshop.title,
-        code: codeToUse,
-        date: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        facilitator_id: user.id,
-        status: 'active',
-      };
+      if (error) throw error;
 
-      let savedWorkshop;
-      if (workshopId) {
-        // Delete all existing boards, questions and notes using shared function
-        await deleteWorkshopBoards(workshopId);
-
-        // Uppdatera befintlig workshop
-        const { data, error } = await supabase
-          .from('workshops')
-          .update(workshopData)
-          .eq('id', workshopId)
-          .select()
-          .single();
-
-        if (error) throw error;
-        savedWorkshop = data;
-      } else {
-        // Skapa ny workshop
-        const { data, error } = await supabase
-          .from('workshops')
-          .insert(workshopData)
-          .select()
-          .single();
-
-        if (error) throw error;
-        savedWorkshop = data;
-        setWorkshopId(savedWorkshop.id);
+      if (data?.workshop) {
+        setWorkshopId(data.workshop.id);
+        setGeneratedCode(data.workshop.code);
       }
-
-      console.log("✅ Workshop sparad i Supabase:", savedWorkshop.id);
-
-      // Spara boards och questions
-      let firstBoardId = null;
-      for (let boardIndex = 0; boardIndex < workshop.boards.length; boardIndex++) {
-        const board = workshop.boards[boardIndex];
-        
-        const boardData = {
-          workshop_id: savedWorkshop.id,
-          title: board.title,
-          time_limit: board.timeLimit,
-          color_index: board.colorIndex,
-          order_index: boardIndex,
-        };
-
-        const { data: savedBoard, error: boardError } = await supabase
-          .from('boards')
-          .insert(boardData)
-          .select()
-          .single();
-
-        if (boardError) {
-          console.error("Fel vid sparning av board:", boardError);
-          continue;
-        }
-
-        // Spara första board-id för att sätta som active
-        if (boardIndex === 0) {
-          firstBoardId = savedBoard.id;
-        }
-
-        console.log("✅ Board sparad:", savedBoard.id);
-
-        // Spara questions för denna board
-        for (let questionIndex = 0; questionIndex < board.questions.length; questionIndex++) {
-          const question = board.questions[questionIndex];
-          
-          const { error: questionError } = await supabase
-            .from('questions')
-            .insert({
-              board_id: savedBoard.id,
-              title: question.title,
-              order_index: questionIndex,
-            });
-
-          if (questionError) {
-            console.error("Fel vid sparning av fråga:", questionError);
-          }
-        }
-      }
-
-      // Sätt första board som active_board_id
-      if (firstBoardId) {
-        const { error: updateError } = await supabase
-          .from('workshops')
-          .update({ active_board_id: firstBoardId })
-          .eq('id', savedWorkshop.id);
-
-        if (updateError) {
-          console.error("Kunde inte sätta active board:", updateError);
-        } else {
-          console.log("✅ Active board satt till:", firstBoardId);
-        }
-      }
-
-      setGeneratedCode(savedWorkshop.code);
 
       // Öppna QR-dialog
       setShowQRDialog(true);
 
       toast({
         title: t('createWorkshop.activated'),
-        description: t('createWorkshop.activatedDesc', { code: savedWorkshop.code }),
+        description: t('createWorkshop.activatedDesc', { code: data?.workshop?.code || generatedCode }),
       });
     } catch (error) {
-      console.error("Fel vid sparning av workshop:", error);
+      console.error("Fel vid aktivering av workshop:", error);
       toast({
         title: t('common.error'),
         description: t('createWorkshop.saveFailed'),
         variant: "destructive",
       });
-    }
-  };
-
-  // Hjälpfunktion för att generera unik kod från Supabase
-  const generateUniqueWorkshopCodeFromSupabase = async (): Promise<string> => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    
-    while (true) {
-      let code = '';
-      for (let i = 0; i < 6; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      
-      // Kontrollera att koden inte redan finns i Supabase
-      const { data } = await supabase
-        .from('workshops')
-        .select('id')
-        .eq('code', code)
-        .single();
-      
-      if (!data) {
-        console.log("Genererad unik kod från Supabase:", code);
-        return code;
-      }
     }
   };
 
