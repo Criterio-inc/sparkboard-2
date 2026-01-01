@@ -55,6 +55,7 @@ const Privacy = () => {
                 <li>Profilbild (om du väljer att ladda upp en)</li>
                 <li>Information du delar i workshops (anteckningar och idéer)</li>
                 <li>Teknisk information som IP-adress och webbläsartyp</li>
+                <li>Betalningsinformation vid köp av Pro-prenumeration (hanteras säkert av Stripe - vi lagrar aldrig fullständiga kortuppgifter eller CVV-koder)</li>
               </ul>
             </section>
 
@@ -67,6 +68,7 @@ const Privacy = () => {
                 <li>Möjliggöra samarbete i workshops</li>
                 <li>Kommunicera med dig om tjänsten</li>
                 <li>Säkerställa tjänstens säkerhet och förhindra missbruk</li>
+                <li>Analysera workshop-innehåll med AI för att ge rekommendationer och insikter (endast för Pro-användare som aktivt väljer att använda AI-analysfunktionen)</li>
               </ul>
             </section>
 
@@ -86,7 +88,15 @@ const Privacy = () => {
                 Dina personuppgifter lagras säkert på servrar inom EU/EES. Vi använder kryptering 
                 och andra tekniska säkerhetsåtgärder för att skydda dina uppgifter mot obehörig åtkomst.
               </p>
-              <p className="mt-2">
+              <p className="mt-4">
+                <strong>Betalningsdata:</strong> Vi lagrar aldrig fullständiga kortuppgifter. All betalningsinformation 
+                hanteras direkt av Stripe som är PCI DSS Level 1 certifierad (högsta säkerhetsnivån för betalningar).
+              </p>
+              <p className="mt-4">
+                <strong>Vid radering av konto:</strong> När du raderar ditt konto tas alla dina personuppgifter bort inom 30 dagar, 
+                förutom information vi är skyldiga att behålla enligt bokföringslagen (t.ex. fakturor som sparas i 7 år).
+              </p>
+              <p className="mt-4">
                 Vi bevarar dina uppgifter så länge du har ett aktivt konto eller så länge det krävs 
                 för att uppfylla de ändamål som beskrivs i denna policy.
               </p>
@@ -101,6 +111,18 @@ const Privacy = () => {
                 <li>Tjänsteleverantörer som hjälper oss att driva tjänsten (t.ex. hosting, autentisering)</li>
                 <li>Myndigheter om vi är skyldiga enligt lag</li>
               </ul>
+              <p className="mt-4">
+                Vi använder följande tjänsteleverantörer för att driva tjänsten:
+              </p>
+              <ul className="list-disc pl-6 mt-2 space-y-2">
+                <li><strong>Clerk</strong> (clerk.com) - Autentisering och användarkonton (USA, GDPR-compliant)</li>
+                <li><strong>Supabase</strong> (supabase.com) - Databaslagring på servrar inom EU</li>
+                <li><strong>Stripe</strong> (stripe.com) - Betalningshantering (PCI DSS Level 1 certifierad)</li>
+                <li><strong>Lovable/OpenRouter</strong> - AI-analys av workshop-innehåll (endast för Pro-användare som aktivt använder funktionen)</li>
+              </ul>
+              <p className="mt-2">
+                Alla dessa tjänsteleverantörer är GDPR-compliant och har dataskyddsavtal med oss.
+              </p>
             </section>
 
             <section>
