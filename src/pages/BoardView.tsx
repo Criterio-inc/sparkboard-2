@@ -401,12 +401,13 @@ const BoardView = () => {
                 {getNotesForQuestion(question.id).map((note) => (
                   <StickyNote
                     key={note.id}
+                    id={note.id}
                     content={note.content}
                     authorName={note.authorName}
                     timestamp={note.timestamp}
                     colorIndex={note.colorIndex}
                     onDelete={() => handleDeleteNote(note.id)}
-                    isOwner={note.authorId === participantId}
+                    isOwn={note.authorId === participantId}
                   />
                 ))}
               </div>
@@ -428,7 +429,7 @@ const BoardView = () => {
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
         questions={board.questions}
-        onAddNote={handleAddNote}
+        onSubmit={handleAddNote}
       />
     </div>
   );
