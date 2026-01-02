@@ -189,8 +189,11 @@ const BoardView = () => {
           if (statusData.activeBoardId && statusData.activeBoardId !== boardId) {
             console.log("🔔 [Participant] Board changed to:", statusData.activeBoardId);
             toast({
-              title: t('board.movedToNext'),
-              description: t('board.syncing'),
+              title: "🎯 " + t('board.movedToNext'),
+              description: statusData.newBoardTitle 
+                ? `${t('board.newBoard')}: ${statusData.newBoardTitle}`
+                : t('board.syncing'),
+              duration: 5000,
             });
             navigate(`/board/${workshopId}/${statusData.activeBoardId}`);
             return;
