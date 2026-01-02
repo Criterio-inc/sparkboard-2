@@ -238,10 +238,22 @@ serve(async (req) => {
           );
         }
 
+        // Get the new board title if there's an active board
+        let newBoardTitle = null;
+        if (workshop.active_board_id) {
+          const { data: activeBoard } = await supabase
+            .from('boards')
+            .select('title')
+            .eq('id', workshop.active_board_id)
+            .single();
+          newBoardTitle = activeBoard?.title || null;
+        }
+
         return new Response(
           JSON.stringify({
             success: true,
             activeBoardId: workshop.active_board_id,
+            newBoardTitle,
             timerRunning: workshop.timer_running,
             timerStartedAt: workshop.timer_started_at,
             timeRemaining: workshop.time_remaining,
