@@ -37,7 +37,7 @@ const BoardView = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const [board, setBoard] = useState<Board | null>(null);
   const [workshopTitle, setWorkshopTitle] = useState("");
@@ -48,8 +48,10 @@ const BoardView = () => {
   const [participantName, setParticipantName] = useState("");
   const [participantId, setParticipantId] = useState("");
   const [participantCount, setParticipantCount] = useState(1);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerStartedAt, setTimerStartedAt] = useState<string | null>(null);
 
-  // Load workshop and participant session from Supabase
+  // Load workshop data via edge function (bypasses RLS)
   useEffect(() => {
     const loadWorkshopData = async () => {
       // Load participant session
@@ -75,14 +77,19 @@ const BoardView = () => {
       }
 
       try {
-        // Hämta workshop från Supabase
-        const { data: workshop, error: workshopError } = await supabase
-          .from('workshops')
-          .select('*')
-          .eq('id', workshopId)
-          .single();
+        console.log("📡 [Participant] Fetching data via edge function");
+        
+        const { data, error } = await supabase.functions.invoke('participant-data', {
+          body: {
+            operation: 'get-initial-data',
+            workshopId,
+            boardId,
+            participantId: session.participantId,
+          },
+        });
 
-        if (workshopError || !workshop) {
+        if (error || !data?.success) {
+          console.error("Edge function error:", error || data?.error);
           toast({
             title: t('board.workshopNotFound'),
             description: t('board.workshopNotFoundDesc'),
@@ -92,49 +99,62 @@ const BoardView = () => {
           return;
         }
 
-        setWorkshopTitle(workshop.name);
+        console.log("✅ [Participant] Data loaded via edge function");
 
-        // Hämta board med frågor från Supabase
-        const { data: boardData, error: boardError } = await supabase
-          .from('boards')
-          .select('*')
-          .eq('id', boardId)
-          .single();
-
-        if (boardError || !boardData) {
-          toast({
-            title: t('board.boardNotFound'),
-            description: t('board.boardNotFoundDesc'),
-            variant: "destructive",
-          });
-          navigate('/join');
-          return;
-        }
-
-        // Hämta frågor för denna board
-        const { data: questions, error: questionsError } = await supabase
-          .from('questions')
-          .select('*')
-          .eq('board_id', boardId)
-          .order('order_index');
-
-        if (questionsError) {
-          console.error("Kunde inte hämta frågor:", questionsError);
+        setWorkshopTitle(data.workshop.name);
+        setWorkshopCode(data.workshop.code);
+        setParticipantCount(data.participantCount);
+        
+        // Set timer state
+        setTimerRunning(data.workshop.timerRunning || false);
+        setTimerStartedAt(data.workshop.timerStartedAt);
+        
+        // Calculate time remaining
+        if (data.workshop.timerRunning && data.workshop.timerStartedAt) {
+          const startTime = new Date(data.workshop.timerStartedAt).getTime();
+          const now = Date.now();
+          const elapsedSeconds = Math.floor((now - startTime) / 1000);
+          const totalSeconds = data.board.timeLimit * 60;
+          setTimeRemaining(Math.max(0, totalSeconds - elapsedSeconds));
+        } else if (data.workshop.timeRemaining !== null) {
+          setTimeRemaining(data.workshop.timeRemaining);
+        } else {
+          setTimeRemaining(data.board.timeLimit * 60);
         }
 
         const currentBoard: Board = {
-          id: boardData.id,
-          title: boardData.title,
-          timeLimit: boardData.time_limit,
-          colorIndex: boardData.color_index,
-          questions: (questions || []).map(q => ({
+          id: data.board.id,
+          title: data.board.title,
+          timeLimit: data.board.timeLimit,
+          colorIndex: data.board.colorIndex,
+          questions: data.questions.map((q: any) => ({
             id: q.id,
             title: q.title,
           })),
         };
 
         setBoard(currentBoard);
-        setTimeRemaining(currentBoard.timeLimit * 60);
+        
+        // Format and set notes
+        const formattedNotes: Note[] = data.notes.map((note: any) => ({
+          id: note.id,
+          questionId: note.questionId,
+          content: note.content,
+          authorName: note.authorName,
+          authorId: note.authorId,
+          timestamp: new Date(note.timestamp).toLocaleTimeString("sv-SE", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          colorIndex: note.colorIndex,
+        }));
+        setNotes(formattedNotes);
+        
+        console.log("📝 [Participant] Board and notes loaded:", {
+          boardId: currentBoard.id,
+          questionsCount: currentBoard.questions.length,
+          notesCount: formattedNotes.length,
+        });
       } catch (error) {
         console.error("Fel vid laddning av workshop-data:", error);
         toast({
@@ -149,308 +169,113 @@ const BoardView = () => {
     loadWorkshopData();
   }, [workshopId, boardId, navigate, toast, t]);
 
-  // Synka notes från Supabase Realtime
+  // Poll for updates (replaces Supabase Realtime which is blocked by RLS)
   useEffect(() => {
-    if (!board) return;
+    if (!workshopId || !boardId || !participantId || !board) return;
 
-    console.log("🔄 [Participant] Sätter upp realtime för notes på board:", board.id);
+    const pollForUpdates = async () => {
+      try {
+        // Check for board changes and timer updates
+        const { data: statusData } = await supabase.functions.invoke('participant-data', {
+          body: {
+            operation: 'get-workshop-status',
+            workshopId,
+            participantId,
+          },
+        });
 
-    // Hämta initial data från Supabase
-    const fetchNotes = async () => {
-      const questionIds = board.questions.map(q => q.id);
-      if (questionIds.length === 0) return;
-
-      const { data, error } = await supabase
-        .from('notes')
-        .select('*')
-        .in('question_id', questionIds);
-
-      if (error) {
-        console.error("Fel vid hämtning av notes:", error);
-        return;
-      }
-
-      const formattedNotes: Note[] = (data || []).map(note => ({
-        id: note.id,
-        questionId: note.question_id,
-        content: note.content,
-        authorName: note.author_name,
-        authorId: note.author_id,
-        timestamp: new Date(note.timestamp).toLocaleTimeString("sv-SE", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        colorIndex: note.color_index,
-      }));
-
-      setNotes(formattedNotes);
-      console.log("📝 [Participant] Hämtade notes:", formattedNotes.length);
-    };
-
-    fetchNotes();
-
-    // Lyssna på realtime-uppdateringar
-    const channel = supabase
-      .channel(`notes-board-${board.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notes',
-        },
-        (payload) => {
-          console.log("🔔 [Participant] Realtime update:", payload.eventType);
-          fetchNotes(); // Refresh all notes
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log("🔌 [Participant] Kopplar från realtime");
-      supabase.removeChannel(channel);
-    };
-  }, [board]);
-
-  // Lyssna på ändringar i active_board_id för automatisk synkning
-  useEffect(() => {
-    if (!workshopId) return;
-
-    console.log("🔄 [Participant] Lyssnar på board-ändringar för workshop:", workshopId);
-
-    const channel = supabase
-      .channel(`workshop-active-board-${workshopId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'workshops',
-          filter: `id=eq.${workshopId}`
-        },
-        async (payload) => {
-          const newActiveBoardId = payload.new.active_board_id;
-          
-          if (newActiveBoardId && newActiveBoardId !== boardId) {
-            console.log("🔔 [Participant] Board ändrad till:", newActiveBoardId);
-            
+        if (statusData?.success) {
+          // Check if active board changed
+          if (statusData.activeBoardId && statusData.activeBoardId !== boardId) {
+            console.log("🔔 [Participant] Board changed to:", statusData.activeBoardId);
             toast({
               title: t('board.movedToNext'),
               description: t('board.syncing'),
             });
-            
-            // Navigera till nytt board
-            navigate(`/board/${workshopId}/${newActiveBoardId}`);
+            navigate(`/board/${workshopId}/${statusData.activeBoardId}`);
+            return;
           }
-        }
-      )
-      .subscribe();
 
-    return () => {
-      console.log("🔌 [Participant] Kopplar från board-synkning");
-      supabase.removeChannel(channel);
-    };
-  }, [workshopId, boardId, navigate, toast, t]);
-
-  // Sync board when screen becomes visible (wake from sleep)
-  useEffect(() => {
-    if (!workshopId || !boardId) return;
-
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        console.log("👁️ [Participant] Screen became visible, syncing board...");
-
-        // Clear any pending sync timeout
-        if (syncTimeoutRef.current) {
-          clearTimeout(syncTimeoutRef.current);
-        }
-
-        // Debounce sync to prevent multiple rapid calls
-        syncTimeoutRef.current = setTimeout(async () => {
-          try {
-            const { data: workshop, error } = await supabase
-              .from('workshops')
-              .select('active_board_id')
-              .eq('id', workshopId)
-              .single();
-
-            if (error) {
-              console.error("Error syncing board:", error);
-              return;
-            }
-
-            if (workshop?.active_board_id && workshop.active_board_id !== boardId) {
-              console.log("🔄 [Participant] Board changed while away, navigating to:", workshop.active_board_id);
-              
-              toast({
-                title: t('board.movedToNext'),
-                description: t('board.syncing'),
-              });
-
-              navigate(`/board/${workshopId}/${workshop.active_board_id}`);
-            } else {
-              console.log("✅ [Participant] Board is up to date");
-            }
-          } catch (error) {
-            console.error("Error in visibility sync:", error);
-          }
-        }, 500);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-      }
-    };
-  }, [workshopId, boardId, navigate, toast, t]);
-
-  // Synka deltagarantal från Supabase Realtime
-  useEffect(() => {
-    if (!workshopId) return;
-
-    const fetchParticipantCount = async () => {
-      const { count, error } = await supabase
-        .from('participants')
-        .select('*', { count: 'exact', head: true })
-        .eq('workshop_id', workshopId);
-
-      if (error) {
-        console.error("Fel vid hämtning av deltagare:", error);
-        return;
-      }
-
-      setParticipantCount(count || 0);
-      console.log("👥 [Participant] Deltagarantal:", count);
-    };
-
-    fetchParticipantCount();
-
-    // Lyssna på realtime-uppdateringar för deltagare
-    const channel = supabase
-      .channel(`participants-${workshopId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'participants',
-          filter: `workshop_id=eq.${workshopId}`,
-        },
-        () => {
-          fetchParticipantCount();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [workshopId]);
-
-  // Sync timer from workshop in Supabase (controlled by facilitator)
-  useEffect(() => {
-    if (!workshopId) return;
-
-    const fetchTimerState = async () => {
-      const { data, error } = await supabase
-        .from('workshops')
-        .select('timer_running, timer_started_at, time_remaining')
-        .eq('id', workshopId)
-        .single();
-
-      if (error || !data) {
-        console.error("Fel vid hämtning av timer state:", error);
-        return;
-      }
-
-      if (data.timer_running && data.timer_started_at && board) {
-        // Beräkna återstående tid baserat på när timern startades
-        const startTime = new Date(data.timer_started_at).getTime();
-        const now = Date.now();
-        const elapsedSeconds = Math.floor((now - startTime) / 1000);
-        const totalSeconds = board.timeLimit * 60;
-        const remaining = Math.max(0, totalSeconds - elapsedSeconds);
-        setTimeRemaining(remaining);
-      } else if (data.time_remaining !== null) {
-        // Timer pausad, visa återstående tid
-        setTimeRemaining(data.time_remaining);
-      }
-    };
-
-    fetchTimerState();
-
-    // Lyssna på realtime uppdateringar av timer state
-    const channel = supabase
-      .channel(`workshop-timer-${workshopId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'workshops',
-          filter: `id=eq.${workshopId}`,
-        },
-        (payload: any) => {
-          console.log("🔔 [BoardView] Timer update från facilitator");
-          const newData = payload.new;
+          // Update timer state
+          setTimerRunning(statusData.timerRunning || false);
+          setTimerStartedAt(statusData.timerStartedAt);
           
-          if (newData.timer_running && newData.timer_started_at && board) {
-            const startTime = new Date(newData.timer_started_at).getTime();
+          if (statusData.timerRunning && statusData.timerStartedAt && board) {
+            const startTime = new Date(statusData.timerStartedAt).getTime();
             const now = Date.now();
             const elapsedSeconds = Math.floor((now - startTime) / 1000);
             const totalSeconds = board.timeLimit * 60;
-            const remaining = Math.max(0, totalSeconds - elapsedSeconds);
-            setTimeRemaining(remaining);
-          } else if (newData.time_remaining !== null) {
-            setTimeRemaining(newData.time_remaining);
+            setTimeRemaining(Math.max(0, totalSeconds - elapsedSeconds));
+          } else if (statusData.timeRemaining !== null) {
+            setTimeRemaining(statusData.timeRemaining);
           }
         }
-      )
-      .subscribe();
+
+        // Fetch latest notes
+        const questionIds = board.questions.map(q => q.id);
+        if (questionIds.length > 0) {
+          const { data: notesData } = await supabase.functions.invoke('participant-data', {
+            body: {
+              operation: 'get-notes',
+              participantId,
+              questionIds,
+            },
+          });
+
+          if (notesData?.success) {
+            const formattedNotes: Note[] = notesData.notes.map((note: any) => ({
+              id: note.id,
+              questionId: note.questionId,
+              content: note.content,
+              authorName: note.authorName,
+              authorId: note.authorId,
+              timestamp: new Date(note.timestamp).toLocaleTimeString("sv-SE", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              colorIndex: note.colorIndex,
+            }));
+            setNotes(formattedNotes);
+          }
+        }
+      } catch (error) {
+        console.error("Polling error:", error);
+      }
+    };
+
+    // Poll every 3 seconds
+    pollIntervalRef.current = setInterval(pollForUpdates, 3000);
+    
+    // Initial poll
+    pollForUpdates();
 
     return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [workshopId, board]);
-
-  // Lokal countdown när timer körs
-  useEffect(() => {
-    const checkTimerRunning = async () => {
-      if (!workshopId) return false;
-      
-      const { data } = await supabase
-        .from('workshops')
-        .select('timer_running')
-        .eq('id', workshopId)
-        .single();
-      
-      return data?.timer_running || false;
-    };
-
-    const interval = setInterval(async () => {
-      const isRunning = await checkTimerRunning();
-      
-      if (isRunning && timeRemaining > 0) {
-        setTimeRemaining((prev) => {
-          if (prev <= 0) {
-            toast({
-              title: t('board.timeUp'),
-              description: t('board.timeLimitReached'),
-              variant: "destructive",
-            });
-            return 0;
-          }
-          return prev - 1;
-        });
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
       }
+    };
+  }, [workshopId, boardId, participantId, board, navigate, toast, t]);
+
+  // Local timer countdown
+  useEffect(() => {
+    if (!timerRunning || timeRemaining <= 0) return;
+
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          toast({
+            title: t('board.timeUp'),
+            description: t('board.timeLimitReached'),
+            variant: "destructive",
+          });
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [workshopId, timeRemaining, toast, t]);
+  }, [timerRunning, timeRemaining, toast, t]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -464,7 +289,6 @@ const BoardView = () => {
     try {
       console.log("📝 [Participant] Skapar note via edge function för fråga:", questionId);
 
-      // Use edge function for secure note creation
       const { data, error } = await supabase.functions.invoke('create-note', {
         body: {
           questionId,
@@ -499,161 +323,112 @@ const BoardView = () => {
   };
 
   const handleDeleteNote = async (noteId: string) => {
-    // Participants can only delete their own notes - this is validated by checking authorId
-    const note = notes.find(n => n.id === noteId);
-    if (!note || note.authorId !== participantId) {
-      toast({
-        title: t('board.error'),
-        description: t('board.deleteOwnOnly'),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // For now, participants cannot delete notes - only facilitator can
-      // This would need a separate edge function if we want to allow it
-      toast({
-        title: t('board.info'),
-        description: t('board.contactFacilitator'),
-      });
-    } catch (error) {
-      console.error("Fel vid borttagning:", error);
-    }
+    toast({
+      title: "Info",
+      description: t('board.deleteNotImplemented'),
+    });
   };
 
   const getNotesForQuestion = (questionId: string) => {
-    return notes.filter((n) => n.questionId === questionId);
+    return notes.filter((note) => note.questionId === questionId);
   };
 
   if (!board) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">{t('board.loading')}</p>
         </div>
       </div>
     );
   }
 
-  const boardColor = `hsl(var(--board-${(board.colorIndex % 5) + 1}))`;
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div 
-        className="sticky top-0 z-10 border-b shadow-sm bg-background"
-        style={{ 
-          borderTopColor: boardColor,
-          borderTopWidth: '4px'
-        }}
-      >
-        <div className="container mx-auto px-4 py-4">
+      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border">
+        <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/join')}>
-                <ArrowLeft className="w-5 h-5" />
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/join')}
+              >
+                <ArrowLeft className="h-5 w-5" />
               </Button>
-              
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight" style={{ color: boardColor }}>
-                  {board.title}
-                </h1>
+                <h1 className="text-lg font-semibold">{board.title}</h1>
                 <p className="text-sm text-muted-foreground">{workshopTitle}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Participant Info */}
-              <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
-                <User className="w-4 h-4" />
+              {/* Participant info */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <User className="h-4 w-4" />
                 <span>{participantName}</span>
               </div>
 
-              {/* Participant Count */}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Users className="w-4 h-4" />
+              {/* Participant count */}
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Users className="h-4 w-4" />
                 <span>{participantCount}</span>
               </div>
 
               {/* Timer */}
-              <div 
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-lg font-bold"
-                style={{ 
-                  backgroundColor: `${boardColor}20`,
-                  color: boardColor
-                }}
-              >
-                <Clock className="w-5 h-5" />
-                {formatTime(timeRemaining)}
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+                timeRemaining <= 60 ? 'bg-destructive/10 text-destructive' : 'bg-muted'
+              }`}>
+                <Clock className="h-4 w-4" />
+                <span className="font-mono font-medium">{formatTime(timeRemaining)}</span>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Questions Grid */}
-      <div className="container mx-auto px-4 py-6">
-        <div className={`grid gap-6 ${
-          board.questions.length === 1 
-            ? 'grid-cols-1' 
-            : board.questions.length === 2 
-            ? 'grid-cols-1 md:grid-cols-2' 
-            : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-        }`}>
-          {board.questions.map((question) => {
-            const questionNotes = getNotesForQuestion(question.id);
-            
-            return (
-              <Card key={question.id} className="p-4 space-y-4">
-                <div>
-                  <h2 className="text-lg font-semibold" style={{ color: boardColor }}>
-                    {question.title}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {questionNotes.length} {t('board.notes')}
-                  </p>
-                </div>
-
-                <div className="space-y-3 min-h-[200px]">
-                  {questionNotes.length === 0 ? (
-                    <div className="flex items-center justify-center h-40 border-2 border-dashed border-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground">{t('board.noNotesYet')}</p>
-                    </div>
-                  ) : (
-                    questionNotes.map((note) => (
-                      <StickyNote 
-                        key={note.id} 
-                        {...note} 
-                        isOwn={note.authorId === participantId}
-                        canDelete={note.authorId === participantId}
-                        onDelete={() => handleDeleteNote(note.id)}
-                      />
-                    ))
-                  )}
-                </div>
-              </Card>
-            );
-          })}
+      {/* Main content */}
+      <main className="container mx-auto px-4 py-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {board.questions.map((question) => (
+            <Card key={question.id} className="p-4">
+              <h3 className="font-medium mb-4 text-center border-b pb-2">
+                {question.title}
+              </h3>
+              <div className="space-y-3 min-h-[200px]">
+                {getNotesForQuestion(question.id).map((note) => (
+                  <StickyNote
+                    key={note.id}
+                    content={note.content}
+                    authorName={note.authorName}
+                    timestamp={note.timestamp}
+                    colorIndex={note.colorIndex}
+                    onDelete={() => handleDeleteNote(note.id)}
+                    isOwner={note.authorId === participantId}
+                  />
+                ))}
+              </div>
+            </Card>
+          ))}
         </div>
-      </div>
+      </main>
 
-      {/* Floating Add Button */}
+      {/* Floating action button */}
       <Button
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg"
         onClick={() => setShowAddDialog(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg"
-        style={{ backgroundColor: boardColor }}
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="h-6 w-6" />
       </Button>
 
-      {/* Add Note Dialog */}
+      {/* Add note dialog */}
       <AddNoteDialog
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
         questions={board.questions}
-        onSubmit={handleAddNote}
+        onAddNote={handleAddNote}
       />
     </div>
   );
