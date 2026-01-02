@@ -113,7 +113,61 @@ serve(async (req) => {
 
         if (error) throw error;
 
-        return new Response(JSON.stringify({ workshop }), {
+        // Get boards with questions
+        const { data: boards, error: boardsError } = await supabaseClient
+          .from('boards')
+          .select('*')
+          .eq('workshop_id', workshopId)
+          .order('order_index', { ascending: true });
+
+        if (boardsError) throw boardsError;
+
+        // Get questions for all boards
+        const boardIds = boards?.map(b => b.id) || [];
+        let boardsWithQuestions = boards || [];
+
+        if (boardIds.length > 0) {
+          const { data: questions, error: questionsError } = await supabaseClient
+            .from('questions')
+            .select('*')
+            .in('board_id', boardIds)
+            .order('order_index', { ascending: true });
+
+          if (questionsError) throw questionsError;
+
+          // Attach questions to their boards
+          boardsWithQuestions = boards.map(board => ({
+            ...board,
+            questions: questions?.filter(q => q.board_id === board.id) || [],
+          }));
+        }
+
+        // Check if workshop has any responses (notes)
+        let hasResponses = false;
+        if (boardIds.length > 0) {
+          const { data: allQuestions } = await supabaseClient
+            .from('questions')
+            .select('id')
+            .in('board_id', boardIds);
+          
+          if (allQuestions && allQuestions.length > 0) {
+            const questionIds = allQuestions.map(q => q.id);
+            const { count } = await supabaseClient
+              .from('notes')
+              .select('*', { count: 'exact', head: true })
+              .in('question_id', questionIds);
+            
+            hasResponses = (count || 0) > 0;
+          }
+        }
+
+        logStep("Workshop retrieved", { workshopId, boardCount: boardsWithQuestions.length, hasResponses });
+
+        return new Response(JSON.stringify({ 
+          workshop, 
+          boards: boardsWithQuestions,
+          hasResponses 
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
         });
@@ -234,48 +288,167 @@ serve(async (req) => {
       }
 
       case 'activate-workshop': {
-        const { workshopId } = params;
-        if (!workshopId) throw new Error("workshopId is required");
+        const { workshopId: existingId, workshop: workshopData } = params;
+        
+        logStep("Activating workshop", { existingId, hasWorkshopData: !!workshopData });
 
-        // Check FREE plan limits when activating
-        if (userPlan === 'free') {
-          const { count } = await supabaseClient
-            .from('workshops')
-            .select('*', { count: 'exact', head: true })
-            .eq('facilitator_id', userId)
-            .eq('status', 'active');
+        let savedWorkshopId = existingId;
+        let savedCode = workshopData?.code;
 
-          if (count && count >= 1) {
-            logStep("Free plan limit reached on activation", { activeWorkshops: count });
-            return new Response(
-              JSON.stringify({
-                error: "FREE_PLAN_LIMIT",
-                message: "Free plan limited to 1 active workshop. Deactivate another workshop or upgrade to Pro.",
-                limit: 1,
-                current: count
-              }), {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-                status: 403,
+        // If workshop data is provided, save it first (like save-draft but with active status)
+        if (workshopData) {
+          // If no existing workshop, create new one
+          if (!savedWorkshopId) {
+            // Check FREE plan limits before creating
+            if (userPlan === 'free') {
+              const { count } = await supabaseClient
+                .from('workshops')
+                .select('*', { count: 'exact', head: true })
+                .eq('facilitator_id', userId)
+                .eq('status', 'active');
+
+              if (count && count >= 1) {
+                logStep("Free plan limit reached on activation", { activeWorkshops: count });
+                return new Response(
+                  JSON.stringify({
+                    error: "FREE_PLAN_LIMIT",
+                    message: "Free plan limited to 1 active workshop. Deactivate another workshop or upgrade to Pro.",
+                    limit: 1,
+                    current: count
+                  }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                    status: 403,
+                  }
+                );
               }
-            );
+            }
+
+            const newCode = savedCode || Math.floor(100000 + Math.random() * 900000).toString();
+            
+            const { data: newWorkshop, error: createError } = await supabaseClient
+              .from('workshops')
+              .insert({
+                name: workshopData.title,
+                facilitator_id: userId,
+                code: newCode,
+                status: 'active',
+                date: new Date().toISOString(),
+              })
+              .select()
+              .single();
+
+            if (createError) throw createError;
+            
+            savedWorkshopId = newWorkshop.id;
+            savedCode = newWorkshop.code;
+            logStep("Created new active workshop", { id: savedWorkshopId, code: savedCode });
+          } else {
+            // Update existing workshop to active
+            const { error: updateError } = await supabaseClient
+              .from('workshops')
+              .update({
+                name: workshopData.title,
+                status: 'active',
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', savedWorkshopId)
+              .eq('facilitator_id', userId);
+
+            if (updateError) throw updateError;
+            logStep("Updated workshop to active", { id: savedWorkshopId });
+
+            // Delete old boards (cascade deletes questions)
+            const { error: deleteBoardsError } = await supabaseClient
+              .from('boards')
+              .delete()
+              .eq('workshop_id', savedWorkshopId);
+
+            if (deleteBoardsError) throw deleteBoardsError;
+            logStep("Deleted old boards for re-creation");
           }
+
+          // Create new boards with questions
+          if (workshopData.boards && workshopData.boards.length > 0) {
+            for (let boardIndex = 0; boardIndex < workshopData.boards.length; boardIndex++) {
+              const board = workshopData.boards[boardIndex];
+              
+              const { data: newBoard, error: boardError } = await supabaseClient
+                .from('boards')
+                .insert({
+                  workshop_id: savedWorkshopId,
+                  title: board.title,
+                  time_limit: board.timeLimit || 15,
+                  color_index: board.colorIndex ?? boardIndex,
+                  order_index: boardIndex,
+                })
+                .select()
+                .single();
+
+              if (boardError) throw boardError;
+
+              // Create questions for this board
+              if (board.questions && board.questions.length > 0) {
+                const questionsToInsert = board.questions.map((q: any, qIndex: number) => ({
+                  board_id: newBoard.id,
+                  title: q.title,
+                  order_index: qIndex,
+                }));
+
+                const { error: questionsError } = await supabaseClient
+                  .from('questions')
+                  .insert(questionsToInsert);
+
+                if (questionsError) throw questionsError;
+              }
+            }
+          }
+        } else {
+          // Just activate existing workshop (no data provided)
+          if (!savedWorkshopId) throw new Error("workshopId is required");
+
+          // Check FREE plan limits when activating
+          if (userPlan === 'free') {
+            const { count } = await supabaseClient
+              .from('workshops')
+              .select('*', { count: 'exact', head: true })
+              .eq('facilitator_id', userId)
+              .eq('status', 'active');
+
+            if (count && count >= 1) {
+              logStep("Free plan limit reached on activation", { activeWorkshops: count });
+              return new Response(
+                JSON.stringify({
+                  error: "FREE_PLAN_LIMIT",
+                  message: "Free plan limited to 1 active workshop. Deactivate another workshop or upgrade to Pro.",
+                  limit: 1,
+                  current: count
+                }), {
+                  headers: { ...corsHeaders, "Content-Type": "application/json" },
+                  status: 403,
+                }
+              );
+            }
+          }
+
+          const { error: activateError } = await supabaseClient
+            .from('workshops')
+            .update({ status: 'active' })
+            .eq('id', savedWorkshopId)
+            .eq('facilitator_id', userId);
+
+          if (activateError) throw activateError;
         }
 
-        logStep("Activating workshop", { workshopId });
-
-        const { data: workshop, error } = await supabaseClient
+        // Get the complete activated workshop
+        const { data: finalWorkshop } = await supabaseClient
           .from('workshops')
-          .update({ status: 'active' })
-          .eq('id', workshopId)
-          .eq('facilitator_id', userId)
-          .select()
+          .select('*')
+          .eq('id', savedWorkshopId)
           .single();
 
-        if (error) throw error;
+        logStep("Workshop activated", { workshopId: savedWorkshopId });
 
-        logStep("Workshop activated", { workshopId });
-
-        return new Response(JSON.stringify({ workshop }), {
+        return new Response(JSON.stringify({ workshop: finalWorkshop }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
         });
@@ -364,6 +537,117 @@ serve(async (req) => {
         });
 
         return new Response(JSON.stringify({ workshop: newWorkshop }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      case 'save-draft': {
+        const { workshopId: existingId, workshop: workshopData } = params;
+        
+        logStep("Saving draft", { existingId, title: workshopData?.title });
+
+        if (!workshopData) throw new Error("workshop data is required");
+
+        let savedWorkshopId = existingId;
+        let savedCode = workshopData.code;
+
+        // If no existing workshop, create new one
+        if (!savedWorkshopId) {
+          const newCode = savedCode || Math.floor(100000 + Math.random() * 900000).toString();
+          
+          const { data: newWorkshop, error: createError } = await supabaseClient
+            .from('workshops')
+            .insert({
+              name: workshopData.title,
+              facilitator_id: userId,
+              code: newCode,
+              status: 'draft',
+              date: new Date().toISOString(),
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          
+          savedWorkshopId = newWorkshop.id;
+          savedCode = newWorkshop.code;
+          logStep("Created new workshop", { id: savedWorkshopId, code: savedCode });
+        } else {
+          // Update existing workshop
+          const { error: updateError } = await supabaseClient
+            .from('workshops')
+            .update({
+              name: workshopData.title,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', savedWorkshopId)
+            .eq('facilitator_id', userId);
+
+          if (updateError) throw updateError;
+          logStep("Updated existing workshop", { id: savedWorkshopId });
+
+          // Delete old boards (cascade deletes questions)
+          const { error: deleteBoardsError } = await supabaseClient
+            .from('boards')
+            .delete()
+            .eq('workshop_id', savedWorkshopId);
+
+          if (deleteBoardsError) throw deleteBoardsError;
+          logStep("Deleted old boards");
+        }
+
+        // Create new boards with questions
+        if (workshopData.boards && workshopData.boards.length > 0) {
+          for (let boardIndex = 0; boardIndex < workshopData.boards.length; boardIndex++) {
+            const board = workshopData.boards[boardIndex];
+            
+            const { data: newBoard, error: boardError } = await supabaseClient
+              .from('boards')
+              .insert({
+                workshop_id: savedWorkshopId,
+                title: board.title,
+                time_limit: board.timeLimit || 15,
+                color_index: board.colorIndex ?? boardIndex,
+                order_index: boardIndex,
+              })
+              .select()
+              .single();
+
+            if (boardError) throw boardError;
+            logStep("Created board", { boardId: newBoard.id, title: board.title });
+
+            // Create questions for this board
+            if (board.questions && board.questions.length > 0) {
+              const questionsToInsert = board.questions.map((q: any, qIndex: number) => ({
+                board_id: newBoard.id,
+                title: q.title,
+                order_index: qIndex,
+              }));
+
+              const { error: questionsError } = await supabaseClient
+                .from('questions')
+                .insert(questionsToInsert);
+
+              if (questionsError) throw questionsError;
+              logStep("Created questions", { count: questionsToInsert.length });
+            }
+          }
+        }
+
+        // Get the complete saved workshop
+        const { data: finalWorkshop } = await supabaseClient
+          .from('workshops')
+          .select('*')
+          .eq('id', savedWorkshopId)
+          .single();
+
+        logStep("Draft saved successfully", { workshopId: savedWorkshopId });
+
+        return new Response(JSON.stringify({ 
+          workshop: finalWorkshop,
+          success: true 
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
         });
