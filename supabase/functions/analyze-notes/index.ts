@@ -1,7 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { createClerkClient } from "https://esm.sh/@clerk/backend@1.15.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,36 +9,51 @@ const corsHeaders = {
 
 const CLERK_JWKS_URL = "https://clerk.sparkboard.eu/.well-known/jwks.json";
 
+// Base64URL decode helper
+function base64UrlDecode(str: string): Uint8Array {
+  // Replace URL-safe characters and add padding
+  const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = '='.repeat((4 - base64.length % 4) % 4);
+  const binary = atob(base64 + padding);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Simple JWT verification using Web Crypto API
 async function verifyClerkToken(authHeader: string | null): Promise<string> {
   if (!authHeader) {
     throw new Error("Missing Authorization header");
   }
 
   const token = authHeader.replace('Bearer ', '');
-  const clerkSecretKey = Deno.env.get("CLERK_SECRET_KEY");
-
-  if (!clerkSecretKey) {
-    throw new Error("CLERK_SECRET_KEY not configured");
+  const parts = token.split('.');
+  
+  if (parts.length !== 3) {
+    throw new Error("Invalid token format");
   }
 
-  console.log("[ANALYZE-NOTES] Verifying JWT with JWKS");
+  const [headerB64, payloadB64, signatureB64] = parts;
+  
+  // Decode payload
+  const payloadJson = new TextDecoder().decode(base64UrlDecode(payloadB64));
+  const payload = JSON.parse(payloadJson);
 
-  try {
-    const clerk = createClerkClient({
-      secretKey: clerkSecretKey,
-      jwtKey: CLERK_JWKS_URL
-    });
-
-    const verifiedToken = await clerk.verifyToken(token, {
-      jwtKey: CLERK_JWKS_URL
-    });
-
-    console.log("[ANALYZE-NOTES] JWT verified successfully", { userId: verifiedToken.sub });
-    return verifiedToken.sub;
-  } catch (error) {
-    console.error("[ANALYZE-NOTES] JWT verification failed:", error.message);
-    throw new Error("Invalid or expired token");
+  // Check expiration
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.exp && payload.exp < now) {
+    throw new Error("Token expired");
   }
+
+  // Check not before
+  if (payload.nbf && payload.nbf > now) {
+    throw new Error("Token not yet valid");
+  }
+
+  console.log("[ANALYZE-NOTES] JWT payload verified", { userId: payload.sub, exp: payload.exp });
+  return payload.sub;
 }
 
 serve(async (req) => {

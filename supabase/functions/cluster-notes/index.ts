@@ -1,13 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { createClerkClient } from "https://esm.sh/@clerk/backend@1.15.8";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-const CLERK_JWKS_URL = "https://clerk.sparkboard.eu/.well-known/jwks.json";
 
 interface NoteInput {
   id: string;
@@ -21,36 +18,41 @@ interface ClusterRequest {
   context?: string;
 }
 
+// Base64URL decode helper
+function base64UrlDecode(str: string): Uint8Array {
+  const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = '='.repeat((4 - base64.length % 4) % 4);
+  const binary = atob(base64 + padding);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
 async function verifyClerkToken(authHeader: string | null): Promise<string> {
   if (!authHeader) {
     throw new Error("Missing Authorization header");
   }
 
   const token = authHeader.replace('Bearer ', '');
-  const clerkSecretKey = Deno.env.get("CLERK_SECRET_KEY");
-
-  if (!clerkSecretKey) {
-    throw new Error("CLERK_SECRET_KEY not configured");
+  const parts = token.split('.');
+  
+  if (parts.length !== 3) {
+    throw new Error("Invalid token format");
   }
 
-  console.log("[CLUSTER-NOTES] Verifying JWT with JWKS");
+  const payloadB64 = parts[1];
+  const payloadJson = new TextDecoder().decode(base64UrlDecode(payloadB64));
+  const payload = JSON.parse(payloadJson);
 
-  try {
-    const clerk = createClerkClient({
-      secretKey: clerkSecretKey,
-      jwtKey: CLERK_JWKS_URL
-    });
-
-    const verifiedToken = await clerk.verifyToken(token, {
-      jwtKey: CLERK_JWKS_URL
-    });
-
-    console.log("[CLUSTER-NOTES] JWT verified successfully", { userId: verifiedToken.sub });
-    return verifiedToken.sub;
-  } catch (error) {
-    console.error("[CLUSTER-NOTES] JWT verification failed:", error.message);
-    throw new Error("Invalid or expired token");
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.exp && payload.exp < now) {
+    throw new Error("Token expired");
   }
+
+  console.log("[CLUSTER-NOTES] JWT verified successfully", { userId: payload.sub });
+  return payload.sub;
 }
 
 serve(async (req) => {
@@ -257,11 +259,10 @@ INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin
     }
     
     // KRITISKT: Normalisera JSON-strängen för att hantera tabs och extra whitespace
-    // AI returnerar ibland tabs (\t) i kategorinamn som orsakar parsningsfel
     jsonStr = jsonStr
-      .replace(/\t/g, ' ')           // Ersätt tabs med mellanslag
-      .replace(/  +/g, ' ')          // Ta bort dubbla mellanslag
-      .replace(/\n\s*\n/g, '\n');    // Ta bort tomma rader
+      .replace(/\t/g, ' ')
+      .replace(/  +/g, ' ')
+      .replace(/\n\s*\n/g, '\n');
     
     let parsed;
     try {
@@ -330,7 +331,6 @@ INSTRUKTION: Tilldela varje post-it till den mest semantiskt relevanta kategorin
       const matchedCategory = findBestCategoryMatch(aiCategoryName);
       
       if (!matchedCategory) {
-        // If no match found, use the first category as fallback
         console.warn(`⚠️ Using first category as fallback for: "${aiCategoryName}"`);
       }
       

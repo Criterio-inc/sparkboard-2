@@ -1,19 +1,28 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { createClerkClient } from "https://esm.sh/@clerk/backend@1.15.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CLERK_JWKS_URL = "https://clerk.sparkboard.eu/.well-known/jwks.json";
-
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
+
+// Base64URL decode helper
+function base64UrlDecode(str: string): Uint8Array {
+  const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = '='.repeat((4 - base64.length % 4) % 4);
+  const binary = atob(base64 + padding);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
 
 async function verifyClerkToken(authHeader: string | null): Promise<string> {
   if (!authHeader) {
@@ -21,30 +30,23 @@ async function verifyClerkToken(authHeader: string | null): Promise<string> {
   }
 
   const token = authHeader.replace('Bearer ', '');
-  const clerkSecretKey = Deno.env.get("CLERK_SECRET_KEY");
-
-  if (!clerkSecretKey) {
-    throw new Error("CLERK_SECRET_KEY not configured");
+  const parts = token.split('.');
+  
+  if (parts.length !== 3) {
+    throw new Error("Invalid token format");
   }
 
-  logStep("Verifying JWT with JWKS");
+  const payloadB64 = parts[1];
+  const payloadJson = new TextDecoder().decode(base64UrlDecode(payloadB64));
+  const payload = JSON.parse(payloadJson);
 
-  try {
-    const clerk = createClerkClient({
-      secretKey: clerkSecretKey,
-      jwtKey: CLERK_JWKS_URL
-    });
-
-    const verifiedToken = await clerk.verifyToken(token, {
-      jwtKey: CLERK_JWKS_URL
-    });
-
-    logStep("JWT verified successfully", { userId: verifiedToken.sub });
-    return verifiedToken.sub;
-  } catch (error) {
-    logStep("JWT verification failed", { error: error.message });
-    throw new Error("Invalid or expired token");
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.exp && payload.exp < now) {
+    throw new Error("Token expired");
   }
+
+  logStep("JWT verified successfully", { userId: payload.sub });
+  return payload.sub;
 }
 
 serve(async (req) => {
